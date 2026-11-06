@@ -74,6 +74,8 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'Authorized target scopes: the only addresses and domains network operations may touch.' },
   { slug: 'permissions', href: '/permissions', title: 'Permissions', group: 'Governance', icon: 'lock', status: 'live', phase: 2,
     summary: 'Local users, roles and the permission matrix enforced on every API route.' },
+  { slug: 'api-access', href: '/api-access', title: 'API Access', group: 'Governance', icon: 'key', status: 'live', phase: 4,
+    summary: 'API keys for external programs and AI agents to discover and run the platform’s tools over HTTP — scope, approval and audit still apply.' },
   { slug: 'settings', href: '/settings', title: 'System Settings', group: 'Governance', icon: 'settings', status: 'live', phase: 1,
     summary: 'Windows environment inventory, runtime dependencies and backend connection.' },
 ];
