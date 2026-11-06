@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -59,6 +59,8 @@ export const MODULES: readonly ConsoleModule[] = [
   { slug: 'crypto', href: '/crypto', title: 'Cryptographic Audit', group: 'Security Domains', icon: 'key', status: 'live', phase: 8, category: 'cryptographic-audit',
     summary: 'TLS and certificate inspection for approved hosts; crypto and password-policy checks as adapters land.',
     planned: ['OpenSSL / GnuPG adapters', 'Cipher policy evaluation', 'Hash auditing restricted to registered test data'] },
+  { slug: 'terminal', href: '/terminal', title: 'Terminal', group: 'Execution', icon: 'terminal', status: 'live', phase: 4,
+    summary: 'An interactive console for the DARK AGI command language — type dagi commands, see results inline, with history.' },
   { slug: 'commands', href: '/commands', title: 'Command Reference', group: 'Execution', icon: 'book', status: 'live', phase: 4,
     summary: 'Every executable operation and launcher command in one place, with inputs, risk and approval rules.' },
   { slug: 'tasks', href: '/tasks', title: 'Task Queue', group: 'Execution', icon: 'list', status: 'live', phase: 4,
