@@ -9,7 +9,7 @@
     "lint": "eslint --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "api:types": "openapi-typescript ../dark-agi-backend/openapi.json -o src/lib/api/schema.d.ts",
+    "api:types": "node scripts/api-types.mjs",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {

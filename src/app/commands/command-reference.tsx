@@ -21,13 +21,15 @@ const CATEGORY_LABEL: Record<string, string> = {
   'cryptographic-audit': 'Cryptographic Audit',
 };
 
-const LAUNCHER: { command: string; description: string }[] = [
-  { command: 'setup', description: 'First install: npm install both apps, create the database, migrate and build' },
-  { command: 'start', description: 'Start PostgreSQL, backend (7411) and frontend (7410); prints the setup token on first run' },
-  { command: 'stop', description: 'Stop frontend, backend and PostgreSQL' },
-  { command: 'status', description: 'Show whether each service is running' },
-  { command: 'check', description: 'Typecheck, lint and unit tests for both apps' },
-  { command: 'banner', description: 'Show the console banner only' },
+const LAUNCHER: { repo: string; script: string; command: string; description: string }[] = [
+  { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'setup', description: 'First install: npm install, create the database, migrate and build' },
+  { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'start', description: 'Start PostgreSQL and the API (7411); prints the setup token on first run' },
+  { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'stop', description: 'Stop the API and PostgreSQL' },
+  { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'status', description: 'Show whether the API and PostgreSQL are running' },
+  { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'setup', description: 'First install: npm install, create .env.local and build' },
+  { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'start', description: 'Start this console (7410) and open the browser' },
+  { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'stop', description: 'Stop this console' },
+  { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'status', description: 'Show whether the console runs and the API is reachable' },
 ];
 
 function OperationCard({ op, canSubmit }: { op: Operation; canSubmit: boolean }) {
@@ -176,19 +178,22 @@ export function CommandReference() {
           </ol>
         </Panel>
 
-        <Panel title="Launcher commands" subtitle="Run in PowerShell from C:\dev\AGI\DARK-AGI-WINDOWS (or scripts\dark-agi.cmd from Command Prompt)">
+        <Panel title="Launcher commands" subtitle="Each repository has its own launcher. Run in PowerShell from that repository's folder (or the .cmd file of the same name from Command Prompt)">
           <table className="w-full text-left text-[12px]">
             <tbody>
               {LAUNCHER.map((l) => (
-                <tr key={l.command} className="border-b border-edge/60 last:border-0">
-                  <td className="whitespace-nowrap py-1 pr-4 font-mono text-ink">.\scripts\dark-agi.ps1 {l.command}</td>
+                <tr key={`${l.repo}:${l.command}`} className="border-b border-edge/60 last:border-0">
+                  <td className="whitespace-nowrap py-1 pr-4 font-mono text-ink-3">{l.repo}</td>
+                  <td className="whitespace-nowrap py-1 pr-4 font-mono text-ink">
+                    .\scripts\{l.script} {l.command}
+                  </td>
                   <td className="py-1 text-ink-2">{l.description}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="mt-2 text-[11.5px] text-ink-3">
-            Options: <code className="font-mono">-NoBrowser</code> (start without opening the browser), <code className="font-mono">-NoBanner</code> (hide the banner).
+            Options: <code className="font-mono">-NoBrowser</code> (console start without opening the browser), <code className="font-mono">-NoBanner</code> (API launcher without the banner). Both have <code className="font-mono">check</code> (typecheck, lint, tests).
           </p>
         </Panel>
 
