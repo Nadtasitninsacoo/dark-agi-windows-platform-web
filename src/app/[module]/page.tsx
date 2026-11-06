@@ -4,35 +4,44 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Panel, StatusBadge } from '@/components/ui';
-import { PLANNED_MODULES, moduleBySlug } from '@/lib/modules';
+import { MODULES, moduleBySlug } from '@/lib/modules';
+import { DomainOperations } from './domain-operations';
 
 /**
- * Pages for modules whose backend capability is not implemented yet.
- * They state that plainly — no simulated data, no inert controls.
+ * Security-domain and other catch-all module pages.
+ *
+ * A `live` domain with a tool-registry `category` renders its real executable
+ * operations (DomainOperations). Everything else `planned` renders an honest
+ * "not operational yet" placeholder — no simulated data, no inert controls.
  * Unknown slugs fall through to notFound().
  *
  * Metadata is static: the console sits behind the client-side sign-in gate, so a
  * params-dependent generateMetadata() would be the only request-time work in the
  * route. The per-module tab title is rendered as a React <title> (hoisted to <head>).
  */
-export const metadata: Metadata = { title: 'Planned module' };
+export const metadata: Metadata = { title: 'Module' };
 
 export function generateStaticParams() {
-  return PLANNED_MODULES.map((m) => ({ module: m.slug }));
+  return MODULES.filter((m) => m.group === 'Security Domains' || m.status === 'planned').map((m) => ({ module: m.slug }));
 }
 
-export default function PlannedModulePage({ params }: PageProps<'/[module]'>) {
+export default function ModulePage({ params }: PageProps<'/[module]'>) {
   return (
     <Suspense fallback={null}>
-      <PlannedModule params={params} />
+      <ModuleRouter params={params} />
     </Suspense>
   );
 }
 
-async function PlannedModule({ params }: { params: PageProps<'/[module]'>['params'] }) {
+async function ModuleRouter({ params }: { params: PageProps<'/[module]'>['params'] }) {
   const { module } = await params;
   const mod = moduleBySlug(module);
-  if (!mod || mod.status !== 'planned') notFound();
+  if (!mod) notFound();
+
+  if (mod.status === 'live' && mod.category) {
+    return <DomainOperations title={mod.title} summary={mod.summary} phase={mod.phase} category={mod.category} planned={mod.planned ?? []} />;
+  }
+  if (mod.status !== 'planned') notFound();
 
   return (
     <div>

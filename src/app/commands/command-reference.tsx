@@ -1,103 +1,103 @@
 'use client';
 
-import { Play, Search } from 'lucide-react';
+import { Search, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
+import { CATEGORY_LABEL, OperationCard } from '@/components/operation-card';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
-import { ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
-import type { Operation, OperationList, ToolList } from '@/lib/api/client';
+import { ErrorNotice, Panel, Skeleton } from '@/components/ui';
+import { apiRequest, type Job, type Operation, type OperationList, type ToolList } from '@/lib/api/client';
+import { CommandError, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
 
-const RISK: Record<string, StatusTone> = { low: 'neutral', moderate: 'warning', high: 'critical' };
-const CATEGORY_LABEL: Record<string, string> = {
-  'network-intelligence': 'Network Intelligence',
-  'vulnerability-assessment': 'Vulnerability Assessment',
-  'web-security': 'Web Security',
-  'windows-security': 'Windows Security',
-  'digital-forensics': 'Digital Forensics',
-  'threat-intelligence': 'Threat Intelligence',
-  'malware-analysis': 'Malware Analysis',
-  'cryptographic-audit': 'Cryptographic Audit',
-};
+const post = (body?: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+
+/** Type a branded DARK AGI command; it is parsed client-side and submitted through POST /jobs (validated server-side). */
+function CommandBar({ operations, canSubmit }: { operations: Operation[]; canSubmit: boolean }) {
+  const [line, setLine] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [job, setJob] = useState<Job | null>(null);
+
+  const run = async () => {
+    setError(null);
+    setJob(null);
+    let body: { toolId: string; operationId: string; input: Record<string, unknown> };
+    try {
+      body = parseCommand(line, operations);
+    } catch (e) {
+      setError(e instanceof CommandError ? e.message : 'Invalid command');
+      return;
+    }
+    setBusy(true);
+    try {
+      const created = await apiRequest<Job>('/jobs', post(body));
+      setJob(created);
+      setLine('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Submission failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Panel title="Command bar" subtitle={`The platform's own command language — ${COMMAND_PREFIX} <command> key=value … ${COMMAND_SUFFIX}`}>
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run();
+        }}
+      >
+        <span className="select-none font-mono text-ink-3">$</span>
+        <input
+          className="min-w-0 flex-1 rounded border border-edge-strong bg-canvas px-2 py-1 font-mono text-[12px] text-ink"
+          placeholder={`${COMMAND_PREFIX} net:dns host=example.com ${COMMAND_SUFFIX}`}
+          aria-label="DARK AGI command"
+          value={line}
+          spellCheck={false}
+          onChange={(e) => setLine(e.target.value)}
+        />
+        <button
+          type="submit"
+          disabled={busy || !canSubmit || line.trim() === ''}
+          className="inline-flex items-center gap-1 rounded border border-accent-strong bg-accent-strong/90 px-3 py-1 text-[12px] font-medium text-white hover:bg-accent-strong disabled:opacity-50"
+        >
+          <Terminal className="size-3.5" aria-hidden /> Run
+        </button>
+      </form>
+      {canSubmit ? null : <p className="mt-2 text-[11.5px] text-ink-3">You need the jobs:submit permission to run commands.</p>}
+      {error ? <p className="mt-2 text-[11.5px] text-critical">{error}</p> : null}
+      {job ? (
+        <p className="mt-2 text-[11.5px] text-ink-2">
+          Submitted <span className="font-mono text-ink">{job.operationTitle}</span> · status {job.status} ·{' '}
+          <Link href="/tasks" className="text-accent hover:underline">
+            open Task Queue
+          </Link>
+        </p>
+      ) : null}
+      <p className="mt-2 text-[11px] text-ink-3">
+        Copy a command from any card below, paste it here, fill the &lt;values&gt;, and Run. Network commands still need an approved scope; some need approval before they run.
+      </p>
+    </Panel>
+  );
+}
 
 const LAUNCHER: { repo: string; script: string; command: string; description: string }[] = [
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'setup', description: 'First install: npm install, create the database, migrate and build' },
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'start', description: 'Start PostgreSQL and the API (7411); prints the setup token on first run' },
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'stop', description: 'Stop the API and PostgreSQL' },
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'status', description: 'Show whether the API and PostgreSQL are running' },
+  { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'check', description: 'Typecheck, lint and run the test suite' },
+  { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'banner', description: 'Print the DARK AGI console banner and exit' },
   { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'setup', description: 'First install: npm install, create .env.local and build' },
   { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'start', description: 'Start this console (7410) and open the browser' },
   { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'stop', description: 'Stop this console' },
   { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'status', description: 'Show whether the console runs and the API is reachable' },
+  { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'check', description: 'Typecheck, lint and run the test suite' },
 ];
-
-function OperationCard({ op, canSubmit }: { op: Operation; canSubmit: boolean }) {
-  return (
-    <div className="rounded-md border border-edge bg-canvas/40 p-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h3 className="text-[13px] font-semibold text-ink">{op.title}</h3>
-          <p className="font-mono text-[11px] text-ink-3">
-            {op.toolId} / {op.operationId}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          <StatusBadge tone={RISK[op.risk] ?? 'neutral'} label={`${op.risk} risk`} />
-          <StatusBadge tone={op.requiresApproval ? 'warning' : 'neutral'} label={op.requiresApproval ? 'Needs approval' : 'No approval (people)'} />
-          <StatusBadge tone={op.available ? 'good' : 'neutral'} label={op.available ? 'Ready on this machine' : 'Not available'} />
-        </div>
-      </div>
-      <p className="mt-1.5 text-[12px] text-ink-2">{op.description}</p>
-      {!op.available && op.unavailableReason ? <p className="mt-1 text-[11.5px] text-warning">{op.unavailableReason}</p> : null}
-
-      <div className="mt-2 text-[11.5px]">
-        {op.fields.length === 0 ? (
-          <p className="text-ink-3">No input — inspects this machine only.</p>
-        ) : (
-          <table className="w-full text-left">
-            <thead className="text-[10px] uppercase tracking-wider text-ink-3">
-              <tr>
-                <th className="pr-3 font-medium">Field</th>
-                <th className="pr-3 font-medium">Required</th>
-                <th className="pr-3 font-medium">Default / range</th>
-                <th className="font-medium">What to enter</th>
-              </tr>
-            </thead>
-            <tbody className="text-ink-2">
-              {op.fields.map((f) => (
-                <tr key={f.name} className="align-top">
-                  <td className="pr-3 font-mono text-ink">{f.name}</td>
-                  <td className="pr-3">{f.required ? 'yes' : 'no'}</td>
-                  <td className="pr-3 font-mono">
-                    {f.default !== null ? String(f.default) : '—'}
-                    {f.min !== null && f.max !== null ? ` (${f.min}–${f.max})` : ''}
-                  </td>
-                  <td>{f.help}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-ink-3">
-        <span>
-          {op.targetKind === 'network' ? `Targets must be inside one active scope · max ${op.maxAddresses} addresses · ` : 'Local machine · '}
-          timeout {Math.round(op.timeoutMs / 60_000)} min · {op.maxConcurrent} at a time · AI-agent requests always need approval
-        </span>
-        {canSubmit && op.available ? (
-          <Link
-            href={`/tasks?op=${encodeURIComponent(`${op.toolId}:${op.operationId}`)}`}
-            className="inline-flex items-center gap-1 rounded border border-accent-strong bg-accent-strong/90 px-2 py-0.5 text-[11.5px] font-medium text-white hover:bg-accent-strong"
-          >
-            <Play className="size-3" aria-hidden /> Use this command
-          </Link>
-        ) : null}
-      </div>
-    </div>
-  );
-}
 
 export function CommandReference() {
   const { can } = useAuth();
@@ -141,6 +141,7 @@ export function CommandReference() {
         }
       />
       <div className="space-y-3 p-4">
+        <CommandBar operations={operations.data?.items ?? []} canSubmit={can('jobs:submit')} />
         {operations.error ? <ErrorNotice error={operations.error} /> : null}
         {!operations.data && !operations.error ? <Skeleton className="h-48 w-full" /> : null}
         {grouped.map(([category, ops]) => (
