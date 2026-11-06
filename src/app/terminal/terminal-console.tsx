@@ -33,8 +33,9 @@ Type a command, e.g.  ${COMMAND_PREFIX} win:procs ${COMMAND_SUFFIX}
 "help" lists commands · "clear" clears the screen · ↑/↓ for history.
 This is not a shell: every command is validated and audited, and network commands need an approved scope.`;
 
-export function TerminalConsole() {
+export function TerminalConsole({ embedded = false, codeColor }: { embedded?: boolean; codeColor?: string } = {}) {
   const { can } = useAuth();
+  const codeStyle = codeColor ? { color: codeColor } : undefined;
   const canSubmit = can('jobs:submit');
   const operations = useSWR<OperationList>('/operations');
   const ops: Operation[] = operations.data?.items ?? [];
@@ -148,82 +149,97 @@ export function TerminalConsole() {
     }
   };
 
+  const box = (
+    <div
+      onClick={() => inputRef.current?.focus()}
+      className={`flex w-full cursor-text flex-col border-edge-strong bg-[#05080c] p-3 text-left font-mono text-[12px] leading-relaxed text-ink ${
+        embedded ? 'h-full' : 'rounded-lg border shadow-inner'
+      }`}
+    >
+      <div className={`${embedded ? 'min-h-0 flex-1' : 'h-[60vh] min-h-72'} overflow-y-auto pr-1`}>
+        <p className="whitespace-pre-wrap text-ink-3">{BANNER}</p>
+        <div className="mt-2 space-y-1">
+          {entries.map((entry) => {
+            if (entry.kind === 'cmd') {
+              return (
+                <div key={entry.id} className="flex gap-2">
+                  <span className="shrink-0 select-none text-good" style={codeStyle}>
+                    {COMMAND_PREFIX}&gt;
+                  </span>
+                  <span className="whitespace-pre-wrap break-all text-ink" style={codeStyle}>
+                    {entry.text}
+                  </span>
+                </div>
+              );
+            }
+            if (entry.kind === 'error') {
+              return (
+                <p key={entry.id} className="whitespace-pre-wrap break-words text-critical">
+                  {entry.text}
+                </p>
+              );
+            }
+            if (entry.kind === 'approval') {
+              return (
+                <p key={entry.id} className="whitespace-pre-wrap break-words text-warning">
+                  {entry.text}{' '}
+                  <Link href="/tasks" className="underline hover:text-ink">
+                    open Task Queue
+                  </Link>
+                </p>
+              );
+            }
+            if (entry.kind === 'result') {
+              return (
+                <div key={entry.id} className="my-1">
+                  <p className="text-good" style={codeStyle}>
+                    {entry.title}
+                  </p>
+                  <div className="mt-1">
+                    <JobResult result={entry.result} />
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <p key={entry.id} className="whitespace-pre-wrap break-words text-ink-2">
+                {entry.text}
+              </p>
+            );
+          })}
+        </div>
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="mt-2 flex items-center gap-2 border-t border-edge pt-2">
+        <span className="shrink-0 select-none text-good" style={codeStyle}>
+          {COMMAND_PREFIX}&gt;
+        </span>
+        <input
+          ref={inputRef}
+          className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-ink outline-none placeholder:text-ink-3"
+          style={codeStyle}
+          placeholder={canSubmit ? `win:procs ${COMMAND_SUFFIX}   (type "help")` : 'you need the jobs:submit permission to run commands'}
+          aria-label="DARK AGI terminal input"
+          value={input}
+          disabled={!canSubmit || busy}
+          spellCheck={false}
+          autoComplete="off"
+          onKeyDown={onKeyDown}
+          onChange={(e) => setInput(e.target.value)}
+        />
+        {busy ? <span className="shrink-0 animate-pulse text-ink-3">running…</span> : null}
+      </div>
+    </div>
+  );
+
+  if (embedded) return box;
+
   return (
     <div>
       <title>Terminal · DARK AGI</title>
       <PageHeader title="Terminal" summary="An interactive console for the DARK AGI command language. It feels like a shell, but every command is validated, scope-checked, approved where required, and audited." />
-      <div className="p-4">
-        <div
-          onClick={() => inputRef.current?.focus()}
-          className="flex w-full cursor-text flex-col rounded-lg border border-edge-strong bg-[#05080c] p-3 text-left font-mono text-[12px] leading-relaxed text-ink shadow-inner"
-        >
-          <div className="h-[60vh] min-h-72 overflow-y-auto pr-1">
-            <p className="whitespace-pre-wrap text-ink-3">{BANNER}</p>
-            <div className="mt-2 space-y-1">
-              {entries.map((entry) => {
-                if (entry.kind === 'cmd') {
-                  return (
-                    <div key={entry.id} className="flex gap-2">
-                      <span className="shrink-0 select-none text-good">{COMMAND_PREFIX}&gt;</span>
-                      <span className="whitespace-pre-wrap break-all text-ink">{entry.text}</span>
-                    </div>
-                  );
-                }
-                if (entry.kind === 'error') {
-                  return (
-                    <p key={entry.id} className="whitespace-pre-wrap break-words text-critical">
-                      {entry.text}
-                    </p>
-                  );
-                }
-                if (entry.kind === 'approval') {
-                  return (
-                    <p key={entry.id} className="whitespace-pre-wrap break-words text-warning">
-                      {entry.text}{' '}
-                      <Link href="/tasks" className="underline hover:text-ink">
-                        open Task Queue
-                      </Link>
-                    </p>
-                  );
-                }
-                if (entry.kind === 'result') {
-                  return (
-                    <div key={entry.id} className="my-1">
-                      <p className="text-good">{entry.title}</p>
-                      <div className="mt-1">
-                        <JobResult result={entry.result} />
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <p key={entry.id} className="whitespace-pre-wrap break-words text-ink-2">
-                    {entry.text}
-                  </p>
-                );
-              })}
-            </div>
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="mt-2 flex items-center gap-2 border-t border-edge pt-2">
-            <span className="shrink-0 select-none text-good">{COMMAND_PREFIX}&gt;</span>
-            <input
-              ref={inputRef}
-              className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-ink outline-none placeholder:text-ink-3"
-              placeholder={canSubmit ? `win:procs ${COMMAND_SUFFIX}   (type "help")` : 'you need the jobs:submit permission to run commands'}
-              aria-label="DARK AGI terminal input"
-              value={input}
-              disabled={!canSubmit || busy}
-              spellCheck={false}
-              autoComplete="off"
-              onKeyDown={onKeyDown}
-              onChange={(e) => setInput(e.target.value)}
-            />
-            {busy ? <span className="shrink-0 animate-pulse text-ink-3">running…</span> : null}
-          </div>
-        </div>
-      </div>
+      <div className="p-4">{box}</div>
     </div>
   );
 }

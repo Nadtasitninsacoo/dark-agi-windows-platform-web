@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Suspense } from 'react';
 import { AuthGate } from '@/components/shell/auth';
+import { FloatingTerminal } from '@/components/shell/floating-terminal';
 import { Providers } from '@/components/shell/providers';
 import { Sidebar } from '@/components/shell/sidebar';
 import { TopBar } from '@/components/shell/top-bar';
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                 <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
               </div>
             </div>
+            <FloatingTerminal />
           </AuthGate>
         </Providers>
       </body>

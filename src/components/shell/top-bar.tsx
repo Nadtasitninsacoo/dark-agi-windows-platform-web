@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { StatusBadge } from '@/components/ui';
 import { API_BASE_URL, type EngineStatus, type HealthReport } from '@/lib/api/client';
 import { useAuth } from './auth';
+import { OPEN_TERMINAL_EVENT } from './floating-terminal';
 
 /** Shows a prominent badge while the execution engine is emergency-stopped. */
 function EngineBadge() {
@@ -61,14 +62,15 @@ export function TopBar() {
       <span className="text-[13px] font-semibold tracking-wide">
         DARK AGI <span className="font-normal text-ink-3">· Windows Cyber Intelligence Platform</span>
       </span>
-      <Link
-        href="/terminal"
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event(OPEN_TERMINAL_EVENT))}
         className="flex items-center gap-1.5 rounded border border-accent-strong/60 bg-accent-strong/10 px-2 py-1 text-[12px] text-ink hover:bg-accent-strong/20"
-        title="Open the DARK AGI terminal"
+        title="Open the DARK AGI terminal (floating window)"
       >
         <SquareTerminal className="size-3.5 text-accent" aria-hidden />
         <span className="hidden sm:inline">Terminal</span>
-      </Link>
+      </button>
       <div className="ml-auto flex items-center gap-2">
         <EngineBadge />
         {api}
