@@ -182,3 +182,14 @@
 - `ErrorNotice` now renders the specific `issues` a 400 validation error returns (field + reason), not just the
   generic top-level message — the previous generic "Validation failed" gave no way to tell a real problem
   apart from the extra-field case fixed on the backend tonight.
+
+## Unreleased — AI Agents: auto mode and a live operations overview
+
+- New "Operations overview" panel: a grid of all 10 agents with a live status dot (pulses when a run is
+  actually in progress), a per-agent Auto toggle, and a succeeded/failed/cancelled/running bar built only
+  from each agent's own real counts — no fabricated activity. Page-level "Auto all ON/OFF" buttons flip every
+  agent at once. Auto mode runs an agent on its own mission every 15 minutes with no prompting; any tool or
+  delegation request it makes still waits for human approval, same as a manually started run.
+  The agent list now polls every 4s (was 15s).
+- New shared `Toggle` switch component in `src/components/ui.tsx`; `formatRelativeTime` added to
+  `src/lib/format.ts` ("3m ago" style, deliberately coarse).

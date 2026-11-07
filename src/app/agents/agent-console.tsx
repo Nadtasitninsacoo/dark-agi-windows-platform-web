@@ -1,13 +1,14 @@
 'use client';
 
-import { Play, Square, Trash2 } from 'lucide-react';
+import { Play, Radar, Square, Trash2, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { PageHeader } from '@/components/page-header';
-import { Button, ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
+import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, Toggle } from '@/components/ui';
 import {
   type Agent,
+  type AgentAutoAllResult,
   type AgentList,
   type AgentMemory,
   type AgentMemoryList,
@@ -19,6 +20,7 @@ import {
   type AiModelList,
   apiRequest,
 } from '@/lib/api/client';
+import { formatRelativeTime } from '@/lib/format';
 import { formatDateTime } from '@/lib/format';
 import { RUN_STATUS, RunView } from './run-view';
 
@@ -45,7 +47,11 @@ function AgentListPanel({ agents, selected, onSelect }: { agents: Agent[]; selec
               className={`w-full rounded px-2 py-1.5 text-left transition-colors ${a.id === selected ? 'bg-accent-strong/15 ring-1 ring-accent/40' : 'hover:bg-panel-2'}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className={`text-[12px] font-semibold ${a.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{a.name}</span>
+                <span className="flex items-center gap-1.5">
+                  {a.stats.running > 0 ? <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-accent" style={{ boxShadow: '0 0 6px 1px rgb(46 232 143 / 0.8)' }} aria-hidden /> : null}
+                  <span className={`text-[12px] font-semibold ${a.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{a.name}</span>
+                  {a.autoRunEnabled ? <Zap className="size-3 text-accent" aria-label="Auto mode on" /> : null}
+                </span>
                 <span className="font-mono text-[10.5px] text-ink-3">
                   {a.stats.succeeded}/{a.stats.runs}
                 </span>
@@ -55,6 +61,78 @@ function AgentListPanel({ agents, selected, onSelect }: { agents: Agent[]; selec
           </li>
         ))}
       </ul>
+    </Panel>
+  );
+}
+
+/** Real counts only, animated by SWR's own re-renders as fresh data arrives — never a fabricated series. */
+function StatusBar({ stats }: { stats: Agent['stats'] }) {
+  const total = stats.runs || 1;
+  const seg = (n: number) => `${(n / total) * 100}%`;
+  return (
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-panel-2">
+      <div className="h-full bg-good transition-all duration-700" style={{ width: seg(stats.succeeded) }} />
+      <div className="h-full bg-critical transition-all duration-700" style={{ width: seg(stats.failed) }} />
+      <div className="h-full bg-ink-3/50 transition-all duration-700" style={{ width: seg(stats.cancelled) }} />
+      <div className="h-full bg-cyan transition-all duration-700" style={{ width: seg(stats.running) }} />
+    </div>
+  );
+}
+
+function AgentOverviewCard({ agent, onToggleAuto, busy }: { agent: Agent; onToggleAuto: (enabled: boolean) => void; busy: boolean }) {
+  const running = agent.stats.running > 0;
+  return (
+    <div
+      className={`rounded-md border p-2.5 transition-colors ${running ? 'border-accent/50 bg-accent-strong/5' : 'border-edge bg-panel'}`}
+      style={running ? { animation: 'dagi-pulse 2.5s ease-in-out infinite', boxShadow: '0 0 0 1px rgb(46 232 143 / 0.15)' } : undefined}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {running ? <Radar className="size-3.5 shrink-0 animate-spin text-accent" style={{ animationDuration: '2s' }} aria-hidden /> : <span className="size-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden />}
+          <span className={`truncate text-[12px] font-semibold ${agent.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{agent.name}</span>
+        </div>
+        <Toggle checked={agent.autoRunEnabled} onChange={onToggleAuto} disabled={busy} label={`Auto mode for ${agent.name}`} />
+      </div>
+      <StatusBar stats={agent.stats} />
+      <div className="mt-1.5 flex items-center justify-between text-[10.5px] text-ink-3">
+        <span>
+          {agent.stats.runs} run{agent.stats.runs === 1 ? '' : 's'} · {agent.stats.avgTotalMs === null ? '—' : `${(agent.stats.avgTotalMs / 1000).toFixed(1)}s avg`}
+        </span>
+        <span>{agent.autoRunEnabled ? `auto: ${formatRelativeTime(agent.lastAutoRunAt)}` : 'auto off'}</span>
+      </div>
+    </div>
+  );
+}
+
+function AgentOverviewPanel({ agents, onToggleAuto, onAutoAll, busyId, autoAllBusy }: {
+  agents: Agent[];
+  onToggleAuto: (id: string, enabled: boolean) => void;
+  onAutoAll: (enabled: boolean) => void;
+  busyId: string | null;
+  autoAllBusy: boolean;
+}) {
+  const runningNow = agents.filter((a) => a.stats.running > 0).length;
+  const autoOn = agents.filter((a) => a.autoRunEnabled).length;
+  return (
+    <Panel
+      title="Operations overview"
+      subtitle={`${runningNow} running now · ${autoOn}/${agents.length} on auto mode · polls every few seconds`}
+      actions={
+        <div className="flex items-center gap-1.5">
+          <Button busy={autoAllBusy} onClick={() => onAutoAll(true)}>
+            <Zap className="size-3.5" aria-hidden /> Auto all ON
+          </Button>
+          <Button busy={autoAllBusy} onClick={() => onAutoAll(false)}>
+            Auto all OFF
+          </Button>
+        </div>
+      }
+    >
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        {agents.map((a) => (
+          <AgentOverviewCard key={a.id} agent={a} busy={busyId === a.id} onToggleAuto={(enabled) => onToggleAuto(a.id, enabled)} />
+        ))}
+      </div>
     </Panel>
   );
 }
@@ -350,9 +428,12 @@ function HistoryPanel({ agent, names }: { agent: Agent; names: Record<string, st
 }
 
 export function AgentConsole() {
-  const agents = useSWR<AgentList>('/agents', { refreshInterval: 15_000 });
+  const agents = useSWR<AgentList>('/agents', { refreshInterval: 4_000 });
   const models = useSWR<AiModelList>('/ai/models?status=AVAILABLE');
   const [selected, setSelected] = useState('oracle');
+  const [autoBusyId, setAutoBusyId] = useState<string | null>(null);
+  const [autoAllBusy, setAutoAllBusy] = useState(false);
+  const [autoError, setAutoError] = useState<unknown>(null);
   const { mutate } = useSWRConfig();
 
   const items = useMemo(() => agents.data?.items ?? [], [agents.data]);
@@ -362,15 +443,43 @@ export function AgentConsole() {
     await Promise.all([agents.mutate(), mutate((key) => typeof key === 'string' && key.startsWith('/agents/runs'))]);
   };
 
+  const toggleAuto = async (id: string, enabled: boolean) => {
+    setAutoBusyId(id);
+    setAutoError(null);
+    try {
+      await apiRequest<Agent>(`/agents/${id}`, json('PATCH', { autoRunEnabled: enabled }));
+      await agents.mutate();
+    } catch (e) {
+      setAutoError(e);
+    } finally {
+      setAutoBusyId(null);
+    }
+  };
+
+  const autoAll = async (enabled: boolean) => {
+    setAutoAllBusy(true);
+    setAutoError(null);
+    try {
+      await apiRequest<AgentAutoAllResult>('/agents/auto-all', json('POST', { enabled }));
+      await agents.mutate();
+    } catch (e) {
+      setAutoError(e);
+    } finally {
+      setAutoAllBusy(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
         title="AI Agents"
-        summary="Specialist agents with their own instructions, model assignment and memory. Agents analyse and coordinate; they cannot execute tools or commands — every action request goes through the platform's policy."
+        summary="Specialist agents with their own instructions, model assignment and memory. Agents analyse and coordinate; they cannot execute tools or commands — every action request goes through the platform's policy. Auto mode runs an agent on its own mission every 15 minutes with no prompting — any tool or delegation request it makes still waits for human approval, same as a manually started run."
       />
-      <div className="p-4">
+      <div className="space-y-3 p-4">
         {agents.error ? <ErrorNotice error={agents.error} /> : null}
+        {autoError ? <ErrorNotice error={autoError} /> : null}
         {!agents.data && !agents.error ? <Skeleton className="h-64 w-full" /> : null}
+        {agents.data ? <AgentOverviewPanel agents={items} onToggleAuto={(id, enabled) => void toggleAuto(id, enabled)} onAutoAll={(enabled) => void autoAll(enabled)} busyId={autoBusyId} autoAllBusy={autoAllBusy} /> : null}
         {agent && agents.data ? (
           <div className="grid gap-3 lg:grid-cols-[15rem_1fr]">
             <div className="space-y-3">

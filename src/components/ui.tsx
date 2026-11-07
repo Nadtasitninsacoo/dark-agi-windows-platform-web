@@ -117,6 +117,24 @@ export function Skeleton({ className = 'h-4 w-full' }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-panel-2 ${className}`} />;
 }
 
+export function Toggle({ checked, onChange, disabled, label }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; label?: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-4.5 w-8 shrink-0 items-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+        checked ? 'border-accent-strong bg-accent-strong/80' : 'border-edge-strong bg-panel-2'
+      }`}
+    >
+      <span className={`inline-block size-3 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
+    </button>
+  );
+}
+
 export function KeyValue({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1">

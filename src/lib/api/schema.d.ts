@@ -764,6 +764,23 @@ export interface paths {
         patch: operations["AgentsController_update"];
         trace?: never;
     };
+    "/api/v1/agents/auto-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn auto-run on or off for every agent at once (audited as one action) */
+        post: operations["AgentsController_autoAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{id}/memories": {
         parameters: {
             query?: never;
@@ -952,6 +969,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Model Context Protocol endpoint for external agents (JSON-RPC 2.0, Streamable HTTP transport) */
+        post: operations["McpController_handle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -986,8 +1020,18 @@ export interface components {
                 /** Format: date-time */
                 lastRunAt: string | null;
             };
+            /** @description When true, a backend scheduler runs this agent on its own mission every 15 minutes with no human prompting */
+            autoRunEnabled: boolean;
+            /** Format: date-time */
+            lastAutoRunAt: string | null;
             /** Format: date-time */
             updatedAt: string;
+        };
+        AgentAutoAllRequest: {
+            enabled: boolean;
+        };
+        AgentAutoAllResult: {
+            updated: number;
         };
         AgentCommandRequest: {
             /** @description A natural-language instruction (any language) to translate into one operation */
@@ -1024,6 +1068,10 @@ export interface components {
                     /** Format: date-time */
                     lastRunAt: string | null;
                 };
+                /** @description When true, a backend scheduler runs this agent on its own mission every 15 minutes with no human prompting */
+                autoRunEnabled: boolean;
+                /** Format: date-time */
+                lastAutoRunAt: string | null;
                 /** Format: date-time */
                 updatedAt: string;
             }[];
@@ -1256,6 +1304,7 @@ export interface components {
             fallbackModels?: string[] | null;
             /** @description null = restore the default instructions */
             instructions?: string | null;
+            autoRunEnabled?: boolean;
         };
         AiChatRequest: {
             /** @description `<providerId>:<model>`; defaults to AI_DEFAULT_MODEL */
@@ -3625,6 +3674,29 @@ export interface operations {
             };
         };
     };
+    AgentsController_autoAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentAutoAllRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentAutoAllResult"];
+                };
+            };
+        };
+    };
     AgentsController_memories: {
         parameters: {
             query?: never;
@@ -3952,6 +4024,23 @@ export interface operations {
             path: {
                 id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    McpController_handle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

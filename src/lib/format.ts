@@ -43,6 +43,21 @@ export function shortHash(hash: string | null | undefined, length = 12): string 
   return hash ? hash.slice(0, length) : '—';
 }
 
+/** "3m ago" / "2h ago" / "5d ago" — coarse, deliberately not second-accurate; never claims a "just now" it can't back up. */
+export function formatRelativeTime(iso: string | null): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '—';
+  const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
+}
+
 /** Severity band for a utilisation percentage (used with icon + label, never color alone). */
 export function utilisationLevel(percent: number | null | undefined): 'good' | 'warning' | 'critical' | 'unknown' {
   if (percent === null || percent === undefined || !Number.isFinite(percent)) return 'unknown';
