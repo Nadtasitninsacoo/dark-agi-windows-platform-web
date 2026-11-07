@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -67,6 +67,8 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'Submit, approve, cancel and inspect jobs run by the Windows execution engine; emergency stop.' },
   { slug: 'logs', href: '/logs', title: 'Execution Logs', group: 'Execution', icon: 'scroll', status: 'live', phase: 1,
     summary: 'Immutable, hash-chained audit trail with integrity verification.' },
+  { slug: 'findings', href: '/findings', title: 'Security Findings', group: 'Execution', icon: 'flag', status: 'live', phase: 6,
+    summary: 'Normalised vulnerability-assessment findings ingested from succeeded scans (Trivy, Grype, OSV-Scanner, Nuclei), with severity, status and triage.' },
   { slug: 'reports', href: '/reports', title: 'Reports', group: 'Execution', icon: 'file-text', status: 'planned', phase: 9,
     summary: 'Security reports generated from normalised findings and evidence.',
     planned: ['Report templates', 'Export to HTML/PDF', 'Evidence references with hashes'] },

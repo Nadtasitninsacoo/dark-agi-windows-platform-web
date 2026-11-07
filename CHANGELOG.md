@@ -78,3 +78,14 @@
   (Trivy filesystem/image scan, Grype filesystem scan, OSV-Scanner lockfile scan) through the same
   `DomainOperations`/`OperationCard` components as every other domain page. Nuclei (network-target) and a
   persisted findings view remain planned.
+
+## 0.6.0 — Security Findings page, Nuclei command alias (unreleased)
+
+- New **Security Findings** page (`/findings`): severity tiles (open count + critical/high/medium/low/unknown),
+  a filterable table (severity, status) of findings ingested from succeeded Trivy/Grype/OSV-Scanner/Nuclei jobs,
+  and resolve/ignore/reopen actions for users with the new `findings:manage` permission. Vulnerability
+  Assessment's domain page is unchanged — it runs scans; Security Findings shows what they found.
+- Command language gains aliases for the 5 new vulnerability-assessment operations: `vuln:trivyfs`,
+  `vuln:trivyimage`, `vuln:grype`, `vuln:osv`, `vuln:nuclei`.
+- API types regenerated from the updated backend OpenAPI contract (`Finding`, `FindingPage`,
+  `FindingUpdateRequest`, the `findings:read`/`findings:manage` permissions).

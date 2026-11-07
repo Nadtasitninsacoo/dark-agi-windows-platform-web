@@ -138,6 +138,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List your API keys (never returns the secret) */
+        get: operations["AuthController_listApiKeys"];
+        put?: never;
+        /** Create a long-lived API key for external programs / AI agents (the secret is shown once; audited) */
+        post: operations["AuthController_createApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/api-keys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke one of your API keys (audited) */
+        delete: operations["AuthController_revokeApiKey"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -170,6 +205,239 @@ export interface paths {
         head?: never;
         /** Change role, display name, disable, unlock or reset password (audited) */
         patch: operations["UsersController_update"];
+        trace?: never;
+    };
+    "/api/v1/scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ScopesController_list"];
+        put?: never;
+        /** Define an authorized target scope (audited) */
+        post: operations["ScopesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scopes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change targets, enable/disable or set expiry (audited) */
+        patch: operations["ScopesController_update"];
+        trace?: never;
+    };
+    "/api/v1/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Executable operations with input fields, schemas and availability on this machine */
+        get: operations["ExecutionController_operations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/engine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExecutionController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/engine/emergency-stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel every queued and running job and refuse new ones until resumed (audited) */
+        post: operations["ExecutionController_stop"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/engine/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExecutionController_resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExecutionController_list"];
+        put?: never;
+        /** Submit a job; scope and input are validated server-side (audited) */
+        post: operations["ExecutionController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExecutionController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExecutionController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExecutionController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel your own job (approvers may cancel any); running processes are terminated */
+        post: operations["ExecutionController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resubmit a failed or cancelled job as a new job (validated and approved again) */
+        post: operations["ExecutionController_retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Normalised vulnerability-assessment findings, newest-seen first, with an open/severity summary */
+        get: operations["FindingsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Triage a finding: mark it open, resolved or ignored, with an optional note (audited) */
+        patch: operations["FindingsController_updateStatus"];
         trace?: never;
     };
     "/api/v1/health": {
@@ -376,6 +644,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/command": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** AI command mode: a natural-language instruction (any language, incl. Thai) is translated to one operation and submitted as you (audited) */
+        post: operations["AgentsController_command"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents": {
         parameters: {
             query?: never;
@@ -494,205 +779,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/scopes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ScopesController_list"];
-        put?: never;
-        /** Define an authorized target scope (audited) */
-        post: operations["ScopesController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/scopes/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Change targets, enable/disable or set expiry (audited) */
-        patch: operations["ScopesController_update"];
-        trace?: never;
-    };
-    "/api/v1/operations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Executable operations with input fields, schemas and availability on this machine */
-        get: operations["ExecutionController_operations"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/engine": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ExecutionController_status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/engine/emergency-stop": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel every queued and running job and refuse new ones until resumed (audited) */
-        post: operations["ExecutionController_stop"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/engine/resume": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ExecutionController_resume"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ExecutionController_list"];
-        put?: never;
-        /** Submit a job; scope and input are validated server-side (audited) */
-        post: operations["ExecutionController_submit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["ExecutionController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ExecutionController_approve"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{id}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ExecutionController_reject"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel your own job (approvers may cancel any); running processes are terminated */
-        post: operations["ExecutionController_cancel"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{id}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Resubmit a failed or cancelled job as a new job (validated and approved again) */
-        post: operations["ExecutionController_retry"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/tools": {
         parameters: {
             query?: never;
@@ -780,6 +866,10 @@ export interface components {
             };
             /** Format: date-time */
             updatedAt: string;
+        };
+        AgentCommandRequest: {
+            /** @description A natural-language instruction (any language) to translate into one operation */
+            instruction: string;
         };
         AgentList: {
             items: {
@@ -1189,6 +1279,48 @@ export interface components {
             queuedSessions: number;
             maxConcurrency: number;
         };
+        ApiKey: {
+            /** @description Key id (also used to revoke it); not the secret */
+            id: string;
+            label: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        ApiKeyCreated: {
+            /** @description The secret API key — shown once; store it securely */
+            token: string;
+            key: {
+                /** @description Key id (also used to revoke it); not the secret */
+                id: string;
+                label: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+                /** Format: date-time */
+                expiresAt: string;
+            };
+        };
+        ApiKeyCreateRequest: {
+            label: string;
+        };
+        ApiKeyList: {
+            items: {
+                /** @description Key id (also used to revoke it); not the secret */
+                id: string;
+                label: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+                /** Format: date-time */
+                expiresAt: string;
+            }[];
+        };
         AuditEvent: {
             /** @description Monotonic sequence number (bigint serialised as string) */
             seq: string;
@@ -1266,7 +1398,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -1347,6 +1479,80 @@ export interface components {
                 appliedMigrations: number | null;
                 error: string | null;
             };
+        };
+        Finding: {
+            id: string;
+            jobId: string;
+            toolId: string;
+            operationId: string;
+            /** @description Stable identity from the source tool: a CVE/GHSA id or a Nuclei template id */
+            findingKey: string;
+            /** @description The directory, image reference or host the finding was found in */
+            target: string;
+            package: string | null;
+            installedVersion: string | null;
+            fixedVersion: string | null;
+            /** @enum {string} */
+            severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            title: string | null;
+            source: string | null;
+            /** @enum {string} */
+            status: "OPEN" | "RESOLVED" | "IGNORED";
+            statusNote: string | null;
+            statusChangedBy: string | null;
+            /** Format: date-time */
+            statusChangedAt: string | null;
+            /** @description How many successful scans have reported this exact finding */
+            occurrences: number;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        FindingPage: {
+            items: {
+                id: string;
+                jobId: string;
+                toolId: string;
+                operationId: string;
+                /** @description Stable identity from the source tool: a CVE/GHSA id or a Nuclei template id */
+                findingKey: string;
+                /** @description The directory, image reference or host the finding was found in */
+                target: string;
+                package: string | null;
+                installedVersion: string | null;
+                fixedVersion: string | null;
+                /** @enum {string} */
+                severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+                title: string | null;
+                source: string | null;
+                /** @enum {string} */
+                status: "OPEN" | "RESOLVED" | "IGNORED";
+                statusNote: string | null;
+                statusChangedBy: string | null;
+                /** Format: date-time */
+                statusChangedAt: string | null;
+                /** @description How many successful scans have reported this exact finding */
+                occurrences: number;
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            /** Format: date-time */
+            nextBefore: string | null;
+            summary: {
+                total: number;
+                open: number;
+                bySeverity: {
+                    [key: string]: number;
+                };
+            };
+        };
+        FindingUpdateRequest: {
+            /** @enum {string} */
+            status: "OPEN" | "RESOLVED" | "IGNORED";
+            note?: string;
         };
         HealthReport: {
             /**
@@ -1898,7 +2104,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
             }[];
         };
         UserUpdateRequest: {
@@ -2085,6 +2291,67 @@ export interface operations {
             };
         };
     };
+    AuthController_listApiKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyList"];
+                };
+            };
+        };
+    };
+    AuthController_createApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreated"];
+                };
+            };
+        };
+    };
+    AuthController_revokeApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     UsersController_list: {
         parameters: {
             query?: never;
@@ -2148,458 +2415,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    HealthController_health: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthReport"];
-                };
-            };
-        };
-    };
-    HealthController_live: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        status?: "ok";
-                    };
-                };
-            };
-        };
-    };
-    HealthController_ready: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthReport"];
-                };
-            };
-            /** @description A required dependency is unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    SystemController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EnvironmentInventory"];
-                };
-            };
-        };
-    };
-    SystemController_refresh: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EnvironmentInventory"];
-                };
-            };
-        };
-    };
-    TelemetryController_host: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HostMetricsSample"];
-                };
-            };
-        };
-    };
-    TelemetryController_history: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HostMetricsHistory"];
-                };
-            };
-        };
-    };
-    AiGatewayController_providers: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiProviderList"];
-                };
-            };
-        };
-    };
-    AiGatewayController_discover: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AiDiscoverRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiDiscoveryResult"];
-                };
-            };
-        };
-    };
-    AiGatewayController_models: {
-        parameters: {
-            query?: {
-                status?: "AVAILABLE" | "UNAVAILABLE";
-                providerId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiModelList"];
-                };
-            };
-        };
-    };
-    AiGatewayController_chat: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AiChatRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiChatResponse"];
-                };
-            };
-        };
-    };
-    AiGatewayController_chatStream: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AiChatRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AgentsController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentList"];
-                };
-            };
-        };
-    };
-    AgentsController_runs: {
-        parameters: {
-            query?: {
-                before?: string;
-                limit?: number;
-                rootOnly?: "true" | "false";
-                agentId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentRunPage"];
-                };
-            };
-        };
-    };
-    AgentsController_run: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                runId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentRunDetail"];
-                };
-            };
-        };
-    };
-    AgentsController_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Agent"];
-                };
-            };
-        };
-    };
-    AgentsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AgentUpdateRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Agent"];
-                };
-            };
-        };
-    };
-    AgentsController_memories: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentMemoryList"];
-                };
-            };
-        };
-    };
-    AgentsController_addMemory: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AgentMemoryCreateRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentMemory"];
-                };
-            };
-        };
-    };
-    AgentsController_deleteMemory: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-                memoryId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AgentsController_start: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AgentRunRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AgentRunDetail"];
                 };
             };
         };
@@ -2907,6 +2722,531 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    FindingsController_list: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+                toolId?: string;
+                status?: "OPEN" | "RESOLVED" | "IGNORED";
+                severity?: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingPage"];
+                };
+            };
+        };
+    };
+    FindingsController_updateStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FindingUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Finding"];
+                };
+            };
+        };
+    };
+    HealthController_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+        };
+    };
+    HealthController_live: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status?: "ok";
+                    };
+                };
+            };
+        };
+    };
+    HealthController_ready: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+            /** @description A required dependency is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SystemController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentInventory"];
+                };
+            };
+        };
+    };
+    SystemController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvironmentInventory"];
+                };
+            };
+        };
+    };
+    TelemetryController_host: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostMetricsSample"];
+                };
+            };
+        };
+    };
+    TelemetryController_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostMetricsHistory"];
+                };
+            };
+        };
+    };
+    AiGatewayController_providers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderList"];
+                };
+            };
+        };
+    };
+    AiGatewayController_discover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiDiscoverRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDiscoveryResult"];
+                };
+            };
+        };
+    };
+    AiGatewayController_models: {
+        parameters: {
+            query?: {
+                status?: "AVAILABLE" | "UNAVAILABLE";
+                providerId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiModelList"];
+                };
+            };
+        };
+    };
+    AiGatewayController_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiChatRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiChatResponse"];
+                };
+            };
+        };
+    };
+    AiGatewayController_chatStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiChatRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentsController_command: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentCommandRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    AgentsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentList"];
+                };
+            };
+        };
+    };
+    AgentsController_runs: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+                rootOnly?: "true" | "false";
+                agentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunPage"];
+                };
+            };
+        };
+    };
+    AgentsController_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
+                };
+            };
+        };
+    };
+    AgentsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Agent"];
+                };
+            };
+        };
+    };
+    AgentsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Agent"];
+                };
+            };
+        };
+    };
+    AgentsController_memories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentMemoryList"];
+                };
+            };
+        };
+    };
+    AgentsController_addMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentMemoryCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentMemory"];
+                };
+            };
+        };
+    };
+    AgentsController_deleteMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                memoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AgentsController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRunRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunDetail"];
                 };
             };
         };

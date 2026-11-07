@@ -43,6 +43,11 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'powershell:event-log-query': 'win:events',
   'powershell:file-hash': 'fs:hash',
   'powershell:file-metadata': 'fs:meta',
+  'trivy:filesystem-scan': 'vuln:trivyfs',
+  'trivy:image-scan': 'vuln:trivyimage',
+  'grype:filesystem-scan': 'vuln:grype',
+  'osv-scanner:lockfile-scan': 'vuln:osv',
+  'nuclei:template-scan': 'vuln:nuclei',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
