@@ -63,12 +63,12 @@ export function Sparkline({
       >
         <title id={titleId}>{`${label}: latest ${formatValue(points.at(-1)!.v)}`}</title>
         {[25, 50, 75].map((g) => (
-          <line key={g} x1={0} x2={width} y1={y(g)} y2={y(g)} stroke="#1a2438" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line key={g} x1={0} x2={width} y1={y(g)} y2={y(g)} stroke="#1f2528" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         ))}
-        <path d={area} fill="rgb(129 140 248 / 0.10)" />
-        <path d={path} fill="none" stroke="#818cf8" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+        <path d={area} fill="rgb(46 232 143 / 0.12)" />
+        <path d={path} fill="none" stroke="#2ee88f" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
         {hover !== null && active ? (
-          <line x1={hover * step} x2={hover * step} y1={0} y2={height} stroke="#94a3b8" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={hover * step} x2={hover * step} y1={0} y2={height} stroke="#9aa3a6" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         ) : null}
       </svg>
       {active ? (

@@ -2,12 +2,12 @@
 
 import { Bot, Send, SquareTerminal } from 'lucide-react';
 import Link from 'next/link';
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { apiRequest, type Job, type Operation, type OperationList } from '@/lib/api/client';
-import { aliasFor, CommandError, COMMAND_PREFIX, COMMAND_SUFFIX, commandTemplate, parseCommand } from '@/lib/commands';
+import { aliasFor, CommandError, COMMAND_PREFIX, COMMAND_SUFFIX, commandTemplate, parseCommand, tokenizeCommand } from '@/lib/commands';
 import { JobResult } from '@/app/tasks/job-result';
 
 /**
@@ -36,6 +36,43 @@ This is not a shell: every command is validated and audited, and network command
 
 const AI_BANNER_NOTE = `AI mode: type what you want in plain language (Thai or English), e.g. "ดูโปรเซสที่รันอยู่"
 The AI picks one reviewed operation and fills its input; the same scope and approval rules still apply before anything runs.`;
+
+/** Purely cosmetic: colours a submitted line by token (verb, key=value, prefix/suffix). Parsing/validation is unchanged elsewhere. */
+function HighlightedCommand({ text }: { text: string }) {
+  const tokens = tokenizeCommand(text);
+  if (tokens.length === 0) return <span className="text-ink">{text}</span>;
+  return (
+    <>
+      {tokens.map((token, i) => {
+        const isFirst = i === 0;
+        const isLast = i === tokens.length - 1 && tokens.length > 1;
+        const eq = token.indexOf('=');
+        let node: ReactNode;
+        if (isFirst || isLast) {
+          node = <span className="text-ink-3">{token}</span>;
+        } else if (i === 1) {
+          node = <span className="font-semibold text-cyan">{token}</span>;
+        } else if (eq > 0) {
+          node = (
+            <>
+              <span className="text-ink-2">{token.slice(0, eq)}</span>
+              <span className="text-ink-3">=</span>
+              <span className="text-ink">{token.slice(eq + 1)}</span>
+            </>
+          );
+        } else {
+          node = <span className="text-ink-2">{token}</span>;
+        }
+        return (
+          <span key={i}>
+            {i > 0 ? ' ' : ''}
+            {node}
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 export function TerminalConsole({ embedded = false, codeColor }: { embedded?: boolean; codeColor?: string } = {}) {
   const { can } = useAuth();
@@ -175,7 +212,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
   const box = (
     <div
       onClick={() => inputRef.current?.focus()}
-      className={`flex w-full cursor-text flex-col border-edge-strong bg-[#05080c] p-3 text-left font-mono text-[12px] leading-relaxed text-ink ${
+      className={`flex w-full cursor-text flex-col border-edge-strong bg-canvas p-3 text-left font-mono text-[12px] leading-relaxed text-ink ${
         embedded ? 'h-full' : 'rounded-lg border shadow-inner'
       }`}
     >
@@ -207,8 +244,8 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
                   <span className="shrink-0 select-none text-good" style={codeStyle}>
                     {COMMAND_PREFIX}&gt;
                   </span>
-                  <span className="whitespace-pre-wrap break-all text-ink" style={codeStyle}>
-                    {entry.text}
+                  <span className="whitespace-pre-wrap break-all">
+                    <HighlightedCommand text={entry.text} />
                   </span>
                 </div>
               );

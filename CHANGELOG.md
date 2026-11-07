@@ -33,3 +33,23 @@
   cancel, retry, structured result views (Nmap hosts/ports, inventory tables), deep links (`/tasks?job=<id>`).
 - Scope Management: create, edit targets, enable/disable, expiry.
 - Engine-stopped badge in the top bar; agent run view links queued tool requests to their jobs.
+
+## 0.5.0 (cont.) — Live security-domain pages, DARK AGI command language, API Access (unreleased)
+
+- Network Intelligence, Windows Security, Web Security, Digital Forensics and Cryptographic Audit pages are now
+  live, rendering real operations from `/operations` through a shared `OperationCard` component (also used by
+  Command Reference). Vulnerability Assessment, Threat Intelligence, Malware Analysis and Reports remain honest
+  placeholders — no simulated data, no inert controls.
+- DARK AGI command language: `dagi <verb> key=value… keng`, mapped 1:1 to every real operation
+  (`src/lib/commands.ts`). A command bar on Command Reference and a copyable command on every operation card
+  parse and submit through the unchanged `POST /jobs` path — scope, approval and audit still apply.
+- Terminal (`/terminal`): an interactive console for the command language — prompt, command history (↑/↓),
+  inline structured results, `help`/`clear`. Also available as a draggable, resizable, collapsible floating
+  window from the top bar; its text colour is customisable and the window stays mounted (hidden, not destroyed)
+  so the session survives closing or collapsing it. An explicit Run button submits the current line alongside
+  Enter, for when keyboard focus has slipped away (e.g. right after resizing the window).
+- AI command mode: a toggle in the Terminal switches to natural-language input (any language, including Thai),
+  sent to `POST /agents/command`, which maps it to one reviewed operation and submits it under the signed-in
+  user's own permissions.
+- API Access page (`/api-access`): create, list and revoke API keys (the secret is shown once), with ready-to-use
+  curl samples, for external programs and AI agents to use the platform's tools over HTTP.

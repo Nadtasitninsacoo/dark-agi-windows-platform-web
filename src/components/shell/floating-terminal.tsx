@@ -7,8 +7,8 @@ import { TerminalConsole } from '@/app/terminal/terminal-console';
 /** The event the top-bar button (and anything else) dispatches to open the floating terminal. */
 export const OPEN_TERMINAL_EVENT = 'dark-agi:open-terminal';
 const COLOR_KEY = 'dark-agi:terminal-color';
-const DEFAULT_COLOR = '#49e07a';
-const PRESETS = ['#49e07a', '#38bdf8', '#fbbf24', '#f472b6', '#e5e7eb', '#a78bfa'];
+const DEFAULT_COLOR = '#2ee88f';
+const PRESETS = ['#2ee88f', '#22d3ee', '#f5a623', '#ff3b5c', '#e6e9ea', '#a78bfa'];
 
 /**
  * A standard draggable, resizable floating window hosting the DARK AGI terminal.

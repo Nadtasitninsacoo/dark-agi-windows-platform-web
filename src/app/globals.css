@@ -1,24 +1,26 @@
 @import "tailwindcss";
 
 /*
- * DARK AGI console theme — dark navy/black operations aesthetic.
- * Status hues (good / warning / critical) are reserved for state and always
- * ship with an icon + label; the indigo accent carries interaction & identity.
+ * DARK AGI design system — graphite/near-black cyber workstation.
+ * Neon green is the primary intelligence accent (and doubles as the "good/nominal"
+ * status colour); cyan is the secondary technical accent (links, info, charts).
+ * Status hues always ship with an icon + label — colour is never the only signal.
  */
 @theme inline {
-  --color-canvas: #060a13;
-  --color-panel: #0b1220;
-  --color-panel-2: #0f1829;
-  --color-edge: #1a2438;
-  --color-edge-strong: #263450;
-  --color-ink: #e2e8f0;
-  --color-ink-2: #94a3b8;
-  --color-ink-3: #64748b;
-  --color-accent: #818cf8;
-  --color-accent-strong: #6366f1;
-  --color-good: #22c55e;
-  --color-warning: #f59e0b;
-  --color-critical: #f43f5e;
+  --color-canvas: #090b0c;
+  --color-panel: #0f1213;
+  --color-panel-2: #141819;
+  --color-edge: #1f2528;
+  --color-edge-strong: #2d3538;
+  --color-ink: #e6e9ea;
+  --color-ink-2: #9aa3a6;
+  --color-ink-3: #6b7577;
+  --color-accent: #2ee88f;
+  --color-accent-strong: #159b5c;
+  --color-cyan: #22d3ee;
+  --color-good: var(--color-accent);
+  --color-warning: #f5a623;
+  --color-critical: #ff3b5c;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -39,12 +41,12 @@ body {
 }
 
 ::selection {
-  background: rgb(99 102 241 / 0.35);
+  background: rgb(46 232 143 / 0.3);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #263450 transparent;
+  scrollbar-color: #2d3538 transparent;
 }
 
 :focus-visible {
