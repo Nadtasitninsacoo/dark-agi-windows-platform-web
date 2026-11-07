@@ -51,13 +51,30 @@ function Card({ title, subtitle, children }: { title: string; subtitle: ReactNod
       </div>
 
       <div className="relative flex w-full max-w-sm flex-col items-center">
-        <Image src="/dark-agi-logo.png" alt="DARK AGI WINDOWS" width={1001} height={725} priority className="mb-2 h-auto w-64 drop-shadow-[0_0_28px_rgba(46,232,143,0.35)]" />
-        <div className="w-full rounded-md border border-edge-strong bg-panel/90 p-5 shadow-[0_0_40px_-12px_rgb(46_232_143_/_0.25)] backdrop-blur-sm">
-          <div className="mb-4">
-            <h1 className="text-[15px] font-semibold tracking-wide text-ink">{title}</h1>
-            <p className="font-mono text-[11px] tracking-wider text-ink-3 uppercase">{subtitle}</p>
+        <div
+          className="mb-2 w-64 rounded-2xl p-px"
+          style={{ background: 'conic-gradient(from var(--dagi-angle), transparent 0%, transparent 78%, rgb(46 232 143 / 0.9) 92%, rgb(190 255 225) 95%, rgb(46 232 143 / 0.9) 98%, transparent 100%)', animation: 'dagi-border-spin 3.5s linear infinite' }}
+        >
+          <Image
+            src="/dark-agi-logo.png"
+            alt="DARK AGI WINDOWS"
+            width={1001}
+            height={725}
+            priority
+            className="h-auto w-full rounded-[calc(1rem-1px)] bg-canvas/40 drop-shadow-[0_0_28px_rgba(46,232,143,0.35)]"
+          />
+        </div>
+        <div
+          className="w-full rounded-md p-px shadow-[0_0_40px_-12px_rgb(46_232_143_/_0.25)]"
+          style={{ background: 'conic-gradient(from var(--dagi-angle), transparent 0%, transparent 78%, rgb(46 232 143 / 0.9) 92%, rgb(190 255 225) 95%, rgb(46 232 143 / 0.9) 98%, transparent 100%)', animation: 'dagi-border-spin 3.5s linear infinite' }}
+        >
+          <div className="w-full rounded-[calc(0.375rem-1px)] border border-edge-strong bg-panel/95 p-5 backdrop-blur-sm">
+            <div className="mb-4">
+              <h1 className="text-[15px] font-semibold tracking-wide text-ink">{title}</h1>
+              <p className="font-mono text-[11px] tracking-wider text-ink-3 uppercase">{subtitle}</p>
+            </div>
+            {children}
           </div>
-          {children}
         </div>
       </div>
     </div>

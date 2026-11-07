@@ -54,6 +54,19 @@ body {
   outline-offset: 2px;
 }
 
+/* Sign-in card border only (src/components/shell/auth.tsx) — a running green light
+   chasing the edge, purely cosmetic chrome, never a stand-in for real system activity. */
+@property --dagi-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes dagi-border-spin {
+  to {
+    --dagi-angle: 360deg;
+  }
+}
+
 @keyframes dagi-pulse {
   0%,
   100% {
