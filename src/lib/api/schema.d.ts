@@ -900,6 +900,58 @@ export interface paths {
         patch: operations["ThreatIntelController_update"];
         trace?: never;
     };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generated reports, newest first */
+        get: operations["ReportsController_list"];
+        put?: never;
+        /** Generate a report — a point-in-time snapshot of matching findings and evidence, not a live view */
+        post: operations["ReportsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One report with its full findings/evidence snapshot */
+        get: operations["ReportsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The same report rendered as a standalone HTML document (use the browser’s Print → Save as PDF for a PDF copy) */
+        get: operations["ReportsController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1468,7 +1520,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -2066,6 +2118,130 @@ export interface components {
                 };
             }[];
         };
+        Report: {
+            id: string;
+            title: string;
+            createdBy: string;
+            /** @enum {string} */
+            createdByType: "SYSTEM" | "USER" | "AGENT";
+            filters: {
+                /** @enum {string|null} */
+                severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+                /** @enum {string|null} */
+                findingStatus: "OPEN" | "RESOLVED" | "IGNORED" | null;
+                /** @enum {string|null} */
+                evidenceStatus: "ACTIVE" | "ARCHIVED" | null;
+            };
+            summary: {
+                totalFindings: number;
+                openFindings: number;
+                findingsBySeverity: {
+                    [key: string]: number;
+                };
+                totalEvidence: number;
+            };
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReportCreateRequest: {
+            title: string;
+            /**
+             * @description Only include findings of this severity; omit for all severities
+             * @enum {string}
+             */
+            severity?: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            /**
+             * @description Only include findings in this triage state; omit for all states
+             * @enum {string}
+             */
+            findingStatus?: "OPEN" | "RESOLVED" | "IGNORED";
+            /**
+             * @description Only include evidence in this state; omit for all evidence
+             * @enum {string}
+             */
+            evidenceStatus?: "ACTIVE" | "ARCHIVED";
+        };
+        ReportDetail: {
+            id: string;
+            title: string;
+            createdBy: string;
+            /** @enum {string} */
+            createdByType: "SYSTEM" | "USER" | "AGENT";
+            filters: {
+                /** @enum {string|null} */
+                severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+                /** @enum {string|null} */
+                findingStatus: "OPEN" | "RESOLVED" | "IGNORED" | null;
+                /** @enum {string|null} */
+                evidenceStatus: "ACTIVE" | "ARCHIVED" | null;
+            };
+            summary: {
+                totalFindings: number;
+                openFindings: number;
+                findingsBySeverity: {
+                    [key: string]: number;
+                };
+                totalEvidence: number;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            findings: {
+                id: string;
+                toolId: string;
+                findingKey: string;
+                target: string;
+                /** @enum {string} */
+                severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+                title: string | null;
+                /** @enum {string} */
+                status: "OPEN" | "RESOLVED" | "IGNORED";
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            evidence: {
+                id: string;
+                sha256: string;
+                label: string | null;
+                firstPath: string;
+                /** @enum {string} */
+                status: "ACTIVE" | "ARCHIVED";
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+        };
+        ReportPage: {
+            items: {
+                id: string;
+                title: string;
+                createdBy: string;
+                /** @enum {string} */
+                createdByType: "SYSTEM" | "USER" | "AGENT";
+                filters: {
+                    /** @enum {string|null} */
+                    severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+                    /** @enum {string|null} */
+                    findingStatus: "OPEN" | "RESOLVED" | "IGNORED" | null;
+                    /** @enum {string|null} */
+                    evidenceStatus: "ACTIVE" | "ARCHIVED" | null;
+                };
+                summary: {
+                    totalFindings: number;
+                    openFindings: number;
+                    findingsBySeverity: {
+                        [key: string]: number;
+                    };
+                    totalEvidence: number;
+                };
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** Format: date-time */
+            nextBefore: string | null;
+        };
         RuntimeComponent: {
             id: string;
             name: string;
@@ -2324,7 +2500,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
             }[];
         };
         UserUpdateRequest: {
@@ -3700,6 +3876,91 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Ioc"];
                 };
+            };
+        };
+    };
+    ReportsController_list: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportPage"];
+                };
+            };
+        };
+    };
+    ReportsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDetail"];
+                };
+            };
+        };
+    };
+    ReportsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDetail"];
+                };
+            };
+        };
+    };
+    ReportsController_export: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

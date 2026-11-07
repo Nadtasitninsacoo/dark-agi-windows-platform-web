@@ -55,6 +55,10 @@ export type Ioc = Schemas['Ioc'];
 export type IocPage = Schemas['IocPage'];
 export type IocCreateRequest = Schemas['IocCreateRequest'];
 export type IocUpdateRequest = Schemas['IocUpdateRequest'];
+export type Report = Schemas['Report'];
+export type ReportDetail = Schemas['ReportDetail'];
+export type ReportPage = Schemas['ReportPage'];
+export type ReportCreateRequest = Schemas['ReportCreateRequest'];
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:7411').replace(/\/+$/, '');
 export const API_PREFIX = '/api/v1';

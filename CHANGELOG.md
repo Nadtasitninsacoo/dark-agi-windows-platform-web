@@ -116,3 +116,14 @@
   operations are deliberately not built — they would duplicate existing native capability; the planned list is
   trimmed to only what is genuinely not yet built (cipher policy evaluation, restricted hash auditing).
 - Command language gains `crypto:gpgverify`, `crypto:gpgkey` aliases.
+
+## 0.9.0 — Reports (unreleased)
+
+- New **Reports** page (`/reports`): a generate form (title, optional severity/finding-status/evidence-status
+  filters) for users with `reports:manage`, and a list showing each report's severity-tile summary and an
+  Export HTML link open to anyone with `reports:read`. Generating a report snapshots the matching findings and
+  evidence as they are right now — later triage or relabelling never rewrites a report already read or shared.
+- API types regenerated (`Report`, `ReportDetail`, `ReportPage`, `ReportCreateRequest`, the new
+  `reports:read`/`reports:manage` permissions). This closes the last placeholder module (Vulnerability
+  Assessment, Threat Intelligence, Malware Analysis and Reports were the four remaining); every module in
+  navigation is now either live or a dedicated console.
