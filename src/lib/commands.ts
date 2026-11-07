@@ -155,7 +155,7 @@ export function parseCommand(line: string, operations: readonly Operation[]): { 
   return { toolId: opKey.slice(0, colon), operationId: opKey.slice(colon + 1), input };
 }
 
-function operationForAlias(alias: string, operations: readonly Operation[]): Operation | undefined {
+export function operationForAlias(alias: string, operations: readonly Operation[]): Operation | undefined {
   const opKey = KEY_BY_ALIAS.get(alias);
   return opKey ? operations.find((o) => key(o) === opKey) : undefined;
 }

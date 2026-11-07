@@ -9,7 +9,22 @@ import { useAuth } from '@/components/shell/auth';
 import { CopyButton } from '@/components/operation-card';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
 import { apiRequest, type Operation, type OperationList, type Tool, type ToolDiscoveryResult, type ToolList } from '@/lib/api/client';
-import { commandTemplate, commandTemplateAuto } from '@/lib/commands';
+import { commandTemplate, commandTemplateAuto, operationForAlias } from '@/lib/commands';
+
+/**
+ * For a tool with zero automated operations of its own (not Windows-native, or GUI-only by design), the
+ * already-runnable `dagi` command that does the same job natively — so "no operations" never means "no
+ * command to copy" when a real substitute exists. Keyed by tool id; value is a command alias from
+ * COMMAND_ALIASES. Left out entirely when no implemented operation covers the same job yet.
+ */
+const ALTERNATIVE_COMMAND: Record<string, string> = {
+  'arp-scan': 'net:arp',
+  netdiscover: 'net:arp',
+  fping: 'net:ping',
+  tcpdump: 'net:pcapanalyze',
+  nikto: 'vuln:nuclei',
+  testssl: 'crypto:tls',
+};
 import { formatDateTime } from '@/lib/format';
 
 const STATUS: Record<Tool['installStatus'], { tone: StatusTone; label: string }> = {
@@ -113,7 +128,32 @@ function ToolDetail({ tool, canConfigure, onChanged, operationsById }: { tool: T
         <div>
           <p className="mb-1 text-[10.5px] uppercase tracking-wider text-ink-3">Operations</p>
           {tool.operations.length === 0 ? (
-            <p className="text-ink-3">No automated operations defined for this integration.</p>
+            <div className="space-y-1.5">
+              <p className="text-ink-3">No automated operations defined for this integration.</p>
+              {(() => {
+                const alias = ALTERNATIVE_COMMAND[tool.id];
+                const alt = alias ? operationForAlias(alias, [...operationsById.values()]) : undefined;
+                if (!alt) return null;
+                return (
+                  <div>
+                    <p className="text-[11px] text-ink-3">Use this instead — same job, Windows-native:</p>
+                    <div className="mt-1 flex items-center gap-1.5 overflow-hidden rounded border border-edge bg-canvas/60 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
+                      <span className="shrink-0 select-none text-ink-3">$</span>
+                      <span className="truncate">{commandTemplate(alt)}</span>
+                      <CopyButton text={commandTemplate(alt)} label="Copy" />
+                    </div>
+                    {alt.targetKind === 'network' ? (
+                      <div className="mt-1 flex items-center gap-1.5 overflow-hidden rounded border border-edge bg-canvas/60 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
+                        <span className="shrink-0 select-none text-ink-3">$</span>
+                        <span className="truncate">{commandTemplateAuto(alt)}</span>
+                        <span className="shrink-0 rounded border border-edge-strong px-1 py-0.5 font-sans text-[9.5px] uppercase tracking-wider text-ink-3">auto</span>
+                        <CopyButton text={commandTemplateAuto(alt)} label="Copy" />
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })()}
+            </div>
           ) : (
             <ul className="space-y-1.5">
               {tool.operations.map((op) => {
