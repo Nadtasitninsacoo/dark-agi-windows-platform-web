@@ -1,5 +1,6 @@
 'use client';
 
+import { Bot, SquareTerminal } from 'lucide-react';
 import Link from 'next/link';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
@@ -33,6 +34,9 @@ Type a command, e.g.  ${COMMAND_PREFIX} win:procs ${COMMAND_SUFFIX}
 "help" lists commands · "clear" clears the screen · ↑/↓ for history.
 This is not a shell: every command is validated and audited, and network commands need an approved scope.`;
 
+const AI_BANNER_NOTE = `AI mode: type what you want in plain language (Thai or English), e.g. "ดูโปรเซสที่รันอยู่"
+The AI picks one reviewed operation and fills its input; the same scope and approval rules still apply before anything runs.`;
+
 export function TerminalConsole({ embedded = false, codeColor }: { embedded?: boolean; codeColor?: string } = {}) {
   const { can } = useAuth();
   const codeStyle = codeColor ? { color: codeColor } : undefined;
@@ -43,6 +47,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [aiMode, setAiMode] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [histIndex, setHistIndex] = useState<number | null>(null);
   const idRef = useRef(0);
@@ -95,6 +100,20 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
     }
     if (line === 'help') {
       printHelp();
+      return;
+    }
+
+    if (aiMode) {
+      setBusy(true);
+      try {
+        const job = await apiRequest<Job>('/agents/command', post({ instruction: line }));
+        add({ kind: 'info', text: `→ ${job.operationTitle} · job ${job.id.slice(0, 8)} · ${job.status.toLowerCase()}…` });
+        render(await poll(job.id, job));
+      } catch (e) {
+        add({ kind: 'error', text: e instanceof Error ? e.message : 'The AI could not run that instruction' });
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
@@ -156,8 +175,26 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
         embedded ? 'h-full' : 'rounded-lg border shadow-inner'
       }`}
     >
+      <div className="mb-2 flex items-center justify-between gap-2 border-b border-edge pb-2" onClick={(e) => e.stopPropagation()}>
+        <span className="text-[11px] text-ink-3">{aiMode ? 'AI command mode — describe what you want' : 'Command mode — type a dagi command'}</span>
+        <button
+          type="button"
+          onClick={() => {
+            setAiMode((m) => !m);
+            inputRef.current?.focus();
+          }}
+          className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium ${
+            aiMode ? 'border-accent-strong bg-accent-strong/20 text-ink' : 'border-edge-strong text-ink-2 hover:bg-canvas'
+          }`}
+          title="Toggle between the dagi command language and natural-language AI command mode"
+        >
+          {aiMode ? <Bot className="size-3.5" aria-hidden /> : <SquareTerminal className="size-3.5" aria-hidden />}
+          {aiMode ? 'AI mode' : 'Command mode'}
+        </button>
+      </div>
       <div className={`${embedded ? 'min-h-0 flex-1' : 'h-[60vh] min-h-72'} overflow-y-auto pr-1`}>
         <p className="whitespace-pre-wrap text-ink-3">{BANNER}</p>
+        {aiMode ? <p className="mt-2 whitespace-pre-wrap text-accent">{AI_BANNER_NOTE}</p> : null}
         <div className="mt-2 space-y-1">
           {entries.map((entry) => {
             if (entry.kind === 'cmd') {
@@ -219,7 +256,13 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
           ref={inputRef}
           className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-ink outline-none placeholder:text-ink-3"
           style={codeStyle}
-          placeholder={canSubmit ? `win:procs ${COMMAND_SUFFIX}   (type "help")` : 'you need the jobs:submit permission to run commands'}
+          placeholder={
+            !canSubmit
+              ? 'you need the jobs:submit permission to run commands'
+              : aiMode
+                ? 'พิมพ์สิ่งที่ต้องการเป็นภาษาไทยหรืออังกฤษ เช่น "ดูโปรเซสที่รันอยู่"'
+                : `win:procs ${COMMAND_SUFFIX}   (type "help")`
+          }
           aria-label="DARK AGI terminal input"
           value={input}
           disabled={!canSubmit || busy}
