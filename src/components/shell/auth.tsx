@@ -24,15 +24,59 @@ export function useAuth(): AuthContextValue {
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2.5 py-1.5 text-[13px] text-ink';
 const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
+/** Tiled, low-opacity brand watermark behind the sign-in card — decorative only. */
+function Watermark() {
+  return (
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+      <defs>
+        <pattern id="dagi-auth-watermark" width="360" height="170" patternTransform="rotate(-18)" patternUnits="userSpaceOnUse">
+          <text x="0" y="60" fontFamily="var(--font-mono)" fontSize="22" fontWeight="700" letterSpacing="5" fill="#2ee88f" opacity="0.05">
+            DARK AGI WINDOWS
+          </text>
+          <text x="-180" y="150" fontFamily="var(--font-mono)" fontSize="22" fontWeight="700" letterSpacing="5" fill="#22d3ee" opacity="0.035">
+            DARK AGI WINDOWS
+          </text>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#dagi-auth-watermark)" />
+    </svg>
+  );
+}
+
 function Card({ title, subtitle, children }: { title: string; subtitle: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex min-h-full items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-md border border-edge bg-panel p-5">
+    <div className="relative flex min-h-full items-center justify-center overflow-hidden bg-canvas p-6">
+      {/* Decorative background only — never a stand-in for real system activity. */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <div
+          className="absolute inset-0 opacity-60"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, rgb(46 232 143 / 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgb(46 232 143 / 0.05) 1px, transparent 1px)',
+            backgroundSize: '42px 42px',
+          }}
+        />
+        <div
+          className="absolute -top-32 -left-32 size-[32rem] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgb(46 232 143 / 0.18), transparent 70%)', animation: 'dagi-pulse 6s ease-in-out infinite' }}
+        />
+        <div
+          className="absolute -right-32 -bottom-32 size-[32rem] rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgb(34 211 238 / 0.14), transparent 70%)', animation: 'dagi-pulse 7s ease-in-out infinite 1.5s' }}
+        />
+        <Watermark />
+        <div
+          className="absolute inset-x-0 h-px"
+          style={{ background: 'linear-gradient(to right, transparent, rgb(46 232 143 / 0.7), transparent)', boxShadow: '0 0 12px 1px rgb(46 232 143 / 0.6)', animation: 'dagi-scanline 6s linear infinite' }}
+        />
+      </div>
+
+      <div className="relative w-full max-w-sm rounded-md border border-edge-strong bg-panel/90 p-5 shadow-[0_0_40px_-12px_rgb(46_232_143_/_0.25)] backdrop-blur-sm">
         <div className="mb-4 flex items-center gap-2">
-          <ShieldHalf className="size-5 text-accent" aria-hidden />
+          <ShieldHalf className="size-5 text-accent drop-shadow-[0_0_6px_rgb(46_232_143_/_0.6)]" aria-hidden />
           <div>
-            <h1 className="text-[15px] font-semibold text-ink">{title}</h1>
-            <p className="text-[12px] text-ink-3">{subtitle}</p>
+            <h1 className="text-[15px] font-semibold tracking-wide text-ink">{title}</h1>
+            <p className="font-mono text-[11px] tracking-wider text-ink-3 uppercase">{subtitle}</p>
           </div>
         </div>
         {children}

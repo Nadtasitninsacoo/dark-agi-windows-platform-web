@@ -159,3 +159,12 @@
   bug caught and fixed before it reached the operator.
 - `service.ps1 install` gains `-BindHost` (default `127.0.0.1`, unchanged) so the registered service can be
   told to accept LAN/Tailscale connections (`-BindHost 0.0.0.0`) without editing the script.
+
+## Unreleased — Sign-in screen redesign
+
+- The sign-in/first-run setup screen gains a decorative dark-cyber background behind the existing card: a
+  faint repeating "DARK AGI WINDOWS" watermark (tiled SVG `<pattern>`, rotated), a subtle accent-green grid,
+  two slow-pulsing corner glows, and a thin scanline sweep — all `pointer-events-none`/`aria-hidden`, purely
+  cosmetic chrome, never a stand-in for real system activity (consistent with the project's standing "no fake
+  scanning animations" rule). The card itself gains a soft glow border and backdrop blur; the subtitle now
+  renders in uppercase monospace for a more technical feel. No functional changes to sign-in/setup.
