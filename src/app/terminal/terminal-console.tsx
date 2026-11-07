@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot, SquareTerminal } from 'lucide-react';
+import { Bot, Send, SquareTerminal } from 'lucide-react';
 import Link from 'next/link';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
@@ -137,13 +137,17 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
     }
   };
 
+  const submitCurrent = () => {
+    if (busy || input.trim() === '') return;
+    const value = input;
+    setInput('');
+    void runCommand(value);
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (busy) return;
-      const value = input;
-      setInput('');
-      void runCommand(value);
+      submitCurrent();
       return;
     }
     if (e.key === 'ArrowUp') {
@@ -271,7 +275,19 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
           onKeyDown={onKeyDown}
           onChange={(e) => setInput(e.target.value)}
         />
-        {busy ? <span className="shrink-0 animate-pulse text-ink-3">running…</span> : null}
+        {busy ? (
+          <span className="shrink-0 animate-pulse text-ink-3">running…</span>
+        ) : (
+          <button
+            type="button"
+            onClick={submitCurrent}
+            disabled={!canSubmit || input.trim() === ''}
+            className="inline-flex shrink-0 items-center gap-1 rounded border border-accent-strong bg-accent-strong/90 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+            title="Run (or press Enter)"
+          >
+            <Send className="size-3" aria-hidden /> Run
+          </button>
+        )}
       </div>
     </div>
   );
