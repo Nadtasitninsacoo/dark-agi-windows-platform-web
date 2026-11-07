@@ -54,18 +54,6 @@ body {
   outline-offset: 2px;
 }
 
-/* Sign-in / first-run setup background only (src/components/shell/auth.tsx) — a
-   decorative scanline sweep, purely cosmetic chrome, never a stand-in for real
-   system activity. */
-@keyframes dagi-scanline {
-  0% {
-    transform: translateY(-8rem);
-  }
-  100% {
-    transform: translateY(110vh);
-  }
-}
-
 @keyframes dagi-pulse {
   0%,
   100% {

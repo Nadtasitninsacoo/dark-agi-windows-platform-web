@@ -43,12 +43,11 @@ function Card({ title, subtitle, children }: { title: string; subtitle: ReactNod
           style={{ background: 'radial-gradient(circle, rgb(46 232 143 / 0.16), transparent 65%)', animation: 'dagi-pulse 6s ease-in-out infinite' }}
         />
         <div
-          className="absolute inset-x-0 h-32"
-          style={{
-            background: 'linear-gradient(to bottom, transparent, rgb(46 232 143 / 0.06) 42%, rgb(46 232 143 / 0.1) 50%, rgb(46 232 143 / 0.06) 58%, transparent)',
-            animation: 'dagi-scanline 7s linear infinite',
-          }}
-        />
+          className="absolute top-1/2 left-1/2 w-[160vh] -translate-x-1/2 -translate-y-1/2 -rotate-[32deg] text-center font-mono text-[9rem] leading-none font-black tracking-[0.08em] whitespace-nowrap select-none"
+          style={{ color: 'rgb(148 163 184 / 0.07)' }}
+        >
+          DARK AGI WINDOWS
+        </div>
       </div>
 
       <div className="relative flex w-full max-w-sm flex-col items-center">
