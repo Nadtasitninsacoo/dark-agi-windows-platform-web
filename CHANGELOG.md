@@ -200,3 +200,16 @@
   console art `scripts/banner.ps1` shows on the PowerShell launcher — a static copy, not regenerated, so it
   stays pixel-identical; verified character-for-character against a live capture of the real launcher output.
   Works in both the full-page Terminal and the floating one (they share the same component).
+
+## Unreleased — DARK AGI WINDOWS logo
+
+- The operator's own skull-and-axe artwork now appears in the console: a cut-out (`public/dark-agi-logo.png`,
+  `-small.png`) with the background properly removed — the source was a flat JPEG with a baked-in transparency
+  checkerboard (no real alpha channel), so this took a real flood-fill cutout (seeded from every background
+  pixel, not just the border, so checker patches fully enclosed inside letters and between the skull and the
+  axe handle came out too, with a minimum-component-size floor so a stray highlight pixel on the art was never
+  mistaken for background), not a one-line "remove background" call.
+- Sign-in/first-run setup: the full logo now sits above the card, replacing the small shield icon, with its
+  own soft glow. Top bar: a small cut of the same logo replaces the generic shield icon next to "DARK AGI".
+- Sign-in background simplified: dropped the repeating text watermark now that real artwork fills that role;
+  kept the grid, one centred glow, and the scanline sweep.

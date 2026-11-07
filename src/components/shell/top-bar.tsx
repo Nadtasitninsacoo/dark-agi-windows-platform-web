@@ -1,6 +1,7 @@
 'use client';
 
-import { LogOut, ShieldHalf, SquareTerminal, UserRound } from 'lucide-react';
+import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { StatusBadge } from '@/components/ui';
@@ -58,7 +59,7 @@ export function TopBar() {
 
   return (
     <header className="flex h-11 items-center gap-3 border-b border-edge bg-panel px-4">
-      <ShieldHalf className="size-4 text-accent" aria-hidden />
+      <Image src="/dark-agi-logo-small.png" alt="" width={99} height={72} className="h-7 w-auto" priority />
       <span className="text-[13px] font-semibold tracking-wide">
         DARK AGI <span className="font-normal text-ink-3">· Windows Cyber Intelligence Platform</span>
       </span>
