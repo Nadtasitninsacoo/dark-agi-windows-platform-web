@@ -108,3 +108,11 @@
   components as every other live domain page. None of the three execute the file they inspect. YARA matching and
   sandbox-report ingestion remain planned, shown honestly on the page rather than simulated.
 - Command language gains aliases for the 3 new operations: `malware:capa`, `malware:floss`, `malware:clamav`.
+
+## 0.8.0 (cont.) — GnuPG signature and key inspection on Cryptographic Audit (unreleased)
+
+- Cryptographic Audit gains two GnuPG operations (signature verification, key inspection — both read-only,
+  neither touches a keyring) alongside the existing TLS/certificate inspection. OpenSSL's two catalogued
+  operations are deliberately not built — they would duplicate existing native capability; the planned list is
+  trimmed to only what is genuinely not yet built (cipher policy evaluation, restricted hash auditing).
+- Command language gains `crypto:gpgverify`, `crypto:gpgkey` aliases.

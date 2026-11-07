@@ -51,6 +51,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'capa:capabilities': 'malware:capa',
   'floss:strings': 'malware:floss',
   'clamav:scan': 'malware:clamav',
+  'gnupg:verify-signature': 'crypto:gpgverify',
+  'gnupg:key-inspection': 'crypto:gpgkey',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
