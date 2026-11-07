@@ -43,3 +43,6 @@ next-env.d.ts
 
 # local launcher state (PIDs, logs)
 /.data/
+
+# External, operator-supplied tool binaries (e.g. tools/winsw.exe) -- never bundled
+/tools/
