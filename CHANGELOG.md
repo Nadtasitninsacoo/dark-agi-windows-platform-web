@@ -100,3 +100,11 @@
   indicators of compromise (hash/IP/domain/URL) with type/severity/status. This is the platform's own registry,
   not a live VirusTotal/MISP lookup (documented on the page as a deliberate, not accidental, scope limit).
 - API types regenerated (`Evidence`, `EvidenceDetail`, `Ioc`, the new `evidence:*`/`iocs:*` permissions).
+
+## 0.8.0 — Malware Analysis goes live (unreleased)
+
+- Malware Analysis is now live, rendering the backend's three new static-analysis operations (capa capability
+  report, FLOSS string extraction, ClamAV signature scan) through the same `DomainOperations`/`OperationCard`
+  components as every other live domain page. None of the three execute the file they inspect. YARA matching and
+  sandbox-report ingestion remain planned, shown honestly on the page rather than simulated.
+- Command language gains aliases for the 3 new operations: `malware:capa`, `malware:floss`, `malware:clamav`.

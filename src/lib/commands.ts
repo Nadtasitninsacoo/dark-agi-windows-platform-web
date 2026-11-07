@@ -48,6 +48,9 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'grype:filesystem-scan': 'vuln:grype',
   'osv-scanner:lockfile-scan': 'vuln:osv',
   'nuclei:template-scan': 'vuln:nuclei',
+  'capa:capabilities': 'malware:capa',
+  'floss:strings': 'malware:floss',
+  'clamav:scan': 'malware:clamav',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
