@@ -141,6 +141,15 @@
   same API key, through the same scope/approval/audit path as every other job submission — not a second,
   looser door into the engine. Includes copyable `tools/list`/`tools/call` curl examples.
 
+## Unreleased — Windows service live-verified; a real stop-command bug fixed
+
+- `DarkAGI-Web` installed and started on the operator's machine via `scripts\service.ps1` (WinSW) — `Running`,
+  `Automatic`, health-checked.
+- Fixed a real bug in `dark-agi-web.ps1`'s `stop` command: it reported "frontend stopped." even when
+  `taskkill` silently failed to kill the tracked process (an orphaned dev instance kept holding port 7410),
+  because its output was piped to `Out-Null` and never checked. `stop` now re-verifies the process is
+  actually gone before claiming success.
+
 ## Unreleased — Windows-service wrapper script (written, not installed)
 
 - `scripts/service.ps1`: `install`/`uninstall`/`start`/`stop`/`status`, registering the production console

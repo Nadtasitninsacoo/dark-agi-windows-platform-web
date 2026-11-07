@@ -102,7 +102,15 @@ switch ($Command) {
     $proc = Get-TrackedProcess
     if ($proc) {
       & "$env:SystemRoot\System32\taskkill.exe" /PID $proc.Id /T /F | Out-Null
-      Write-Host 'frontend stopped.'
+      # taskkill's own exit code is not enough: it can report success on the parent
+      # while a child survives, or silently no-op under a session/permission
+      # mismatch. Confirm the tracked PID is actually gone before declaring victory.
+      Start-Sleep -Milliseconds 300
+      if (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue) {
+        Write-Host "frontend did NOT stop (PID $($proc.Id) still running - check permissions/session, or stop it manually)." -ForegroundColor Red
+      } else {
+        Write-Host 'frontend stopped.'
+      }
     } else { Write-Host 'frontend not running.' }
     Remove-Item $PidFile -ErrorAction SilentlyContinue
   }
