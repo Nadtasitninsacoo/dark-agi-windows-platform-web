@@ -53,6 +53,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'clamav:scan': 'malware:clamav',
   'gnupg:verify-signature': 'crypto:gpgverify',
   'gnupg:key-inspection': 'crypto:gpgkey',
+  'tshark:pcap-summary': 'net:pcapsummary',
+  'tshark:traffic-analysis': 'net:pcapanalyze',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
@@ -67,6 +69,20 @@ export function aliasFor(op: Pick<Operation, 'toolId' | 'operationId'>): string 
 export function commandTemplate(op: Operation): string {
   const alias = aliasFor(op) ?? key(op);
   const parts = op.fields.map((f) => `${f.name}=${f.default !== null && f.default !== undefined ? f.default : `<${f.name}>`}`);
+  return [COMMAND_PREFIX, alias, ...parts, COMMAND_SUFFIX].join(' ');
+}
+
+/**
+ * Same command, but with the target field (`host`/`targets`) left out — the server fills it in from
+ * the operator's one active scope instead (ExecutionService.autoResolveTargets). Only differs from
+ * commandTemplate for `targetKind === 'network'` operations; local operations have no target field.
+ */
+export function commandTemplateAuto(op: Operation): string {
+  const alias = aliasFor(op) ?? key(op);
+  const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'targets']) : new Set<string>();
+  const parts = op.fields
+    .filter((f) => !autoResolvable.has(f.name))
+    .map((f) => `${f.name}=${f.default !== null && f.default !== undefined ? f.default : `<${f.name}>`}`);
   return [COMMAND_PREFIX, alias, ...parts, COMMAND_SUFFIX].join(' ');
 }
 

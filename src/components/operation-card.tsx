@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { StatusBadge, type StatusTone } from '@/components/ui';
 import type { Operation } from '@/lib/api/client';
-import { commandTemplate } from '@/lib/commands';
+import { commandTemplate, commandTemplateAuto } from '@/lib/commands';
 
 /**
  * One executable operation, with its risk/approval/availability badges, input
@@ -26,7 +26,7 @@ export const CATEGORY_LABEL: Record<string, string> = {
   'cryptographic-audit': 'Cryptographic Audit',
 };
 
-function CopyButton({ text, label }: { text: string; label: string }) {
+export function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -102,14 +102,24 @@ export function OperationCard({ op, canSubmit }: { op: Operation; canSubmit: boo
         <span className="shrink-0 select-none text-ink-3">$</span>
         <span className="break-all">{commandTemplate(op)}</span>
       </div>
+      {op.targetKind === 'network' ? (
+        <div className="mt-1.5 flex items-center gap-2 rounded border border-edge bg-canvas/60 px-2 py-1 font-mono text-[11px] text-ink-2">
+          <span className="shrink-0 select-none text-ink-3">$</span>
+          <span className="break-all">{commandTemplateAuto(op)}</span>
+          <span className="ml-auto shrink-0 rounded border border-edge-strong px-1.5 py-0.5 font-sans text-[10px] uppercase tracking-wider text-ink-3">auto target</span>
+        </div>
+      ) : null}
 
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-ink-3">
         <span>
-          {op.targetKind === 'network' ? `Targets must be inside one active scope · max ${op.maxAddresses} addresses · ` : 'Local machine · '}
+          {op.targetKind === 'network'
+            ? `Targets must be inside one active scope · max ${op.maxAddresses} addresses · "auto target" fills the target from your one active scope · `
+            : 'Local machine · '}
           timeout {Math.round(op.timeoutMs / 60_000)} min · {op.maxConcurrent} at a time · AI-agent requests always need approval
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           <CopyButton text={commandTemplate(op)} label="Copy command" />
+          {op.targetKind === 'network' ? <CopyButton text={commandTemplateAuto(op)} label="Copy auto command" /> : null}
           {canSubmit && op.available ? (
             <Link
               href={`/tasks?op=${encodeURIComponent(`${op.toolId}:${op.operationId}`)}`}

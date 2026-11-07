@@ -6,8 +6,10 @@ import { Fragment, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
+import { CopyButton } from '@/components/operation-card';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
-import { apiRequest, type Tool, type ToolDiscoveryResult, type ToolList } from '@/lib/api/client';
+import { apiRequest, type Operation, type OperationList, type Tool, type ToolDiscoveryResult, type ToolList } from '@/lib/api/client';
+import { commandTemplate, commandTemplateAuto } from '@/lib/commands';
 import { formatDateTime } from '@/lib/format';
 
 const STATUS: Record<Tool['installStatus'], { tone: StatusTone; label: string }> = {
@@ -38,7 +40,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 const inputClass = 'rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
 
-function ToolDetail({ tool, canConfigure, onChanged }: { tool: Tool; canConfigure: boolean; onChanged: () => Promise<unknown> }) {
+function ToolDetail({ tool, canConfigure, onChanged, operationsById }: { tool: Tool; canConfigure: boolean; onChanged: () => Promise<unknown>; operationsById: Map<string, Operation> }) {
   const [path, setPath] = useState(tool.configuredPath ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -113,18 +115,40 @@ function ToolDetail({ tool, canConfigure, onChanged }: { tool: Tool; canConfigur
           {tool.operations.length === 0 ? (
             <p className="text-ink-3">No automated operations defined for this integration.</p>
           ) : (
-            <ul className="space-y-1">
-              {tool.operations.map((op) => (
-                <li key={op.id} className="flex items-baseline gap-2">
-                  {op.status === 'available' ? (
-                    <StatusBadge tone="good" label={op.requiresApproval ? 'Available · approval' : 'Available'} />
-                  ) : (
-                    <StatusBadge tone="neutral" label={`Planned · P${tool.integrationPhase}`} />
-                  )}
-                  <span className="font-mono text-[11.5px] text-ink">{op.id}</span>
-                  <span className="text-ink-3">{op.description}</span>
-                </li>
-              ))}
+            <ul className="space-y-1.5">
+              {tool.operations.map((op) => {
+                const full = operationsById.get(`${tool.id}:${op.id}`);
+                return (
+                  <li key={op.id}>
+                    <div className="flex items-baseline gap-2">
+                      {op.status === 'available' ? (
+                        <StatusBadge tone="good" label={op.requiresApproval ? 'Available · approval' : 'Available'} />
+                      ) : (
+                        <StatusBadge tone="neutral" label={`Planned · P${tool.integrationPhase}`} />
+                      )}
+                      <span className="font-mono text-[11.5px] text-ink">{op.id}</span>
+                      <span className="text-ink-3">{op.description}</span>
+                    </div>
+                    {full ? (
+                      <div className="mt-1 space-y-1 pl-1">
+                        <div className="flex items-center gap-1.5 overflow-hidden rounded border border-edge bg-canvas/60 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
+                          <span className="shrink-0 select-none text-ink-3">$</span>
+                          <span className="truncate">{commandTemplate(full)}</span>
+                          <CopyButton text={commandTemplate(full)} label="Copy" />
+                        </div>
+                        {full.targetKind === 'network' ? (
+                          <div className="flex items-center gap-1.5 overflow-hidden rounded border border-edge bg-canvas/60 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-2">
+                            <span className="shrink-0 select-none text-ink-3">$</span>
+                            <span className="truncate">{commandTemplateAuto(full)}</span>
+                            <span className="shrink-0 rounded border border-edge-strong px-1 py-0.5 font-sans text-[9.5px] uppercase tracking-wider text-ink-3">auto</span>
+                            <CopyButton text={commandTemplateAuto(full)} label="Copy" />
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
           <p className="mt-1 text-[11px] text-ink-3">
@@ -160,6 +184,8 @@ function ToolDetail({ tool, canConfigure, onChanged }: { tool: Tool; canConfigur
 export function ToolRegistry() {
   const { can } = useAuth();
   const tools = useSWR<ToolList>('/tools');
+  const operations = useSWR<OperationList>('/operations');
+  const operationsById = useMemo(() => new Map((operations.data?.items ?? []).map((o) => [`${o.toolId}:${o.operationId}`, o])), [operations.data]);
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [query, setQuery] = useState('');
@@ -308,7 +334,7 @@ export function ToolRegistry() {
                         {expanded ? (
                           <tr className="border-b border-edge/60">
                             <td colSpan={6} className="p-0">
-                              <ToolDetail tool={t} canConfigure={can('tools:configure')} onChanged={() => tools.mutate()} />
+                              <ToolDetail tool={t} canConfigure={can('tools:configure')} onChanged={() => tools.mutate()} operationsById={operationsById} />
                             </td>
                           </tr>
                         ) : null}

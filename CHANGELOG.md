@@ -220,3 +220,14 @@
   backend's Auto Target Resolution). `commandHint()` no longer lists that field in `missingRequiredFields` for
   a network operation, so the live "execution preview" correctly shows a command as ready even with no target
   typed — it used to say "not ready" for a command that would actually have succeeded.
+
+## Unreleased — Copyable "auto target" commands on Command Reference and Tool Registry
+
+- New `commandTemplateAuto()` builds the same command line as `commandTemplate()` but omits the `host`/
+  `targets` field for a network operation, since the backend now fills it in from the one active scope.
+- `OperationCard` (used by Command Reference and every security-domain page) now shows both forms for a
+  network operation side by side, each with its own copy button — the explicit-target command as before, and
+  a second line labelled "auto target".
+- Tool Registry's expanded tool detail (previously just a bare operation list with no runnable command at
+  all) now cross-references the full `/operations` list by `${toolId}:${operationId}` and shows the same two
+  copyable command lines under every available operation.
