@@ -71,3 +71,10 @@
   fields are still missing — a running "execution preview" with no extra request to the server. The Command
   Reference's command bar gains the same hint line. Suggestion/preview logic is pure and unit-tested
   (`suggestCommand`, `commandHint` in `src/lib/commands.ts`).
+
+## 0.5.0 (cont. 2) — Vulnerability Assessment page goes live (unreleased)
+
+- Vulnerability Assessment is now live, rendering the backend's three new local dependency-scan operations
+  (Trivy filesystem/image scan, Grype filesystem scan, OSV-Scanner lockfile scan) through the same
+  `DomainOperations`/`OperationCard` components as every other domain page. Nuclei (network-target) and a
+  persisted findings view remain planned.
