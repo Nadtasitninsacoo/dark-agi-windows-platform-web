@@ -59,18 +59,10 @@ body {
    system activity. */
 @keyframes dagi-scanline {
   0% {
-    transform: translateY(-10%);
-    opacity: 0;
-  }
-  8% {
-    opacity: 1;
-  }
-  92% {
-    opacity: 1;
+    transform: translateY(-8rem);
   }
   100% {
     transform: translateY(110vh);
-    opacity: 0;
   }
 }
 

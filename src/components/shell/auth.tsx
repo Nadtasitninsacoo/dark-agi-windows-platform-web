@@ -66,8 +66,11 @@ function Card({ title, subtitle, children }: { title: string; subtitle: ReactNod
         />
         <Watermark />
         <div
-          className="absolute inset-x-0 h-px"
-          style={{ background: 'linear-gradient(to right, transparent, rgb(46 232 143 / 0.7), transparent)', boxShadow: '0 0 12px 1px rgb(46 232 143 / 0.6)', animation: 'dagi-scanline 6s linear infinite' }}
+          className="absolute inset-x-0 h-32"
+          style={{
+            background: 'linear-gradient(to bottom, transparent, rgb(46 232 143 / 0.06) 42%, rgb(46 232 143 / 0.1) 50%, rgb(46 232 143 / 0.06) 58%, transparent)',
+            animation: 'dagi-scanline 7s linear infinite',
+          }}
         />
       </div>
 
