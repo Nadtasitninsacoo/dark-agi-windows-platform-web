@@ -13,7 +13,11 @@
   same convention dark-agi-backend's own service.ps1 uses).
 
   The registered service runs `next start` directly - the console has no
-  database or second process to coordinate, unlike the API.
+  database or second process to coordinate, unlike the API. Binds to
+  127.0.0.1 by default; pass -BindHost 0.0.0.0 to accept connections from
+  other machines (LAN only -- there is no TLS here, so only do this on a
+  trusted network, and the backend's own HOST/CORS_ORIGINS need the same
+  treatment, see dark-agi-backend\.env).
 
   Requires an elevated (Administrator) PowerShell and `npm run build` to have
   produced a .next build first (see dark-agi-web.ps1 setup). The API it talks
@@ -32,7 +36,8 @@ param(
   [ValidateSet('install', 'uninstall', 'start', 'stop', 'status')]
   [string]$Command,
   [string]$WinSwPath,
-  [string]$ServiceName = 'DarkAGI-Web'
+  [string]$ServiceName = 'DarkAGI-Web',
+  [string]$BindHost = '127.0.0.1'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -66,7 +71,7 @@ switch ($Command) {
   <name>DARK AGI Console</name>
   <description>Next.js production server for the DARK AGI operations console (dark-agi-frontend).</description>
   <executable>$Node</executable>
-  <arguments>"$nextBin" start -p 7410 -H 127.0.0.1</arguments>
+  <arguments>"$nextBin" start -p 7410 -H $BindHost</arguments>
   <workingdirectory>$Frontend</workingdirectory>
   <log mode="roll-by-size">
     <sizeThreshold>10240</sizeThreshold>

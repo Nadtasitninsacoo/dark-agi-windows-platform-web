@@ -157,3 +157,5 @@
   PowerShell; nothing here registers a service unless the operator runs it. See the backend's
   `docs/architecture/roadmap.md` Phase 10 section for the full design and a real em-dash/PowerShell-encoding
   bug caught and fixed before it reached the operator.
+- `service.ps1 install` gains `-BindHost` (default `127.0.0.1`, unchanged) so the registered service can be
+  told to accept LAN/Tailscale connections (`-BindHost 0.0.0.0`) without editing the script.
