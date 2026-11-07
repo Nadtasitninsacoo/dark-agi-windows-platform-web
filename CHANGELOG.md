@@ -193,3 +193,10 @@
   The agent list now polls every 4s (was 15s).
 - New shared `Toggle` switch component in `src/components/ui.tsx`; `formatRelativeTime` added to
   `src/lib/format.ts` ("3m ago" style, deliberately coarse).
+
+## Unreleased — `banner` command in the Terminal
+
+- Terminal gains a `banner` local command (alongside `help`/`clear`) that prints the same skull-and-crossbones
+  console art `scripts/banner.ps1` shows on the PowerShell launcher — a static copy, not regenerated, so it
+  stays pixel-identical; verified character-for-character against a live capture of the real launcher output.
+  Works in both the full-page Terminal and the floating one (they share the same component).

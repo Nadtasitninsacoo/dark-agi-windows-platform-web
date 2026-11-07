@@ -44,8 +44,50 @@ type Entry = EntryData & { id: number };
 
 const BANNER = `DARK AGI terminal — the platform's own command language.
 Type a command, e.g.  ${COMMAND_PREFIX} win:procs ${COMMAND_SUFFIX}
-"help" lists commands · "clear" clears the screen · ↑/↓ for history.
+"help" lists commands · "clear" clears the screen · "banner" shows the console banner · ↑/↓ for history.
 This is not a shell: every command is validated and audited, and network commands need an approved scope.`;
+
+/** Same artwork the PowerShell launcher prints (scripts/banner.ps1) — static here, not regenerated, so it stays pixel-identical. */
+const SKULL_BANNER = `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%        %%%%%%      %%%%        %%%%  %%%%%%  %%%%%%%%%%%%      %%%%%%        %%          %%%%%%
+%%%%  %%%%%%  %%  %%%%%%  %%  %%%%%%  %%  %%%%  %%%%%%%%%%%%  %%%%%%  %%  %%%%%%%%%%%%%%  %%%%%%%%%%
+%%%%  %%%%%%  %%          %%        %%%%      %%%%%%%%%%%%%%          %%  %%      %%%%%%  %%%%%%%%%%
+%%%%  %%%%%%  %%  %%%%%%  %%  %%%%  %%%%  %%%%  %%%%%%%%%%%%  %%%%%%  %%  %%%%%%  %%%%%%  %%%%%%%%%%
+%%%%        %%%%  %%%%%%  %%  %%%%%%  %%  %%%%%%  %%%%%%%%%%  %%%%%%  %%%%        %%          %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%  %%%%%%  %%          %%  %%%%%%  %%        %%%%%%      %%%%  %%%%%%  %%%%        %%%%%%%%%%
+%%%%%%%%  %%%%%%  %%%%%%  %%%%%%    %%%%  %%  %%%%%%  %%  %%%%%%  %%  %%%%%%  %%  %%%%%%%%%%%%%%%%%%
+%%%%%%%%  %%  %%  %%%%%%  %%%%%%  %%  %%  %%  %%%%%%  %%  %%%%%%  %%  %%  %%  %%%%      %%%%%%%%%%%%
+%%%%%%%%    %%    %%%%%%  %%%%%%  %%%%    %%  %%%%%%  %%  %%%%%%  %%    %%    %%%%%%%%%%  %%%%%%%%%%
+%%%%%%%%  %%%%%%  %%          %%  %%%%%%  %%        %%%%%%      %%%%  %%%%%%  %%        %%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                            _.--""""""""""""""""--._
+                         .-"                        "-.
+                        /                              \\
+                       |                                |
+                       |    .--------.    .--------.    |
+                       |   /   .--.   \\  /   .--.   \\   |
+                       |   |  ( () )  |  |  ( () )  |   |
+                       |   \\   '--'   /  \\   '--'   /   |
+                        \\   '--------'    '--------'   /
+                         \\             /\\             /
+                          '.          /__\\          .'
+                          |  .--.--.--.--.--.--.--.  |
+              ()==[]=====[|==|==|==|==|==|==|==|==|==|]==============================>
+                          |  '--'--'--'--'--'--'--'  |
+                           '-.____________________.-'
+
+    %%%%   %%%  %%%%  %   %      %%%   %%%% %%%%%     %   % %%%%% %   % %%%%   %%%  %   %  %%%%
+    %   % %   % %   % %  %      %   % %       %       %   %   %   %%  % %   % %   % %   % %
+    %   % %%%%% %%%%  %%%       %%%%% % %%%   %       % % %   %   % % % %   % %   % % % %  %%%
+    %   % %   % %  %  %  %      %   % %   %   %       %% %%   %   %  %% %   % %   % %% %%     %
+    %%%%  %   % %   % %   %     %   %  %%%% %%%%%     %   % %%%%% %   % %%%%   %%%  %   % %%%%
+
+       =[ DARK AGI WINDOWS :: Windows Cyber Intelligence Platform
++ -- --=[ 10 AI agents :: cloud + local models :: audited, authorized execution`;
 
 const AI_BANNER_NOTE = `AI mode: type what you want in plain language (Thai or English), e.g. "ดูโปรเซสที่รันอยู่"
 The AI picks one reviewed operation and fills its input; the same scope and approval rules still apply before anything runs.`;
@@ -131,7 +173,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
   const printHelp = () => {
     const cmds = ops.filter((o) => aliasFor(o)).toSorted((a, b) => (aliasFor(a) ?? '').localeCompare(aliasFor(b) ?? ''));
     const lines = cmds.length === 0 ? ['(no operations loaded yet)'] : cmds.map((o) => `  ${commandTemplate(o)}`);
-    add({ kind: 'info', text: ['Available commands — fill the <values>:', ...lines, '', '  help   this list', '  clear  clear the screen'].join('\n') });
+    add({ kind: 'info', text: ['Available commands — fill the <values>:', ...lines, '', '  help    this list', '  clear   clear the screen', '  banner  show the console banner'].join('\n') });
   };
 
   const poll = async (id: string, first: Job): Promise<Job> => {
@@ -168,6 +210,10 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
     }
     if (line === 'help') {
       printHelp();
+      return;
+    }
+    if (line === 'banner') {
+      add({ kind: 'info', text: SKULL_BANNER });
       return;
     }
 
