@@ -134,6 +134,13 @@
   build all call real, current commands. Whether GitHub Actions has actually produced a green run is not
   verified from this environment; see the backend's `docs/architecture/roadmap.md` Known gaps.
 
+## Unreleased — MCP panel on API Access
+
+- API Access gains a "Connect another agent system (MCP)" panel: the backend's new `POST /mcp` endpoint lets
+  any Model Context Protocol-compatible agent framework discover and call every operation as a tool, over the
+  same API key, through the same scope/approval/audit path as every other job submission — not a second,
+  looser door into the engine. Includes copyable `tools/list`/`tools/call` curl examples.
+
 ## Unreleased — Windows-service wrapper script (written, not installed)
 
 - `scripts/service.ps1`: `install`/`uninstall`/`start`/`stop`/`status`, registering the production console

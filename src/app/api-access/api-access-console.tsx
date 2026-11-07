@@ -88,6 +88,8 @@ export function ApiAccessConsole() {
 
   const curlList = `curl -H "Authorization: Bearer YOUR_KEY" ${BASE}/operations`;
   const curlRun = `curl -X POST ${BASE}/jobs \\\n  -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \\\n  -d '{"toolId":"powershell","operationId":"dns-inspection","input":{"host":"example.com"}}'`;
+  const curlMcpList = `curl -X POST ${BASE}/mcp \\\n  -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`;
+  const curlMcpCall = `curl -X POST ${BASE}/mcp \\\n  -H "Authorization: Bearer YOUR_KEY" -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"powershell__dns-inspection","arguments":{"host":"example.com"}}}'`;
 
   return (
     <div>
@@ -195,6 +197,31 @@ export function ApiAccessConsole() {
               The header may be <code className="font-mono">Authorization: Bearer &lt;key&gt;</code> or <code className="font-mono">x-api-key: &lt;key&gt;</code>. A key has the permissions of the user who created it. Network
               operations still require an approved scope, and operations marked “needs approval” wait for a human — exactly as in the console.
             </p>
+          </div>
+        </Panel>
+
+        <Panel title="Connect another agent system (MCP)" subtitle="Model Context Protocol — JSON-RPC 2.0 over HTTP, same API key">
+          <div className="space-y-3 text-[12px] text-ink-2">
+            <p>
+              <code className="font-mono text-ink">{BASE}/mcp</code> speaks the Model Context Protocol, so any MCP-compatible agent framework can discover and call every operation above as a tool — in real time, not a one-off
+              export. It is not a second, looser door into the engine: a tool call is <code className="font-mono">POST /jobs</code> under the hood, through the same scope, approval and audit path, as the calling key’s own
+              user. <code className="font-mono">tools/call</code> waits briefly for a quick operation to finish and reports the result inline; an operation that needs approval returns its job id immediately instead of
+              blocking, to be checked again with the built-in <code className="font-mono">dark-agi__job_status</code> tool once a human has approved it.
+            </p>
+            <div>
+              <p className="mb-1 text-ink-3">List tools (name, description, input schema — one per operation)</p>
+              <div className="flex items-start gap-2">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded border border-edge bg-canvas p-2 font-mono text-[11px] text-ink">{curlMcpList}</pre>
+                <CopyButton text={curlMcpList} />
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-ink-3">Call a tool</p>
+              <div className="flex items-start gap-2">
+                <pre className="min-w-0 flex-1 overflow-x-auto rounded border border-edge bg-canvas p-2 font-mono text-[11px] text-ink">{curlMcpCall}</pre>
+                <CopyButton text={curlMcpCall} />
+              </div>
+            </div>
           </div>
         </Panel>
       </div>
