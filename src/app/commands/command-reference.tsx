@@ -1,15 +1,15 @@
 'use client';
 
-import { Search, Terminal } from 'lucide-react';
+import { CornerDownLeft, Search, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { CATEGORY_LABEL, OperationCard } from '@/components/operation-card';
+import { CATEGORY_LABEL, OperationCard, RISK } from '@/components/operation-card';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
-import { ErrorNotice, Panel, Skeleton } from '@/components/ui';
+import { ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
 import { apiRequest, type Job, type Operation, type OperationList, type ToolList } from '@/lib/api/client';
-import { CommandError, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
+import { CommandError, commandHint, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
 
 const post = (body?: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
 
@@ -19,6 +19,7 @@ function CommandBar({ operations, canSubmit }: { operations: Operation[]; canSub
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
+  const hint = useMemo(() => (line.trim() === '' ? null : commandHint(line, operations)), [line, operations]);
 
   const run = async () => {
     setError(null);
@@ -68,6 +69,27 @@ function CommandBar({ operations, canSubmit }: { operations: Operation[]; canSub
           <Terminal className="size-3.5" aria-hidden /> Run
         </button>
       </form>
+      {hint ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+          {hint.operation ? (
+            <>
+              <span className="text-ink-2">{hint.operation.title}</span>
+              <StatusBadge tone={RISK[hint.operation.risk] ?? 'neutral'} label={`${hint.operation.risk} risk`} />
+              {hint.missingRequiredFields.length > 0 ? (
+                <span className="text-warning">missing: {hint.missingRequiredFields.join(', ')}</span>
+              ) : hint.ready ? (
+                <span className="flex items-center gap-1 text-good">
+                  <CornerDownLeft className="size-3" aria-hidden /> ready to run
+                </span>
+              ) : (
+                <span className="text-ink-3">add &quot;{COMMAND_SUFFIX}&quot; to finish</span>
+              )}
+            </>
+          ) : hint.alias ? (
+            <span className="text-critical">Unknown command &quot;{hint.alias}&quot;</span>
+          ) : null}
+        </div>
+      ) : null}
       {canSubmit ? null : <p className="mt-2 text-[11.5px] text-ink-3">You need the jobs:submit permission to run commands.</p>}
       {error ? <p className="mt-2 text-[11.5px] text-critical">{error}</p> : null}
       {job ? (

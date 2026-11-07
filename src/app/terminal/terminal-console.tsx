@@ -1,13 +1,26 @@
 'use client';
 
-import { Bot, Send, SquareTerminal } from 'lucide-react';
+import { Bot, CornerDownLeft, Send, SquareTerminal } from 'lucide-react';
 import Link from 'next/link';
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
+import { RISK } from '@/components/operation-card';
 import { useAuth } from '@/components/shell/auth';
 import { apiRequest, type Job, type Operation, type OperationList } from '@/lib/api/client';
-import { aliasFor, CommandError, COMMAND_PREFIX, COMMAND_SUFFIX, commandTemplate, parseCommand, tokenizeCommand } from '@/lib/commands';
+import { StatusBadge } from '@/components/ui';
+import {
+  aliasFor,
+  CommandError,
+  commandHint,
+  COMMAND_PREFIX,
+  COMMAND_SUFFIX,
+  commandTemplate,
+  parseCommand,
+  suggestCommand,
+  tokenizeCommand,
+  type Suggestion,
+} from '@/lib/commands';
 import { JobResult } from '@/app/tasks/job-result';
 
 /**
@@ -79,7 +92,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
   const codeStyle = codeColor ? { color: codeColor } : undefined;
   const canSubmit = can('jobs:submit');
   const operations = useSWR<OperationList>('/operations');
-  const ops: Operation[] = operations.data?.items ?? [];
+  const ops = useMemo<Operation[]>(() => operations.data?.items ?? [], [operations.data]);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState('');
@@ -87,11 +100,29 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
   const [aiMode, setAiMode] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [histIndex, setHistIndex] = useState<number | null>(null);
+  const [suggestIndex, setSuggestIndex] = useState(0);
+  const [suggestDismissed, setSuggestDismissed] = useState(false);
   const idRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const add = (entry: EntryData) => setEntries((prev) => [...prev, { ...entry, id: idRef.current++ }]);
+
+  const suggestions = useMemo<readonly Suggestion[]>(() => (aiMode || input.trim() === '' ? [] : suggestCommand(input, ops)), [aiMode, input, ops]);
+  const hint = useMemo(() => (aiMode || input.trim() === '' ? null : commandHint(input, ops)), [aiMode, input, ops]);
+  const showDropdown = !suggestDismissed && suggestions.length > 0;
+  const activeIndex = Math.min(suggestIndex, Math.max(0, suggestions.length - 1));
+
+  const changeInput = (value: string) => {
+    setInput(value);
+    setSuggestIndex(0);
+    setSuggestDismissed(false);
+  };
+
+  const acceptSuggestion = (s: Suggestion) => {
+    changeInput(s.completion);
+    inputRef.current?.focus();
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -177,22 +208,45 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
   const submitCurrent = () => {
     if (busy || input.trim() === '') return;
     const value = input;
-    setInput('');
+    changeInput('');
     void runCommand(value);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (showDropdown) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        acceptSuggestion(suggestions[activeIndex]!);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSuggestIndex((i) => (i + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSuggestIndex((i) => (i - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSuggestDismissed(true);
+        return;
+      }
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
       submitCurrent();
       return;
     }
+    if (showDropdown) return; // Enter already handled above; don't fall through to history nav while the dropdown is open.
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (history.length === 0) return;
       const idx = histIndex === null ? history.length - 1 : Math.max(0, histIndex - 1);
       setHistIndex(idx);
-      setInput(history[idx] ?? '');
+      changeInput(history[idx] ?? '');
       return;
     }
     if (e.key === 'ArrowDown') {
@@ -201,10 +255,10 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
       const idx = histIndex + 1;
       if (idx >= history.length) {
         setHistIndex(null);
-        setInput('');
+        changeInput('');
       } else {
         setHistIndex(idx);
-        setInput(history[idx] ?? '');
+        changeInput(history[idx] ?? '');
       }
     }
   };
@@ -289,42 +343,89 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
         <div ref={bottomRef} />
       </div>
 
-      <div className="mt-2 flex items-center gap-2 border-t border-edge pt-2">
-        <span className="shrink-0 select-none text-good" style={codeStyle}>
-          {COMMAND_PREFIX}&gt;
-        </span>
-        <input
-          ref={inputRef}
-          className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-ink outline-none placeholder:text-ink-3"
-          style={codeStyle}
-          placeholder={
-            !canSubmit
-              ? 'you need the jobs:submit permission to run commands'
-              : aiMode
-                ? 'พิมพ์สิ่งที่ต้องการเป็นภาษาไทยหรืออังกฤษ เช่น "ดูโปรเซสที่รันอยู่"'
-                : `win:procs ${COMMAND_SUFFIX}   (type "help")`
-          }
-          aria-label="DARK AGI terminal input"
-          value={input}
-          disabled={!canSubmit || busy}
-          spellCheck={false}
-          autoComplete="off"
-          onKeyDown={onKeyDown}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        {busy ? (
-          <span className="shrink-0 animate-pulse text-ink-3">running…</span>
-        ) : (
-          <button
-            type="button"
-            onClick={submitCurrent}
-            disabled={!canSubmit || input.trim() === ''}
-            className="inline-flex shrink-0 items-center gap-1 rounded border border-accent-strong bg-accent-strong/90 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
-            title="Run (or press Enter)"
+      <div className="relative mt-2 border-t border-edge pt-2">
+        {showDropdown ? (
+          <div
+            className="absolute bottom-full left-0 right-0 z-10 mb-1 max-h-48 overflow-y-auto rounded border border-edge-strong bg-panel-2 shadow-lg"
+            onMouseDown={(e) => e.preventDefault()}
           >
-            <Send className="size-3" aria-hidden /> Run
-          </button>
-        )}
+            {suggestions.map((s, i) => (
+              <button
+                key={`${s.label}-${i}`}
+                type="button"
+                className={`flex w-full items-center justify-between gap-3 px-2 py-1 text-left text-[11.5px] ${
+                  i === activeIndex ? 'bg-accent-strong/20 text-ink' : 'text-ink-2 hover:bg-canvas'
+                }`}
+                onMouseEnter={() => setSuggestIndex(i)}
+                onClick={() => acceptSuggestion(s)}
+              >
+                <span className="shrink-0 font-mono text-cyan">{s.label}</span>
+                {s.detail ? <span className="truncate text-ink-3">{s.detail}</span> : null}
+              </button>
+            ))}
+            <p className="border-t border-edge px-2 py-1 text-[10.5px] text-ink-3">Tab to accept · ↑/↓ to choose · Esc to dismiss</p>
+          </div>
+        ) : null}
+
+        {hint && !showDropdown ? (
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+            {hint.operation ? (
+              <>
+                <span className="text-ink-2">{hint.operation.title}</span>
+                <StatusBadge tone={RISK[hint.operation.risk] ?? 'neutral'} label={`${hint.operation.risk} risk`} />
+                {hint.missingRequiredFields.length > 0 ? (
+                  <span className="text-warning">missing: {hint.missingRequiredFields.join(', ')}</span>
+                ) : hint.ready ? (
+                  <span className="flex items-center gap-1 text-good">
+                    <CornerDownLeft className="size-3" aria-hidden /> ready — press Enter
+                  </span>
+                ) : (
+                  <span className="text-ink-3">type &quot;{COMMAND_SUFFIX}&quot; to finish</span>
+                )}
+              </>
+            ) : hint.alias ? (
+              <span className="text-critical">Unknown command &quot;{hint.alias}&quot;</span>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 select-none text-good" style={codeStyle}>
+            {COMMAND_PREFIX}&gt;
+          </span>
+          <input
+            ref={inputRef}
+            className="min-w-0 flex-1 bg-transparent font-mono text-[12px] text-ink outline-none placeholder:text-ink-3"
+            style={codeStyle}
+            placeholder={
+              !canSubmit
+                ? 'you need the jobs:submit permission to run commands'
+                : aiMode
+                  ? 'พิมพ์สิ่งที่ต้องการเป็นภาษาไทยหรืออังกฤษ เช่น "ดูโปรเซสที่รันอยู่"'
+                  : `win:procs ${COMMAND_SUFFIX}   (type "help")`
+            }
+            aria-label="DARK AGI terminal input"
+            value={input}
+            disabled={!canSubmit || busy}
+            spellCheck={false}
+            autoComplete="off"
+            onKeyDown={onKeyDown}
+            onChange={(e) => changeInput(e.target.value)}
+          />
+          {busy ? (
+            <span className="shrink-0 animate-pulse text-ink-3">running…</span>
+          ) : (
+            <button
+              type="button"
+              onClick={submitCurrent}
+              disabled={!canSubmit || input.trim() === ''}
+              className="inline-flex shrink-0 items-center gap-1 rounded border border-accent-strong bg-accent-strong/90 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+              title="Run (or press Enter)"
+            >
+              <Send className="size-3" aria-hidden /> Run
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -128,3 +128,80 @@ export function parseCommand(line: string, operations: readonly Operation[]): { 
   const colon = opKey.indexOf(':');
   return { toolId: opKey.slice(0, colon), operationId: opKey.slice(colon + 1), input };
 }
+
+function operationForAlias(alias: string, operations: readonly Operation[]): Operation | undefined {
+  const opKey = KEY_BY_ALIAS.get(alias);
+  return opKey ? operations.find((o) => key(o) === opKey) : undefined;
+}
+
+export interface Suggestion {
+  /** The full input value to use when this suggestion is accepted. */
+  readonly completion: string;
+  /** What to show in the dropdown. */
+  readonly label: string;
+  readonly detail: string;
+}
+
+const MAX_SUGGESTIONS = 8;
+
+/**
+ * Suggests completions for the token currently being typed (the one under the
+ * cursor at the end of `line`), given everything typed before it. Pure and
+ * cheap enough to call on every keystroke.
+ */
+export function suggestCommand(line: string, operations: readonly Operation[]): readonly Suggestion[] {
+  const endsWithSpace = /\s$/.test(line);
+  const tokens = tokenizeCommand(line);
+  const position = endsWithSpace ? tokens.length : Math.max(0, tokens.length - 1);
+  const partial = (endsWithSpace ? '' : (tokens[tokens.length - 1] ?? '')).toLowerCase();
+  const prefixTokens = endsWithSpace ? tokens : tokens.slice(0, -1);
+  const join = (token: string) => [...prefixTokens, token].join(' ');
+
+  if (position === 0) {
+    return COMMAND_PREFIX.startsWith(partial) && COMMAND_PREFIX !== partial
+      ? [{ completion: `${COMMAND_PREFIX} `, label: COMMAND_PREFIX, detail: 'Start a DARK AGI command' }]
+      : [];
+  }
+  if (tokens[0] !== COMMAND_PREFIX) return [];
+
+  if (position === 1) {
+    return Object.values(COMMAND_ALIASES)
+      .filter((alias) => alias.toLowerCase().includes(partial))
+      .toSorted((a, b) => a.localeCompare(b))
+      .slice(0, MAX_SUGGESTIONS)
+      .map((alias) => {
+        const op = operationForAlias(alias, operations);
+        return { completion: `${join(alias)} `, label: alias, detail: op?.title ?? '' };
+      });
+  }
+
+  const op = operationForAlias(tokens[1]!, operations);
+  if (!op) return [];
+  const used = new Set(prefixTokens.slice(2).map((t) => t.slice(0, t.indexOf('='))).filter(Boolean));
+  const fieldSuggestions = op.fields
+    .filter((f) => !used.has(f.name) && f.name.toLowerCase().includes(partial))
+    .map((f) => ({ completion: join(`${f.name}=`), label: `${f.name}=`, detail: f.help }));
+  const suffixSuggestion = COMMAND_SUFFIX.toLowerCase().includes(partial) ? [{ completion: join(COMMAND_SUFFIX), label: COMMAND_SUFFIX, detail: 'Finish and run the command' }] : [];
+  return [...fieldSuggestions, ...suffixSuggestion].slice(0, MAX_SUGGESTIONS);
+}
+
+export interface CommandHint {
+  readonly alias: string | null;
+  readonly operation: Operation | null;
+  readonly missingRequiredFields: readonly string[];
+  /** True once the command has everything parseCommand needs to submit (barring value errors). */
+  readonly ready: boolean;
+}
+
+/** A live, pre-submit summary of what a command line currently resolves to — the "execution preview". */
+export function commandHint(line: string, operations: readonly Operation[]): CommandHint {
+  const tokens = tokenizeCommand(line);
+  if (tokens[0] !== COMMAND_PREFIX || tokens.length < 2) return { alias: null, operation: null, missingRequiredFields: [], ready: false };
+  const alias = tokens[1]!;
+  const op = operationForAlias(alias, operations);
+  if (!op) return { alias, operation: null, missingRequiredFields: [], ready: false };
+  const present = new Set(tokens.slice(2).map((t) => t.slice(0, t.indexOf('='))).filter(Boolean));
+  const missingRequiredFields = op.fields.filter((f) => f.required && !present.has(f.name)).map((f) => f.name);
+  const hasSuffix = tokens[tokens.length - 1] === COMMAND_SUFFIX && tokens.length > 2;
+  return { alias, operation: op, missingRequiredFields, ready: missingRequiredFields.length === 0 && hasSuffix };
+}

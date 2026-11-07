@@ -53,3 +53,21 @@
   user's own permissions.
 - API Access page (`/api-access`): create, list and revoke API keys (the secret is shown once), with ready-to-use
   curl samples, for external programs and AI agents to use the platform's tools over HTTP.
+
+## 0.5.0 (cont.) — DARK AGI design system, Command Center widgets, command autocomplete (unreleased)
+
+- Design tokens move from an indigo/navy palette to graphite/near-black surfaces with neon green as the primary
+  accent (doubling as the "good" status colour) and cyan as the secondary technical accent; red/amber stay
+  reserved for critical/warning. Every page inherits this from the shared tokens (`globals.css`); the sparkline,
+  the floating terminal's colour presets and the terminal's background — the few places with literal hex values —
+  are updated to match explicitly.
+- Command Center gains four status tiles (AI Agents, AI Providers, Tool Registry, Execution Queue) and a Recent
+  Agent Activity panel, all from endpoints that already existed. The findings-summary line states plainly that
+  persistence is not implemented yet (Phase 5) rather than showing an empty or fabricated widget.
+- Terminal gains lightweight syntax highlighting for echoed commands, plus real autocomplete: as you type, a
+  dropdown suggests the matching verb, then each operation's still-unused fields, then the closing `keng` —
+  accepted with Tab, navigated with ↑/↓, dismissed with Esc (Enter always submits the line as typed, unaffected
+  by the dropdown). A live hint line shows the resolved operation, its risk/approval badges, and which required
+  fields are still missing — a running "execution preview" with no extra request to the server. The Command
+  Reference's command bar gains the same hint line. Suggestion/preview logic is pure and unit-tested
+  (`suggestCommand`, `commandHint` in `src/lib/commands.ts`).

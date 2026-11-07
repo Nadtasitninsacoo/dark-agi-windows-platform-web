@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Operation } from './api/client';
-import { CommandError, COMMAND_ALIASES, commandTemplate, parseCommand, tokenizeCommand } from './commands';
+import { CommandError, commandHint, COMMAND_ALIASES, commandTemplate, parseCommand, suggestCommand, tokenizeCommand } from './commands';
 
 const op = (toolId: string, operationId: string, fields: { name: string; type: 'text' | 'integer' | 'targets' }[]): Operation =>
-  ({ toolId, operationId, fields: fields.map((f) => ({ ...f, label: f.name, required: false, default: null, min: null, max: null, help: '' })) }) as unknown as Operation;
+  ({ toolId, operationId, title: operationId, fields: fields.map((f) => ({ ...f, label: f.name, required: false, default: null, min: null, max: null, help: '' })) }) as unknown as Operation;
 
 const OPS: Operation[] = [
   op('powershell', 'dns-inspection', [{ name: 'host', type: 'text' }]),
@@ -42,5 +42,40 @@ describe('DARK AGI command language', () => {
     ]) {
       expect(() => parseCommand(bad, OPS)).toThrow(CommandError);
     }
+  });
+});
+
+describe('autocomplete', () => {
+  it('suggests matching verbs while the command name is being typed', () => {
+    const suggestions = suggestCommand('dagi net:d', OPS);
+    expect(suggestions).toContainEqual({ completion: 'dagi net:dns ', label: 'net:dns', detail: 'dns-inspection' });
+  });
+
+  it('suggests unused field names once a known verb is typed', () => {
+    expect(suggestCommand('dagi net:dns ho', OPS)).toEqual([{ completion: 'dagi net:dns host=', label: 'host=', detail: '' }]);
+    // Already-supplied fields drop out of the suggestions; the closing suffix is always offered too (remaining fields are optional).
+    expect(suggestCommand('dagi win:events logName=System ', OPS)).toEqual([
+      { completion: 'dagi win:events logName=System maxEvents=', label: 'maxEvents=', detail: '' },
+      { completion: 'dagi win:events logName=System keng', label: 'keng', detail: 'Finish and run the command' },
+    ]);
+  });
+
+  it('suggests the closing suffix once fields are typed, and nothing for an unknown verb', () => {
+    expect(suggestCommand('dagi net:dns host=example.com ', OPS)).toEqual([{ completion: 'dagi net:dns host=example.com keng', label: 'keng', detail: 'Finish and run the command' }]);
+    expect(suggestCommand('dagi bogus ', OPS)).toEqual([]);
+  });
+});
+
+describe('command hint (execution preview)', () => {
+  const REQUIRED_OPS: Operation[] = [
+    { toolId: 'powershell', operationId: 'dns-inspection', fields: [{ name: 'host', label: 'Host', type: 'text', required: true, default: null, min: null, max: null, help: '' }] } as unknown as Operation,
+  ];
+
+  it('is not ready until a known verb, every required field and the suffix are present', () => {
+    expect(commandHint('dagi', OPS)).toMatchObject({ alias: null, operation: null, ready: false });
+    expect(commandHint('dagi bogus', OPS)).toMatchObject({ alias: 'bogus', operation: null, ready: false });
+    expect(commandHint('dagi net:dns', REQUIRED_OPS)).toMatchObject({ alias: 'net:dns', missingRequiredFields: ['host'], ready: false });
+    expect(commandHint('dagi net:dns host=example.com', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: false }); // no "keng" yet
+    expect(commandHint('dagi net:dns host=example.com keng', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: true });
   });
 });
