@@ -81,12 +81,34 @@ export function Button({
   );
 }
 
+/** A 400 from ZodValidationPipe: `{ message, issues: [{ path, message }] }` — duck-typed to avoid importing ApiError here. */
+function validationIssues(error: unknown): { path: string; message: string }[] | null {
+  if (typeof error !== 'object' || error === null || !('body' in error)) return null;
+  const body = (error as { body: unknown }).body;
+  if (typeof body !== 'object' || body === null || !('issues' in body)) return null;
+  const issues = (body as { issues: unknown }).issues;
+  return Array.isArray(issues) ? (issues as { path: string; message: string }[]) : null;
+}
+
 export function ErrorNotice({ error }: { error: unknown }) {
   const message = error instanceof Error ? error.message : String(error);
+  const issues = validationIssues(error);
   return (
     <div role="alert" className="flex items-start gap-2 rounded border border-critical/30 bg-critical/10 px-3 py-2 text-[12px] text-ink">
       <XCircle className="mt-0.5 size-3.5 shrink-0 text-critical" aria-hidden />
-      <span>{message}</span>
+      <div>
+        <span>{message}</span>
+        {issues && issues.length > 0 ? (
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[11.5px] text-ink-2">
+            {issues.map((i, idx) => (
+              <li key={idx}>
+                {i.path ? <span className="font-mono text-ink-3">{i.path}: </span> : null}
+                {i.message}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </div>
   );
 }

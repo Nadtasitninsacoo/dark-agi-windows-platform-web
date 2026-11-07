@@ -60,7 +60,20 @@ export type ReportDetail = Schemas['ReportDetail'];
 export type ReportPage = Schemas['ReportPage'];
 export type ReportCreateRequest = Schemas['ReportCreateRequest'];
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:7411').replace(/\/+$/, '');
+/**
+ * The backend is always the same machine as this console (loopback by default; LAN/Tailscale when the
+ * operator has deliberately opened it up — see docs/architecture/roadmap.md). A single build-time
+ * NEXT_PUBLIC_API_BASE_URL bakes in exactly one of those addresses, so switching between e.g. 127.0.0.1,
+ * a LAN IP and a Tailscale IP silently breaks every address but the one last built for ("Backend unreachable"
+ * even though the backend is right there) — this bit the operator directly on 2026-11-07. In the browser,
+ * derive the API host from whatever address the page itself was loaded from instead: same host, fixed port.
+ * NEXT_PUBLIC_API_BASE_URL still applies for anything without a window (SSR) and as the explicit fallback.
+ */
+const API_PORT = process.env.NEXT_PUBLIC_API_PORT ?? '7411';
+export const API_BASE_URL =
+  typeof window !== 'undefined' && window.location.hostname
+    ? `${window.location.protocol}//${window.location.hostname}:${API_PORT}`
+    : (process.env.NEXT_PUBLIC_API_BASE_URL ?? `http://127.0.0.1:${API_PORT}`).replace(/\/+$/, '');
 export const API_PREFIX = '/api/v1';
 
 /** Dispatched on window whenever the API answers 401, so the auth gate can show the sign-in screen. */

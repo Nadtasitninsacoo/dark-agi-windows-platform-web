@@ -168,3 +168,17 @@
   cosmetic chrome, never a stand-in for real system activity (consistent with the project's standing "no fake
   scanning animations" rule). The card itself gains a soft glow border and backdrop blur; the subtitle now
   renders in uppercase monospace for a more technical feel. No functional changes to sign-in/setup.
+
+## Unreleased — Fix: API calls broke whenever the console was reached from a different address
+
+- `API_BASE_URL` was a single value baked in at build time from `NEXT_PUBLIC_API_BASE_URL` — switching between
+  loopback, the LAN IP and a Tailscale IP (all valid ways to reach the same machine) silently broke every
+  address except the one last built for ("Backend unreachable" even though the backend was right there). Now
+  derived from the page's own address in the browser (`window.location.hostname`, fixed port from
+  `NEXT_PUBLIC_API_PORT`/default `7411`) instead of one fixed value — one build works from any address the
+  operator reaches it by, with no rebuild needed to switch.
+- Sign-in/first-run setup password fields gain a show/hide toggle — a masked field hiding a typo was a real,
+  confirmed source of "wrong password" reports tonight.
+- `ErrorNotice` now renders the specific `issues` a 400 validation error returns (field + reason), not just the
+  generic top-level message — the previous generic "Validation failed" gave no way to tell a real problem
+  apart from the extra-field case fixed on the backend tonight.

@@ -1,6 +1,6 @@
 'use client';
 
-import { KeyRound, Loader2, ShieldHalf } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Loader2, ShieldHalf } from 'lucide-react';
 import { createContext, type FormEvent, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { Button, ErrorNotice } from '@/components/ui';
@@ -97,6 +97,32 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+/** A password input with a show/hide toggle — masked fields hide typos, and this was the actual cause of more than one "wrong password" report. */
+function PasswordInput({ value, onChange, autoComplete, autoFocus }: { value: string; onChange: (value: string) => void; autoComplete: string; autoFocus?: boolean }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        className={`${inputClass} pr-9`}
+        type={visible ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        autoFocus={autoFocus}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible((v) => !v)}
+        className="absolute inset-y-0 right-0 flex items-center px-2.5 text-ink-3 hover:text-ink-2"
+        aria-label={visible ? 'Hide password' : 'Show password'}
+      >
+        {visible ? <EyeOff className="size-3.5" aria-hidden /> : <Eye className="size-3.5" aria-hidden />}
+      </button>
+    </div>
+  );
+}
+
 function LoginScreen({ onSignedIn }: { onSignedIn: () => Promise<unknown> }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -126,9 +152,9 @@ function LoginScreen({ onSignedIn }: { onSignedIn: () => Promise<unknown> }) {
           <input className={inputClass} autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} />
         </Field>
         <Field label="Password">
-          <input className={inputClass} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <PasswordInput autoComplete="current-password" value={password} onChange={setPassword} />
         </Field>
-        <Button type="submit" variant="primary" busy={busy} disabled={!username || !password}>
+        <Button type="submit" variant="primary" busy={busy}>
           Sign in
         </Button>
       </form>
@@ -179,10 +205,10 @@ function SetupScreen({ tokenFile, onDone }: { tokenFile: string | null; onDone: 
           <input className={inputClass} value={form.displayName} onChange={set('displayName')} />
         </Field>
         <Field label="Password (at least 12 characters)">
-          <input className={inputClass} type="password" autoComplete="new-password" value={form.password} onChange={set('password')} />
+          <PasswordInput autoComplete="new-password" value={form.password} onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
         </Field>
         <Field label="Confirm password">
-          <input className={inputClass} type="password" autoComplete="new-password" value={form.confirm} onChange={set('confirm')} />
+          <PasswordInput autoComplete="new-password" value={form.confirm} onChange={(v) => setForm((f) => ({ ...f, confirm: v }))} />
         </Field>
         {mismatch ? <p className="text-[11.5px] text-critical">Passwords do not match.</p> : null}
         <Button
