@@ -211,7 +211,11 @@ export function commandHint(line: string, operations: readonly Operation[]): Com
   const op = operationForAlias(alias, operations);
   if (!op) return { alias, operation: null, missingRequiredFields: [], ready: false };
   const present = new Set(tokens.slice(2).map((t) => t.slice(0, t.indexOf('='))).filter(Boolean));
-  const missingRequiredFields = op.fields.filter((f) => f.required && !present.has(f.name)).map((f) => f.name);
+  // A network operation's host/targets field can be auto-resolved server-side from the one active scope (see
+  // ExecutionService.autoResolveTargets) — don't flag the command as "not ready" over a field that will fill
+  // itself in; every other required field still has to be typed.
+  const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'targets']) : new Set<string>();
+  const missingRequiredFields = op.fields.filter((f) => f.required && !present.has(f.name) && !autoResolvable.has(f.name)).map((f) => f.name);
   const hasSuffix = tokens[tokens.length - 1] === COMMAND_SUFFIX && tokens.length > 2;
   return { alias, operation: op, missingRequiredFields, ready: missingRequiredFields.length === 0 && hasSuffix };
 }

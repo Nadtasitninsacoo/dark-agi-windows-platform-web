@@ -213,3 +213,10 @@
   own soft glow. Top bar: a small cut of the same logo replaces the generic shield icon next to "DARK AGI".
 - Sign-in background simplified: dropped the repeating text watermark now that real artwork fills that role;
   kept the grid, one centred glow, and the scanline sweep.
+
+## Unreleased — Terminal: no longer flags an auto-resolvable target as missing
+
+- The backend can now fill in a network operation's `host`/`targets` from the operator's active scope (see the
+  backend's Auto Target Resolution). `commandHint()` no longer lists that field in `missingRequiredFields` for
+  a network operation, so the live "execution preview" correctly shows a command as ready even with no target
+  typed — it used to say "not ready" for a command that would actually have succeeded.

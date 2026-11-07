@@ -68,14 +68,26 @@ describe('autocomplete', () => {
 
 describe('command hint (execution preview)', () => {
   const REQUIRED_OPS: Operation[] = [
-    { toolId: 'powershell', operationId: 'dns-inspection', fields: [{ name: 'host', label: 'Host', type: 'text', required: true, default: null, min: null, max: null, help: '' }] } as unknown as Operation,
+    {
+      toolId: 'powershell',
+      operationId: 'tls-inspection',
+      targetKind: 'network',
+      fields: [
+        { name: 'host', label: 'Host', type: 'text', required: true, default: null, min: null, max: null, help: '' },
+        { name: 'port', label: 'Port', type: 'integer', required: true, default: null, min: null, max: null, help: '' },
+      ],
+    } as unknown as Operation,
   ];
 
   it('is not ready until a known verb, every required field and the suffix are present', () => {
     expect(commandHint('dagi', OPS)).toMatchObject({ alias: null, operation: null, ready: false });
     expect(commandHint('dagi bogus', OPS)).toMatchObject({ alias: 'bogus', operation: null, ready: false });
-    expect(commandHint('dagi net:dns', REQUIRED_OPS)).toMatchObject({ alias: 'net:dns', missingRequiredFields: ['host'], ready: false });
-    expect(commandHint('dagi net:dns host=example.com', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: false }); // no "keng" yet
-    expect(commandHint('dagi net:dns host=example.com keng', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: true });
+    // `host` is required but auto-resolvable server-side for a network operation (ExecutionService.autoResolveTargets),
+    // so it is never flagged as missing here — only `port`, which cannot be auto-resolved, is.
+    expect(commandHint('dagi crypto:tls', REQUIRED_OPS)).toMatchObject({ alias: 'crypto:tls', missingRequiredFields: ['port'], ready: false });
+    expect(commandHint('dagi crypto:tls port=443', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: false }); // no "keng" yet
+    expect(commandHint('dagi crypto:tls port=443 keng', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: true });
+    // Typing host explicitly is still fine — it's optional for readiness, not disallowed.
+    expect(commandHint('dagi crypto:tls host=example.com port=443 keng', REQUIRED_OPS)).toMatchObject({ missingRequiredFields: [], ready: true });
   });
 });
