@@ -127,3 +127,9 @@
   `reports:read`/`reports:manage` permissions). This closes the last placeholder module (Vulnerability
   Assessment, Threat Intelligence, Malware Analysis and Reports were the four remaining); every module in
   navigation is now either live or a dedicated console.
+
+## Unreleased — CI workflow reviewed (no code changes)
+
+- Reviewed `.github/workflows/ci.yml` against current scripts: `next typegen`, typecheck, lint, unit tests and
+  build all call real, current commands. Whether GitHub Actions has actually produced a green run is not
+  verified from this environment; see the backend's `docs/architecture/roadmap.md` Known gaps.
