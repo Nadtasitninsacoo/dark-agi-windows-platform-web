@@ -6,6 +6,9 @@
   Self-contained: works from this repository alone. The API it talks to is set by
   NEXT_PUBLIC_API_BASE_URL in .env.local (default http://127.0.0.1:7411) and is
   started from the dark-agi-backend repository. Process IDs are stored in .data\run.
+  To run this as an always-on Windows Service instead (auto-start at boot,
+  auto-restart on crash), see scripts\service.ps1 - a separate, deliberate step
+  that requires an elevated PowerShell and a WinSW binary you supply yourself.
 
 .EXAMPLE
   .\scripts\dark-agi-web.ps1 setup    # npm install, create .env.local, build
