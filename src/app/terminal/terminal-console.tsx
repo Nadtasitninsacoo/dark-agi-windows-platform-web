@@ -37,6 +37,7 @@ const FINAL = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED', 'REJECTED']);
 type EntryData =
   | { kind: 'cmd'; text: string }
   | { kind: 'info'; text: string }
+  | { kind: 'banner'; text: string }
   | { kind: 'error'; text: string }
   | { kind: 'approval'; text: string }
   | { kind: 'result'; title: string; result: unknown };
@@ -213,7 +214,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
       return;
     }
     if (line === 'banner') {
-      add({ kind: 'info', text: SKULL_BANNER });
+      add({ kind: 'banner', text: SKULL_BANNER });
       return;
     }
 
@@ -348,6 +349,13 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
                     <HighlightedCommand text={entry.text} />
                   </span>
                 </div>
+              );
+            }
+            if (entry.kind === 'banner') {
+              return (
+                <p key={entry.id} className="whitespace-pre-wrap break-words text-accent" style={{ textShadow: '0 0 6px rgb(46 232 143 / 0.35)' }}>
+                  {entry.text}
+                </p>
               );
             }
             if (entry.kind === 'error') {
