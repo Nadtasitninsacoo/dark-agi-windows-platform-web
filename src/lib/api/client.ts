@@ -47,6 +47,14 @@ export type EngineStatus = Schemas['EngineStatus'];
 export type Finding = Schemas['Finding'];
 export type FindingPage = Schemas['FindingPage'];
 export type FindingUpdateRequest = Schemas['FindingUpdateRequest'];
+export type Evidence = Schemas['Evidence'];
+export type EvidenceDetail = Schemas['EvidenceDetail'];
+export type EvidencePage = Schemas['EvidencePage'];
+export type EvidenceUpdateRequest = Schemas['EvidenceUpdateRequest'];
+export type Ioc = Schemas['Ioc'];
+export type IocPage = Schemas['IocPage'];
+export type IocCreateRequest = Schemas['IocCreateRequest'];
+export type IocUpdateRequest = Schemas['IocUpdateRequest'];
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:7411').replace(/\/+$/, '');
 export const API_PREFIX = '/api/v1';

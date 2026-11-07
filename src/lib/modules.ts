@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -42,17 +42,17 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'Process, service and network-connection inventory and Defender posture through reviewed PowerShell/CIM collectors.',
     planned: ['Sysinternals & osquery adapters', 'Startup/registry persistence inventory', 'Event-log analysis'] },
   { slug: 'vulnerabilities', href: '/vulnerabilities', title: 'Vulnerability Assessment', group: 'Security Domains', icon: 'shield-alert', status: 'live', phase: 6, category: 'vulnerability-assessment',
-    summary: 'Trivy, Grype and OSV-Scanner dependency scans of a local directory or image now; Nuclei and a persisted Finding model land with network-target assessments.',
-    planned: ['Nuclei template-scan adapter (network-target, scope-enforced)', 'Finding normalisation & dedup', 'Remediation tracking'] },
+    summary: 'Trivy, Grype, OSV-Scanner (local) and Nuclei (network-target, scope-enforced) scans; results persist to Security Findings.',
+    planned: ['CVE/CVSS correlation beyond exact-key matching', 'Remediation tracking'] },
   { slug: 'web-security', href: '/web-security', title: 'Web Security', group: 'Security Domains', icon: 'globe', status: 'live', phase: 6, category: 'web-security',
     summary: 'HTTP security-header auditing for approved hosts; more passive web analysis as adapters land.',
     planned: ['OWASP ZAP, SSLyze adapters', 'Cookie & CORS posture checks', 'Technology identification'] },
   { slug: 'forensics', href: '/forensics', title: 'Digital Forensics', group: 'Security Domains', icon: 'search', status: 'live', phase: 7, category: 'digital-forensics',
-    summary: 'File hashing (SHA-256/SHA-1/MD5) now; evidence store, metadata, memory and timeline analysis as adapters land.',
-    planned: ['Evidence store with SHA-256 and custody log', 'ExifTool, Sleuth Kit, Volatility 3 adapters', 'Timeline generation'] },
-  { slug: 'threat-intel', href: '/threat-intel', title: 'Threat Intelligence', group: 'Security Domains', icon: 'radar', status: 'planned', phase: 7, category: 'threat-intelligence',
-    summary: 'IOCs, detection rules, CVE intelligence and MITRE ATT&CK mapping.',
-    planned: ['IOC management', 'Sigma / YARA rule library', 'ATT&CK technique mapping'] },
+    summary: 'File hashing (SHA-256/SHA-1/MD5) and metadata inspection; every hash registers as evidence with a chain of custody (see the Evidence page).',
+    planned: ['ExifTool, Sleuth Kit, Volatility 3 adapters', 'Timeline generation'] },
+  { slug: 'threat-intel', href: '/threat-intel', title: 'Threat Intelligence', group: 'Security Domains', icon: 'radar', status: 'live', phase: 7, category: 'threat-intelligence',
+    summary: 'The platform’s own indicator-of-compromise (IOC) registry — recorded by operators or agents, not a live external lookup.',
+    planned: ['VirusTotal/MISP live lookups (needs an operator-supplied API key and a secret-injection path the operation-adapter architecture does not have yet)', 'Sigma / YARA rule library', 'ATT&CK technique mapping'] },
   { slug: 'malware', href: '/malware', title: 'Malware Analysis', group: 'Security Domains', icon: 'bug', status: 'planned', phase: 8, category: 'malware-analysis',
     summary: 'Static analysis only: PE metadata, hashes, strings, capa/YARA matching, sandbox report ingestion.',
     planned: ['PE metadata & hashing', 'FLOSS / capa / YARA / ClamAV adapters', 'No sample execution outside a configured isolated environment'] },
@@ -69,6 +69,8 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'Immutable, hash-chained audit trail with integrity verification.' },
   { slug: 'findings', href: '/findings', title: 'Security Findings', group: 'Execution', icon: 'flag', status: 'live', phase: 6,
     summary: 'Normalised vulnerability-assessment findings ingested from succeeded scans (Trivy, Grype, OSV-Scanner, Nuclei), with severity, status and triage.' },
+  { slug: 'evidence', href: '/evidence', title: 'Evidence', group: 'Execution', icon: 'fingerprint', status: 'live', phase: 7,
+    summary: 'Files identified as evidence by the file-hash operation, each with an append-only chain of custody.' },
   { slug: 'reports', href: '/reports', title: 'Reports', group: 'Execution', icon: 'file-text', status: 'planned', phase: 9,
     summary: 'Security reports generated from normalised findings and evidence.',
     planned: ['Report templates', 'Export to HTML/PDF', 'Evidence references with hashes'] },

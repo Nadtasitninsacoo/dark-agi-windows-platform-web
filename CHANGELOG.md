@@ -89,3 +89,14 @@
   `vuln:trivyimage`, `vuln:grype`, `vuln:osv`, `vuln:nuclei`.
 - API types regenerated from the updated backend OpenAPI contract (`Finding`, `FindingPage`,
   `FindingUpdateRequest`, the `findings:read`/`findings:manage` permissions).
+
+## 0.7.0 — Evidence and Threat Intelligence go live (unreleased)
+
+- New **Evidence** page (`/evidence`): an expandable list of files registered by the file-hash operation, each
+  with its full append-only chain-of-custody timeline, and an annotate/archive/restore form (requires
+  `evidence:manage`) where every change requires a note.
+- **Threat Intelligence** (`/threat-intel`) is now live, with a dedicated IOC console (not the generic
+  per-category operation grid, since this category has no job-based operations yet) — record and triage
+  indicators of compromise (hash/IP/domain/URL) with type/severity/status. This is the platform's own registry,
+  not a live VirusTotal/MISP lookup (documented on the page as a deliberate, not accidental, scope limit).
+- API types regenerated (`Evidence`, `EvidenceDetail`, `Ioc`, the new `evidence:*`/`iocs:*` permissions).

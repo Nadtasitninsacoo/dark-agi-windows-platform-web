@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { Panel, StatusBadge } from '@/components/ui';
 import { MODULES, moduleBySlug } from '@/lib/modules';
 import { DomainOperations } from './domain-operations';
+import { ThreatIntelConsole } from './threat-intel-console';
 
 /**
  * Security-domain and other catch-all module pages.
@@ -38,6 +39,9 @@ async function ModuleRouter({ params }: { params: PageProps<'/[module]'>['params
   const mod = moduleBySlug(module);
   if (!mod) notFound();
 
+  if (mod.slug === 'threat-intel') {
+    return <ThreatIntelConsole title={mod.title} summary={mod.summary} phase={mod.phase} planned={mod.planned ?? []} />;
+  }
   if (mod.status === 'live' && mod.category) {
     return <DomainOperations title={mod.title} summary={mod.summary} phase={mod.phase} category={mod.category} planned={mod.planned ?? []} />;
   }

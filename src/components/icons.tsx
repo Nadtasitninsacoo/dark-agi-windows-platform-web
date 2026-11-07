@@ -1,5 +1,5 @@
 import {
-  BookOpen, Bot, Bug, Cpu, FileText, Flag, Gauge, Globe, Key, List, Lock, Monitor, Network, Radar,
+  BookOpen, Bot, Bug, Cpu, FileText, Fingerprint, Flag, Gauge, Globe, Key, List, Lock, Monitor, Network, Radar,
   ScrollText, Search, Settings, ShieldAlert, SquareTerminal, Target, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type { IconName } from '@/lib/modules';
@@ -26,4 +26,5 @@ export const MODULE_ICONS: Record<IconName, LucideIcon> = {
   book: BookOpen,
   terminal: SquareTerminal,
   flag: Flag,
+  fingerprint: Fingerprint,
 };

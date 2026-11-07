@@ -440,6 +440,41 @@ export interface paths {
         patch: operations["FindingsController_updateStatus"];
         trace?: never;
     };
+    "/api/v1/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evidence registered by the file-hash operation, newest-seen first */
+        get: operations["ForensicsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One piece of evidence with its full chain of custody */
+        get: operations["ForensicsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Annotate, relabel or archive/restore evidence — every change requires a note, added to its custody log (audited) */
+        patch: operations["ForensicsController_update"];
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -828,6 +863,41 @@ export interface paths {
         head?: never;
         /** Pin a tool to a specific executable path (administrators; audited, re-checked immediately) */
         patch: operations["ToolRegistryController_configure"];
+        trace?: never;
+    };
+    "/api/v1/iocs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Indicators of compromise tracked by this platform (not a live VirusTotal/MISP lookup), newest first */
+        get: operations["ThreatIntelController_list"];
+        put?: never;
+        /** Record a new indicator of compromise (audited) */
+        post: operations["ThreatIntelController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/iocs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an IOC’s status, severity or notes (audited) */
+        patch: operations["ThreatIntelController_update"];
         trace?: never;
     };
 }
@@ -1398,9 +1468,22 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
             /** Format: date-time */
             sessionExpiresAt: string;
+        };
+        CustodyEvent: {
+            id: string;
+            /** @enum {string} */
+            action: "ACQUIRED" | "HASHED" | "ANNOTATED" | "ARCHIVED" | "RESTORED";
+            /** @enum {string} */
+            actorType: "SYSTEM" | "USER" | "AGENT";
+            actorId: string;
+            detail: string | null;
+            path: string | null;
+            jobId: string | null;
+            /** Format: date-time */
+            occurredAt: string;
         };
         DatabaseStatus: {
             reachable: boolean;
@@ -1479,6 +1562,86 @@ export interface components {
                 appliedMigrations: number | null;
                 error: string | null;
             };
+        };
+        Evidence: {
+            id: string;
+            sha256: string;
+            sha1: string | null;
+            md5: string | null;
+            label: string | null;
+            notes: string | null;
+            firstPath: string;
+            /** @description bigint serialised as string */
+            sizeBytes: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
+            custodyCount: number;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        EvidenceDetail: {
+            id: string;
+            sha256: string;
+            sha1: string | null;
+            md5: string | null;
+            label: string | null;
+            notes: string | null;
+            firstPath: string;
+            /** @description bigint serialised as string */
+            sizeBytes: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "ARCHIVED";
+            custodyCount: number;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+            custody: {
+                id: string;
+                /** @enum {string} */
+                action: "ACQUIRED" | "HASHED" | "ANNOTATED" | "ARCHIVED" | "RESTORED";
+                /** @enum {string} */
+                actorType: "SYSTEM" | "USER" | "AGENT";
+                actorId: string;
+                detail: string | null;
+                path: string | null;
+                jobId: string | null;
+                /** Format: date-time */
+                occurredAt: string;
+            }[];
+        };
+        EvidencePage: {
+            items: {
+                id: string;
+                sha256: string;
+                sha1: string | null;
+                md5: string | null;
+                label: string | null;
+                notes: string | null;
+                firstPath: string;
+                /** @description bigint serialised as string */
+                sizeBytes: string;
+                /** @enum {string} */
+                status: "ACTIVE" | "ARCHIVED";
+                custodyCount: number;
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            /** Format: date-time */
+            nextBefore: string | null;
+        };
+        EvidenceUpdateRequest: {
+            label?: string;
+            /** @description Current summary; overwritten on each edit — the why for each change lives in the custody log, not here */
+            notes?: string;
+            /** @enum {string} */
+            status?: "ACTIVE" | "ARCHIVED";
+            /** @description Required: every change to evidence must be justified in its custody log */
+            note: string;
         };
         Finding: {
             id: string;
@@ -1652,6 +1815,63 @@ export interface components {
                 arch: string;
                 uptimeSeconds: number;
             };
+        };
+        Ioc: {
+            id: string;
+            /** @enum {string} */
+            type: "HASH" | "IP" | "DOMAIN" | "URL";
+            value: string;
+            source: string | null;
+            /** @enum {string} */
+            severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            /** @enum {string} */
+            status: "ACTIVE" | "EXPIRED" | "FALSE_POSITIVE";
+            notes: string | null;
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        IocCreateRequest: {
+            /** @enum {string} */
+            type: "HASH" | "IP" | "DOMAIN" | "URL";
+            value: string;
+            source?: string;
+            /**
+             * @default UNKNOWN
+             * @enum {string}
+             */
+            severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            notes?: string;
+        };
+        IocPage: {
+            items: {
+                id: string;
+                /** @enum {string} */
+                type: "HASH" | "IP" | "DOMAIN" | "URL";
+                value: string;
+                source: string | null;
+                /** @enum {string} */
+                severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+                /** @enum {string} */
+                status: "ACTIVE" | "EXPIRED" | "FALSE_POSITIVE";
+                notes: string | null;
+                createdBy: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** Format: date-time */
+            nextBefore: string | null;
+        };
+        IocUpdateRequest: {
+            /** @enum {string} */
+            status?: "ACTIVE" | "EXPIRED" | "FALSE_POSITIVE";
+            /** @enum {string} */
+            severity?: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            notes?: string;
         };
         Job: {
             id: string;
@@ -2104,7 +2324,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
             }[];
         };
         UserUpdateRequest: {
@@ -2776,6 +2996,75 @@ export interface operations {
             };
         };
     };
+    ForensicsController_list: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+                status?: "ACTIVE" | "ARCHIVED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidencePage"];
+                };
+            };
+        };
+    };
+    ForensicsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceDetail"];
+                };
+            };
+        };
+    };
+    ForensicsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceDetail"];
+                };
+            };
+        };
+    };
     HealthController_health: {
         parameters: {
             query?: never;
@@ -3338,6 +3627,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Tool"];
+                };
+            };
+        };
+    };
+    ThreatIntelController_list: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+                status?: "ACTIVE" | "EXPIRED" | "FALSE_POSITIVE";
+                type?: "HASH" | "IP" | "DOMAIN" | "URL";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IocPage"];
+                };
+            };
+        };
+    };
+    ThreatIntelController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IocCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ioc"];
+                };
+            };
+        };
+    };
+    ThreatIntelController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IocUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ioc"];
                 };
             };
         };
