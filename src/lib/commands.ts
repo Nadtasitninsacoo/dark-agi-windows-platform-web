@@ -55,6 +55,12 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'gnupg:key-inspection': 'crypto:gpgkey',
   'tshark:pcap-summary': 'net:pcapsummary',
   'tshark:traffic-analysis': 'net:pcapanalyze',
+  'naabu:port-inventory': 'net:naabu',
+  'dnsx:dns-resolve': 'net:dnsx',
+  'httpx:probe': 'web:probe',
+  'subfinder:subdomain-enum': 'intel:subdomains',
+  'gau:url-collect': 'web:urls',
+  'tlsx:tls-scan': 'crypto:tlsx',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
