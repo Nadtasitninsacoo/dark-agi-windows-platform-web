@@ -101,6 +101,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'bulk-extractor:feature-scan': 'forensics:bulkextractor',
   'hindsight:browser-history': 'forensics:hindsight',
   'dependency-check:dependency-scan': 'vuln:dependencycheck',
+  'suricata:pcap-analysis': 'intel:suricata',
+  'hayabusa:evtx-timeline': 'forensics:hayabusa',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
