@@ -28,6 +28,7 @@ export type AgentRunDetail = Schemas['AgentRunDetail'];
 export type AgentRunPage = Schemas['AgentRunPage'];
 export type AgentAutoAllRequest = Schemas['AgentAutoAllRequest'];
 export type AgentAutoAllResult = Schemas['AgentAutoAllResult'];
+export type AgentSuggestResult = Schemas['AgentSuggestResult'];
 export type AuthStatus = Schemas['AuthStatus'];
 export type CurrentUser = Schemas['CurrentUser'];
 export type Permission = CurrentUser['permissions'][number];

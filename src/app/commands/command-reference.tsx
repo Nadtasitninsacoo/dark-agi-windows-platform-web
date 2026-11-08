@@ -1,14 +1,14 @@
 'use client';
 
-import { CornerDownLeft, Search, Terminal } from 'lucide-react';
+import { CornerDownLeft, Search, Sparkles, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { CATEGORY_LABEL, OperationCard, RISK } from '@/components/operation-card';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
-import { ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
-import { apiRequest, type Job, type Operation, type OperationList, type ToolList } from '@/lib/api/client';
+import { Button, ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
+import { apiRequest, type AgentSuggestResult, type Job, type Operation, type OperationList, type ToolList } from '@/lib/api/client';
 import { CommandError, commandHint, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
 
 const post = (body?: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
@@ -107,6 +107,77 @@ function CommandBar({ operations, canSubmit }: { operations: Operation[]; canSub
   );
 }
 
+type Suggestion = AgentSuggestResult['suggestions'][number];
+
+/** Describe a goal in plain language (any language, incl. Thai); the AI matches it against real operations — it never runs anything itself. */
+function AiSearch({ operations, canSubmit }: { operations: Operation[]; canSubmit: boolean }) {
+  const [goal, setGoal] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [picks, setPicks] = useState<Suggestion[] | null>(null);
+
+  const run = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const result = await apiRequest<AgentSuggestResult>('/agents/suggest', post({ goal }));
+      setPicks(result.suggestions);
+    } catch (e) {
+      setPicks(null);
+      setError(e instanceof Error ? e.message : 'Search failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const matched: { pick: Suggestion; op: Operation }[] = (picks ?? []).flatMap((pick) => {
+    const op = operations.find((o) => o.toolId === pick.toolId && o.operationId === pick.operationId);
+    return op ? [{ pick, op }] : [];
+  });
+
+  return (
+    <Panel title="AI-assisted search" subtitle="Describe what you're trying to do — the AI suggests matching commands below. It never runs anything itself.">
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!busy && goal.trim() !== '') void run();
+        }}
+      >
+        <Sparkles className="size-4 shrink-0 text-accent" aria-hidden />
+        <input
+          className="min-w-0 flex-1 rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink"
+          placeholder="e.g. ผมอยากรู้ว่าพอร์ตไหนเปิดอยู่บ้าง"
+          aria-label="Describe a goal for the AI to match"
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+        />
+        <Button type="submit" variant="primary" busy={busy} disabled={goal.trim() === ''}>
+          Find commands
+        </Button>
+      </form>
+      {error ? <p className="mt-2 text-[11.5px] text-critical">{error}</p> : null}
+      {picks ? (
+        matched.length > 0 ? (
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            {matched.map(({ pick, op }) => (
+              <div key={`${op.toolId}:${op.operationId}`} className="space-y-1.5">
+                <p className="text-[11.5px] text-ink-2">
+                  <Sparkles className="mr-1 inline size-3 text-accent" aria-hidden />
+                  {pick.reason}
+                </p>
+                <OperationCard op={op} canSubmit={canSubmit} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-2 text-[12px] text-ink-3">No matching command found — try rephrasing, or browse the categories below.</p>
+        )
+      ) : null}
+    </Panel>
+  );
+}
+
 const LAUNCHER: { repo: string; script: string; command: string; description: string }[] = [
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'setup', description: 'First install: npm install, create the database, migrate and build' },
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'start', description: 'Start PostgreSQL and the API (7411); prints the setup token on first run' },
@@ -164,6 +235,7 @@ export function CommandReference() {
       />
       <div className="space-y-3 p-4">
         <CommandBar operations={operations.data?.items ?? []} canSubmit={can('jobs:submit')} />
+        <AiSearch operations={operations.data?.items ?? []} canSubmit={can('jobs:submit')} />
         {operations.error ? <ErrorNotice error={operations.error} /> : null}
         {!operations.data && !operations.error ? <Skeleton className="h-48 w-full" /> : null}
         {grouped.map(([category, ops]) => (

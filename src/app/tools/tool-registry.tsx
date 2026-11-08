@@ -335,6 +335,7 @@ export function ToolRegistry() {
               <table className="w-full text-left text-[12px]">
                 <thead className="text-[10.5px] uppercase tracking-wider text-ink-3">
                   <tr className="border-b border-edge">
+                    <th className="w-8 py-1.5 pr-2 font-medium">#</th>
                     <th className="py-1.5 pr-3 font-medium">Tool</th>
                     <th className="py-1.5 pr-3 font-medium">Category</th>
                     <th className="py-1.5 pr-3 font-medium">Status</th>
@@ -344,13 +345,14 @@ export function ToolRegistry() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((t) => {
+                  {items.map((t, index) => {
                     const st = STATUS[t.installStatus];
                     const health = t.installStatus === 'INSTALLED' ? HEALTH[t.health] : null;
                     const expanded = open === t.id;
                     return (
                       <Fragment key={t.id}>
                         <tr className="cursor-pointer border-b border-edge/60 align-top hover:bg-panel-2/60" onClick={() => setOpen(expanded ? null : t.id)}>
+                          <td className="py-1.5 pr-2 font-mono text-ink-3">{index + 1}</td>
                           <td className="py-1.5 pr-3">
                             <button type="button" aria-expanded={expanded} className="flex items-start gap-1.5 text-left">
                               {expanded ? <ChevronDown className="mt-0.5 size-3.5 text-ink-3" aria-hidden /> : <ChevronRight className="mt-0.5 size-3.5 text-ink-3" aria-hidden />}
@@ -373,7 +375,7 @@ export function ToolRegistry() {
                         </tr>
                         {expanded ? (
                           <tr className="border-b border-edge/60">
-                            <td colSpan={6} className="p-0">
+                            <td colSpan={7} className="p-0">
                               <ToolDetail tool={t} canConfigure={can('tools:configure')} onChanged={() => tools.mutate()} operationsById={operationsById} />
                             </td>
                           </tr>
