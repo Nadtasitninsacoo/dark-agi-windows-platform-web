@@ -106,6 +106,11 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'process-monitor:import-pml': 'win:procmon',
   'velociraptor:collect': 'forensics:velociraptor',
   'metasploit:module-search': 'vuln:msfsearch',
+  'sleuthkit-mmls:partition-layout': 'forensics:mmls',
+  'sslyze:tls-assessment': 'crypto:sslyze',
+  'hashcat:test-hash-audit': 'crypto:hashcat',
+  'pev:pe-info': 'malware:pev',
+  'retdec:decompile': 'malware:retdec',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
