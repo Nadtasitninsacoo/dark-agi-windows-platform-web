@@ -68,6 +68,11 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'openssl:tls-handshake': 'crypto:osslhandshake',
   'cfssl:cert-inspect': 'crypto:cfssl',
   'mkcert:local-ca': 'crypto:mkcertca',
+  'exiftool:metadata': 'fs:exif',
+  'yara:scan': 'malware:yara',
+  'detect-it-easy:identify': 'malware:identify',
+  'radare2:analyze': 'malware:r2',
+  'rizin:analyze': 'malware:rizin',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
