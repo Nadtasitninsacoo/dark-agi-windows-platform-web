@@ -61,6 +61,13 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'subfinder:subdomain-enum': 'intel:subdomains',
   'gau:url-collect': 'web:urls',
   'tlsx:tls-scan': 'crypto:tlsx',
+  'ncat:tcp-connect-check': 'net:ncat',
+  'rustscan:port-sweep': 'net:rustscan',
+  'nping:probe': 'net:nping',
+  'openssl:certificate-inspection': 'crypto:osslcert',
+  'openssl:tls-handshake': 'crypto:osslhandshake',
+  'cfssl:cert-inspect': 'crypto:cfssl',
+  'mkcert:local-ca': 'crypto:mkcertca',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
