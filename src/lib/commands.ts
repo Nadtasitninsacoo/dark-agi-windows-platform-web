@@ -89,6 +89,12 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'volatility3:process-list': 'forensics:volpslist',
   'volatility3:network-scan': 'forensics:volnetscan',
   'regripper:registry-parse': 'forensics:regripper',
+  'amass:subdomain-enum': 'intel:amass',
+  'cvemap:cve-lookup': 'vuln:cvemap',
+  'ffuf:content-discovery': 'web:ffuf',
+  'sigma:convert': 'intel:sigma',
+  'john:test-hash-audit': 'crypto:john',
+  'step-cli:cert-inspect': 'crypto:stepcli',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
