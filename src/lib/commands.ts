@@ -95,6 +95,12 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'sigma:convert': 'intel:sigma',
   'john:test-hash-audit': 'crypto:john',
   'step-cli:cert-inspect': 'crypto:stepcli',
+  'upx:unpack': 'malware:upx',
+  'eric-zimmerman-tools:mft-parse': 'forensics:mftecmd',
+  'eric-zimmerman-tools:prefetch-parse': 'forensics:pecmd',
+  'bulk-extractor:feature-scan': 'forensics:bulkextractor',
+  'hindsight:browser-history': 'forensics:hindsight',
+  'dependency-check:dependency-scan': 'vuln:dependencycheck',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
