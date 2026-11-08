@@ -78,6 +78,17 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'gobuster:content-discovery': 'web:gobuster',
   'feroxbuster:content-discovery': 'web:ferox',
   'katana:crawl': 'web:katana',
+  'autoruns:startup-inventory': 'win:autoruns',
+  'sysmon:event-query': 'win:sysmon',
+  'event-viewer:event-query': 'win:eventquery',
+  'event-viewer:security-log-summary': 'win:secsummary',
+  'defender:custom-scan': 'win:defenderscan',
+  'osquery:query': 'win:osquery',
+  'chainsaw:hunt': 'forensics:chainsaw',
+  'sleuthkit:file-listing': 'forensics:fls',
+  'volatility3:process-list': 'forensics:volpslist',
+  'volatility3:network-scan': 'forensics:volnetscan',
+  'regripper:registry-parse': 'forensics:regripper',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
