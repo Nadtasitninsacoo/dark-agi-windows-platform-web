@@ -73,6 +73,11 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'detect-it-easy:identify': 'malware:identify',
   'radare2:analyze': 'malware:r2',
   'rizin:analyze': 'malware:rizin',
+  'semgrep:sast-scan': 'vuln:semgrep',
+  'retire-js:js-scan': 'vuln:retirejs',
+  'gobuster:content-discovery': 'web:gobuster',
+  'feroxbuster:content-discovery': 'web:ferox',
+  'katana:crawl': 'web:katana',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
