@@ -103,6 +103,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'dependency-check:dependency-scan': 'vuln:dependencycheck',
   'suricata:pcap-analysis': 'intel:suricata',
   'hayabusa:evtx-timeline': 'forensics:hayabusa',
+  'process-monitor:import-pml': 'win:procmon',
+  'velociraptor:collect': 'forensics:velociraptor',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
