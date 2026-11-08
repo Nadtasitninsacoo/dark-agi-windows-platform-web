@@ -105,6 +105,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'hayabusa:evtx-timeline': 'forensics:hayabusa',
   'process-monitor:import-pml': 'win:procmon',
   'velociraptor:collect': 'forensics:velociraptor',
+  'metasploit:module-search': 'vuln:msfsearch',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
