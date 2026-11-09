@@ -111,6 +111,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'hashcat:test-hash-audit': 'crypto:hashcat',
   'pev:pe-info': 'malware:pev',
   'retdec:decompile': 'malware:retdec',
+  'sharphound:ad-collect': 'win:sharphound',
+  'networkminer-cli:pcap-analysis': 'forensics:networkminer',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
