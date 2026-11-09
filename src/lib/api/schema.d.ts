@@ -626,6 +626,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The DARK AGI console ASCII banner (what the local launcher scripts print on startup), as plain text */
+        get: operations["HealthController_banner"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/ready": {
         parameters: {
             query?: never;
@@ -1746,6 +1763,10 @@ export interface components {
             setupRequired: boolean;
             /** @description Where the one-time setup token was written (only while setup is required) */
             setupTokenFile: string | null;
+        };
+        Banner: {
+            /** @description The DARK AGI console ASCII banner, plain text (no ANSI colour codes) */
+            text: string;
         };
         ChangePasswordRequest: {
             currentPassword: string;
@@ -3867,6 +3888,25 @@ export interface operations {
                         /** @enum {string} */
                         status?: "ok";
                     };
+                };
+            };
+        };
+    };
+    HealthController_banner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Banner"];
                 };
             };
         };
