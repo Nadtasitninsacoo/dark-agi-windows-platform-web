@@ -113,6 +113,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'retdec:decompile': 'malware:retdec',
   'sharphound:ad-collect': 'win:sharphound',
   'networkminer-cli:pcap-analysis': 'forensics:networkminer',
+  'testdisk:partition-analysis': 'forensics:testdisk',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
