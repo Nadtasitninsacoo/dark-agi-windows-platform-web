@@ -241,6 +241,23 @@ export interface paths {
         patch: operations["ScopesController_update"];
         trace?: never;
     };
+    "/api/v1/scopes/set-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One-click master switch: enable or disable every scope at once (audited) */
+        post: operations["ScopesController_setAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operations": {
         parameters: {
             query?: never;
@@ -2641,6 +2658,12 @@ export interface components {
                 updatedAt: string;
             }[];
         };
+        ScopeSetAllRequest: {
+            enabled: boolean;
+        };
+        ScopeSetAllResult: {
+            updated: number;
+        };
         ScopeUpdateRequest: {
             description?: string;
             targets?: string[];
@@ -3293,6 +3316,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Scope"];
+                };
+            };
+        };
+    };
+    ScopesController_setAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopeSetAllRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeSetAllResult"];
                 };
             };
         };

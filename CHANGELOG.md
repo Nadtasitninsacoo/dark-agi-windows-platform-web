@@ -468,3 +468,18 @@ anywhere else.
   only firing with `granted` permission) — so an approver away from the tab, or on a different page
   entirely, still finds out. Verified live: badge correctly showed the real awaiting-approval count on an
   unrelated page (Command Reference).
+
+## A Scopes master switch in the top bar
+
+By request: a single button, visible on every page next to the other status badges, to enable or disable
+every Scope at once (backed by the new `POST /scopes/set-all`) — instead of visiting Scope Management and
+clicking "Disable" on each row to get down to exactly one active scope, which auto-target resolution needs.
+
+- New `ScopesToggle` in `top-bar.tsx`: reads `/scopes`, shows "Scopes: all ON" (green, matches the Terminal
+  button's accent styling) when every scope is enabled, or "Scopes: some OFF" (neutral) otherwise. Hidden
+  entirely if no scopes exist yet, and only shown to users with `scopes:manage`.
+- Clicking flips every scope to the opposite of the current aggregate state in one call. Verified live:
+  toggled all-on -> all-off -> back to all-on, each state rendering correctly.
+- This only flips `enabled` — it never changes which targets a scope covers. "All ON" still means every
+  scope stays restricted to its own pre-defined target list, confirmed directly with the user: it is not an
+  "allow everything" switch.

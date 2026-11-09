@@ -1,12 +1,12 @@
 'use client';
 
-import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
+import { LogOut, SquareTerminal, Target, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { StatusBadge } from '@/components/ui';
-import { API_BASE_URL, type EngineStatus, type HealthReport } from '@/lib/api/client';
+import { API_BASE_URL, apiRequest, type EngineStatus, type HealthReport, type ScopeList } from '@/lib/api/client';
 import { useAuth } from './auth';
 import { OPEN_TERMINAL_EVENT } from './floating-terminal';
 
@@ -46,6 +46,41 @@ function ApprovalBadge() {
     <Link href="/tasks">
       <StatusBadge tone="warning" label={`${count} awaiting approval`} />
     </Link>
+  );
+}
+
+/** One-click master switch for every Scope — by request, instead of visiting Scope Management and
+ * disabling rows one at a time to get down to the single active scope auto-target resolution needs. */
+function ScopesToggle() {
+  const { can } = useAuth();
+  const { data, mutate } = useSWR<ScopeList>(can('scopes:manage') ? '/scopes' : null, { refreshInterval: 15_000 });
+  const [busy, setBusy] = useState(false);
+  if (!data || data.items.length === 0) return null;
+  const allEnabled = data.items.every((s) => s.enabled);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await apiRequest('/scopes/set-all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: !allEnabled }) });
+      await mutate();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void toggle()}
+      disabled={busy}
+      title={allEnabled ? `Disable all ${data.items.length} scopes` : `Enable all ${data.items.length} scopes`}
+      className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[12px] disabled:opacity-50 ${
+        allEnabled ? 'border-accent-strong/60 bg-accent-strong/10 text-ink hover:bg-accent-strong/20' : 'border-edge-strong text-ink-3 hover:bg-panel-2'
+      }`}
+    >
+      <Target className={`size-3.5 ${allEnabled ? 'text-accent' : ''}`} aria-hidden />
+      <span className="hidden sm:inline">{allEnabled ? 'Scopes: all ON' : 'Scopes: some OFF'}</span>
+    </button>
   );
 }
 
@@ -117,6 +152,7 @@ export function TopBar() {
         <span className="hidden sm:inline">Terminal</span>
       </button>
       <div className="ml-auto flex items-center gap-2">
+        <ScopesToggle />
         <EngineBadge />
         <ApprovalBadge />
         {api}
