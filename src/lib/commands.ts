@@ -114,6 +114,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'sharphound:ad-collect': 'win:sharphound',
   'networkminer-cli:pcap-analysis': 'forensics:networkminer',
   'testdisk:partition-analysis': 'forensics:testdisk',
+  'pingcastle:ad-health-check': 'win:pingcastle',
+  'nessus:import-scan-results': 'vuln:nessus',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
