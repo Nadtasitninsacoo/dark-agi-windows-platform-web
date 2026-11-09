@@ -119,6 +119,12 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'age-inspect:inspect': 'crypto:age',
   'mitmproxy:capture-flows': 'web:mitmproxy',
   'tshark:live-capture': 'net:tsharklive',
+  'step-cli:remote-cert-inspect': 'crypto:stepcliremote',
+  'yara:process-scan': 'malware:yaraproc',
+  'radare2:process-attach': 'malware:r2attach',
+  'rizin:process-attach': 'malware:rizinattach',
+  'gnupg:keyring-list': 'crypto:gpgkeyring',
+  'powershell:certificate-store-inspector': 'crypto:certstore',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
