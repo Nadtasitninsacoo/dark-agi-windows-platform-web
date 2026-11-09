@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
-import { apiRequest, apiUrl, type Finding, type FindingPage } from '@/lib/api/client';
+import { apiRequest, type Finding, type FindingPage } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 
 /**
@@ -95,8 +95,10 @@ export function FindingsConsole() {
   const canManage = can('findings:manage');
   const [severity, setSeverity] = useState('');
   const [status, setStatus] = useState('OPEN');
-  const key = apiUrl('/findings', { severity: severity || undefined, status: status || undefined, limit: 100 });
-  const findings = useSWR<FindingPage>(key, { refreshInterval: 20_000 });
+  const query = new URLSearchParams({ limit: '100' });
+  if (severity) query.set('severity', severity);
+  if (status) query.set('status', status);
+  const findings = useSWR<FindingPage>(`/findings?${query.toString()}`, { refreshInterval: 20_000 });
 
   return (
     <div>

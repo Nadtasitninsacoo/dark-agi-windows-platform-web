@@ -416,3 +416,12 @@ perfectly healthy, idle agent (a plain grey dot).
 - The top-bar logo (`top-bar.tsx`) now sits inside the same spinning conic-gradient running-light border
   already used around the sign-in card (`dagi-border-spin` in `globals.css`), so the brand mark stays visibly
   "alive" on every page, not just the login screen.
+
+## Fix: Security Findings page showed "Cannot GET /api/v1/http://..." instead of the findings list
+
+`apiUrl()` returns a full absolute URL (`http://host:port/api/v1/...`), meant for places that hand a URL
+straight to `fetch()` or an `<a href>`. `findings-console.tsx` was instead using it to build the `useSWR` key,
+but the global SWR fetcher passes that key into `apiRequest()`, which expects a relative path and prepends
+the base URL itself — so the base URL ended up in the request twice, nested inside the path. Fixed by
+building the key as a plain relative path + `URLSearchParams` (`/findings?severity=...&status=...&limit=100`),
+matching how every other page on this console builds a filtered SWR key.
