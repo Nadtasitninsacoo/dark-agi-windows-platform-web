@@ -126,6 +126,29 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'gnupg:keyring-list': 'crypto:gpgkeyring',
   'powershell:certificate-store-inspector': 'crypto:certstore',
   'owasp-zap:baseline-scan': 'web:zap',
+
+  // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
+  // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.
+  'powershell:process-inventory-remote': 'remote:procs',
+  'powershell:service-inventory-remote': 'remote:services',
+  'powershell:network-connections-remote': 'remote:netstat',
+  'defender:status-remote': 'remote:defender',
+  'powershell:firewall-profiles-remote': 'remote:firewall',
+  'powershell:scheduled-tasks-remote': 'remote:tasks',
+  'powershell:startup-items-remote': 'remote:startup',
+  'powershell:installed-software-remote': 'remote:software',
+  'powershell:system-info-remote': 'remote:sysinfo',
+  'powershell:event-log-query-remote': 'remote:events',
+  'powershell:file-hash-remote': 'remote:hash',
+  'powershell:file-metadata-remote': 'remote:meta',
+  'powershell:certificate-inspector-remote': 'remote:cert',
+  'powershell:certificate-store-inspector-remote': 'remote:certstore',
+  'powershell:arp-discovery-remote': 'remote:arp',
+  'powershell:ip-configuration-remote': 'remote:ipconfig',
+  'powershell:routing-table-remote': 'remote:route',
+  'sysmon:event-query-remote': 'remote:sysmon',
+  'event-viewer:event-query-remote': 'remote:eventquery',
+  'event-viewer:security-log-summary-remote': 'remote:secsummary',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));

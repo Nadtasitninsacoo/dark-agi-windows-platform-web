@@ -347,3 +347,7 @@ authorization (RemoteHost) layered on top of Scope.
 - Verified live against the running dev server: registered a host, approved it, picked its remote operation
   in Submit Job, confirmed the credential popup appears for an uncredentialed host and the `Target
   host`/`Remote host` fields render correctly — all via a driven browser, not assumed.
+- Fix: the 20 new `-remote` operations were missing from `commands.ts`'s `COMMAND_ALIASES`, so the Sequence
+  builder's operation picker filled steps with an unparseable line (`dagi powershell:system-info-remote ...`
+  — not a recognized alias, "Unknown command" on every one). Added a `remote:` category alias for each
+  (`remote:sysinfo`, `remote:procs`, `remote:hash`, etc.), mirroring its local counterpart's existing alias.
