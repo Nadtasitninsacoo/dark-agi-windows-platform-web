@@ -22,6 +22,7 @@ import {
   type Suggestion,
 } from '@/lib/commands';
 import { JobResult } from '@/app/tasks/job-result';
+import { NextSuggestions } from '@/app/tasks/next-suggestions';
 
 /**
  * An interactive console for the DARK AGI command language. It looks and feels
@@ -40,7 +41,8 @@ type EntryData =
   | { kind: 'banner'; text: string }
   | { kind: 'error'; text: string }
   | { kind: 'approval'; text: string }
-  | { kind: 'result'; title: string; result: unknown };
+  | { kind: 'result'; title: string; result: unknown }
+  | { kind: 'suggestion'; job: Job };
 type Entry = EntryData & { id: number };
 
 const BANNER = `DARK AGI terminal — the platform's own command language.
@@ -196,6 +198,13 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
     } else {
       add({ kind: 'info', text: `${job.operationTitle} — ${job.status.toLowerCase()}` });
     }
+    if (job.status === 'SUCCEEDED' || job.status === 'FAILED') add({ kind: 'suggestion', job });
+  };
+
+  /** A suggestion's "Run this" (or autopilot) submits a new job the same way a typed command does. */
+  const onSuggestionSubmitted = async (job: Job) => {
+    add({ kind: 'info', text: `→ ${job.operationTitle} · job ${job.id.slice(0, 8)} · ${job.status.toLowerCase()}…` });
+    render(await poll(job.id, job));
   };
 
   const runCommand = async (raw: string) => {
@@ -384,6 +393,13 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
                   <div className="mt-1">
                     <JobResult result={entry.result} />
                   </div>
+                </div>
+              );
+            }
+            if (entry.kind === 'suggestion') {
+              return (
+                <div key={entry.id} className="my-1">
+                  <NextSuggestions job={entry.job} onSubmitted={(j) => void onSuggestionSubmitted(j)} />
                 </div>
               );
             }

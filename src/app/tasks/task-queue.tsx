@@ -11,6 +11,8 @@ import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } fr
 import { apiRequest, type EngineStatus, type Job, type JobPage, type Operation, type OperationList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { JobResult } from './job-result';
+import { NextSuggestions } from './next-suggestions';
+import { SequencePanel } from './sequence-panel';
 
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
 const post = (body?: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
@@ -303,6 +305,7 @@ function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unkn
           <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-ink-2">{job.stdoutExcerpt}</pre>
         </details>
       ) : null}
+      <NextSuggestions job={job} onSubmitted={() => void onChanged()} />
     </div>
   );
 }
@@ -353,6 +356,8 @@ export function TaskQueue() {
             )}
           </Panel>
         ) : null}
+
+        {can('jobs:submit') ? <SequencePanel /> : null}
 
         <Panel
           title="Jobs"

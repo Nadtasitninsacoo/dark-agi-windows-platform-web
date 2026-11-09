@@ -253,3 +253,39 @@ The backend's `ExecutionService.autoResolveTargets` was extended to resolve a `d
 `host`/`targets`. Both `autoResolvable` sets here (`commandTemplateAuto` and `commandHint`'s
 `missingRequiredFields`) now include `domain` too, so the AUTO command line and the "ready" check agree with
 what the backend will actually do.
+
+## Unreleased — "What should I run next?" suggestions, autopilot, and job sequences
+
+Backs the new backend job-sequence engine and AI suggest-next endpoint (see dark-agi-backend's CHANGELOG,
+Phase 27) with three pieces of UI:
+
+- **`src/app/tasks/next-suggestions.tsx`** (new, shared): once a job reaches a terminal status, fetches
+  `POST /agents/suggest-next` (via `useSWR` keyed on `[jobId, language]`, not a hand-rolled fetch effect —
+  keeps the component free of manual busy/error state and avoids the stricter
+  `react-hooks/set-state-in-effect` lint rule entirely) and renders each pick with its reason and any
+  proposed input, a "Run this" button, an EN/TH toggle (a local `useState<'en'|'th'>`, no i18n library —
+  nothing like that exists elsewhere in this app and building one would have been overkill for this), and an
+  **Autopilot** switch. Autopilot is a `localStorage` preference (`dark-agi:autopilot`, same try/catch
+  pattern as `floating-terminal.tsx`'s own remembered colour) — session-local by design, not a backend
+  setting, since it's a per-operator convenience, not a policy. Turning it on auto-submits the top pick the
+  moment suggestions arrive, through the exact same `POST /jobs` path "Run this" uses — so a pick that needs
+  approval still waits for a human exactly as it would if submitted by hand; autopilot only changes *when*
+  something is submitted, never *whether* it needs approval.
+  - Used from **`src/app/terminal/terminal-console.tsx`** (a new `'suggestion'` kind added to its existing
+    `EntryData` union, appended by `render(job)` right alongside the existing result/error entries) and
+    **`src/app/tasks/task-queue.tsx`**'s `JobDetail` (rendered next to the job's own result).
+- **`src/app/tasks/sequence-panel.tsx`** (new): a builder that reuses `parseCommand()` from `lib/commands.ts`
+  — paste one `dagi ... keng` line per step, the same syntax already used everywhere else in this app — with
+  reorder/remove controls, a name field, and a "Run now" vs. "Schedule" (`datetime-local`) choice, submitting
+  one `POST /sequences`. Below it, a list of existing sequences (`useSWR` with the same adaptive
+  fast-poll-while-active pattern `task-queue.tsx`'s own job list already uses) — each expandable to show
+  every step's status with a link to its job, and, once the sequence reaches a terminal status, a completion
+  card (same bordered, tone-coloured style as `ErrorNotice`, success-toned when it finished cleanly).
+  Mounted directly in `TaskQueue()`, above the existing Jobs panel.
+- Regenerated `src/lib/api/schema.d.ts` from the backend's updated `openapi.json` (`npm run api:types`) for
+  the new `Sequence`/`SequenceStep`/`SequenceList`/`SequenceCreateRequest`/`AgentSuggestNextResult` types.
+- Verified live against the running dev server: a real 2-step sequence (submitted via the backend
+  verification in the same phase) renders correctly in the Sequences panel, including its completion card;
+  the suggestion card renders correctly on a finished job's detail view, including the honest "No model
+  specified" error state this dev machine's empty Model Registry actually produces — confirmed via a driven
+  browser screenshot, not assumed.

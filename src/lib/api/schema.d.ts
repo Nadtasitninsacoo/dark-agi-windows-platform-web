@@ -406,6 +406,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sequences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SequencesController_list"];
+        put?: never;
+        /** Queue an ordered list of operations; each step runs only once the previous one reaches a terminal status (audited) */
+        post: operations["SequencesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sequences/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SequencesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sequences/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["SequencesController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/findings": {
         parameters: {
             query?: never;
@@ -707,6 +756,23 @@ export interface paths {
         put?: never;
         /** AI-assisted search: describe a goal (any language, incl. Thai) and get up to 5 matching operations — this never submits or runs anything */
         post: operations["AgentsController_suggest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/suggest-next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** AI-assisted next step: given a finished job, get up to 5 sensible follow-up operations (optionally pre-filled) in the requested language — this never submits or runs anything */
+        post: operations["AgentsController_suggestNext"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1312,6 +1378,31 @@ export interface components {
              * @default false
              */
             allowDelegation: boolean;
+        };
+        AgentSuggestNextRequest: {
+            /**
+             * Format: uuid
+             * @description A finished job to suggest follow-up operations for
+             */
+            jobId: string;
+            /**
+             * @default en
+             * @enum {string}
+             */
+            language: "en" | "th";
+            /** @description Override the default AI model for this one call (same registry ids as /ai/chat) */
+            model?: string;
+        };
+        AgentSuggestNextResult: {
+            suggestions: {
+                toolId: string;
+                operationId: string;
+                title: string;
+                reason: string;
+                input: {
+                    [key: string]: unknown;
+                } | null;
+            }[];
         };
         AgentSuggestRequest: {
             /** @description A natural-language goal (any language) to match against real operations — never executed */
@@ -2402,6 +2493,97 @@ export interface components {
             /** Format: date-time */
             expiresAt?: string | null;
         };
+        Sequence: {
+            id: string;
+            name: string | null;
+            /** @enum {string} */
+            status: "SCHEDULED" | "PENDING" | "RUNNING" | "PAUSED_FOR_APPROVAL" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+            /** Format: date-time */
+            scheduledAt: string | null;
+            createdBy: {
+                /** @enum {string} */
+                type: "USER" | "AGENT" | "SYSTEM";
+                id: string;
+            };
+            currentStep: number;
+            steps: {
+                position: number;
+                toolId: string;
+                operationId: string;
+                input: {
+                    [key: string]: unknown;
+                };
+                jobId: string | null;
+                /** @enum {string} */
+                status: "PENDING" | "SUBMITTED" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+            }[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+        };
+        SequenceCreateRequest: {
+            name?: string;
+            /**
+             * Format: date-time
+             * @description Omit to run immediately
+             */
+            scheduledAt?: string;
+            steps: {
+                toolId: string;
+                operationId: string;
+                /** @default {} */
+                input: {
+                    [key: string]: unknown;
+                };
+            }[];
+        };
+        SequenceList: {
+            items: {
+                id: string;
+                name: string | null;
+                /** @enum {string} */
+                status: "SCHEDULED" | "PENDING" | "RUNNING" | "PAUSED_FOR_APPROVAL" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+                /** Format: date-time */
+                scheduledAt: string | null;
+                createdBy: {
+                    /** @enum {string} */
+                    type: "USER" | "AGENT" | "SYSTEM";
+                    id: string;
+                };
+                currentStep: number;
+                steps: {
+                    position: number;
+                    toolId: string;
+                    operationId: string;
+                    input: {
+                        [key: string]: unknown;
+                    };
+                    jobId: string | null;
+                    /** @enum {string} */
+                    status: "PENDING" | "SUBMITTED" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                startedAt: string | null;
+                /** Format: date-time */
+                finishedAt: string | null;
+            }[];
+        };
+        SequenceStep: {
+            position: number;
+            toolId: string;
+            operationId: string;
+            input: {
+                [key: string]: unknown;
+            };
+            jobId: string | null;
+            /** @enum {string} */
+            status: "PENDING" | "SUBMITTED" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+        };
         Tool: {
             id: string;
             name: string;
@@ -3200,6 +3382,90 @@ export interface operations {
             };
         };
     };
+    SequencesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SequenceList"];
+                };
+            };
+        };
+    };
+    SequencesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SequenceCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sequence"];
+                };
+            };
+        };
+    };
+    SequencesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sequence"];
+                };
+            };
+        };
+    };
+    SequencesController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Sequence"];
+                };
+            };
+        };
+    };
     FindingsController_list: {
         parameters: {
             query?: {
@@ -3612,6 +3878,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentSuggestResult"];
+                };
+            };
+        };
+    };
+    AgentsController_suggestNext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentSuggestNextRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentSuggestNextResult"];
                 };
             };
         };
