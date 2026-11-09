@@ -3,6 +3,7 @@
 import { LogOut, SquareTerminal, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { StatusBadge } from '@/components/ui';
 import { API_BASE_URL, type EngineStatus, type HealthReport } from '@/lib/api/client';
@@ -17,6 +18,33 @@ function EngineBadge() {
   return (
     <Link href="/tasks">
       <StatusBadge tone="critical" label="ENGINE STOPPED" />
+    </Link>
+  );
+}
+
+/** A live "N awaiting approval" badge, visible on every page, plus a browser notification when
+ * the count rises — a job can start waiting at any moment (an AI agent, an external API key,
+ * someone else's session), not only while an approver happens to have Task Queue open. */
+function ApprovalBadge() {
+  const { can } = useAuth();
+  const { data } = useSWR<EngineStatus>(can('jobs:approve') ? '/engine' : null, { refreshInterval: 10_000 });
+  const count = data?.counts.AWAITING_APPROVAL ?? 0;
+  const prevCount = useRef(count);
+
+  useEffect(() => {
+    if (count > prevCount.current && typeof Notification !== 'undefined') {
+      if (Notification.permission === 'default') void Notification.requestPermission();
+      if (Notification.permission === 'granted') {
+        new Notification('DARK AGI — approval needed', { body: `${count} job${count === 1 ? '' : 's'} awaiting approval`, tag: 'dagi-approval' });
+      }
+    }
+    prevCount.current = count;
+  }, [count]);
+
+  if (count === 0) return null;
+  return (
+    <Link href="/tasks">
+      <StatusBadge tone="warning" label={`${count} awaiting approval`} />
     </Link>
   );
 }
@@ -90,6 +118,7 @@ export function TopBar() {
       </button>
       <div className="ml-auto flex items-center gap-2">
         <EngineBadge />
+        <ApprovalBadge />
         {api}
         {db}
         <span className="hidden font-mono text-[11px] text-ink-3 lg:inline">{API_BASE_URL}</span>

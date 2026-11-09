@@ -453,3 +453,18 @@ multiple category panels, or show just one if a category has more than 25 of its
 box resets to page 1. Purely a display-layer change: `GET /operations` itself is untouched and still returns
 the full catalogue in one response, so nothing that reads it directly (an API key, MCP, another integration)
 is affected.
+
+## A global "N awaiting approval" badge, plus a browser notification
+
+A job can start waiting on approval at any moment — an AI agent, an external API key, someone else's
+session — not only while an approver happens to have Task Queue open to notice. Nothing surfaced that
+anywhere else.
+
+- New `ApprovalBadge` in `top-bar.tsx`, next to the existing engine-stopped badge: polls `/engine` (already
+  the same endpoint `EngineBadge` uses) and shows `N awaiting approval` — visible on every page, not just
+  Task Queue — linking to `/tasks`. Hidden entirely when the count is 0, and only shown to users with the
+  `jobs:approve` permission (no point alerting someone who can't act on it).
+- When the count rises, it also fires a browser `Notification` (requesting permission on first use, and
+  only firing with `granted` permission) — so an approver away from the tab, or on a different page
+  entirely, still finds out. Verified live: badge correctly showed the real awaiting-approval count on an
+  unrelated page (Command Reference).
