@@ -116,6 +116,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'testdisk:partition-analysis': 'forensics:testdisk',
   'pingcastle:ad-health-check': 'win:pingcastle',
   'nessus:import-scan-results': 'vuln:nessus',
+  'age-inspect:inspect': 'crypto:age',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
