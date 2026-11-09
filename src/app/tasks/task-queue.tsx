@@ -10,6 +10,7 @@ import { useAuth } from '@/components/shell/auth';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
 import { apiRequest, type EngineStatus, type Job, type JobPage, type Operation, type OperationList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
+import { RemoteHostField } from '@/app/remote-hosts/remote-host-field';
 import { JobResult } from './job-result';
 import { NextSuggestions } from './next-suggestions';
 import { SequencePanel } from './sequence-panel';
@@ -162,6 +163,10 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
           {f.required ? ' *' : ''}
           {f.type === 'targets' ? (
             <textarea className={`${inputClass} mt-1 h-16 font-mono`} value={values[f.name] ?? ''} placeholder="127.0.0.1" onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
+          ) : f.type === 'remoteHost' ? (
+            <div className="mt-1">
+              <RemoteHostField value={values[f.name] ?? ''} onChange={(id) => setValues({ ...values, [f.name]: id })} />
+            </div>
           ) : (
             <input
               className={`${inputClass} mt-1 ${f.type === 'integer' ? 'w-40' : ''}`}

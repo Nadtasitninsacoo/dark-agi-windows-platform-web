@@ -315,3 +315,35 @@ Phase 27) with three pieces of UI:
   (Tool Registry, Terminal). The live hint now says as much for any network operation. Each disabled
   (greyed-out) dropdown entry also now states why it can't be picked (`— not installed/discovered yet`)
   instead of just appearing unselectable with no explanation.
+
+## Unreleased — Remote Hosts: run approved diagnostics on another machine
+
+Backs the backend's new remote-execution capability (dark-agi-backend's CHANGELOG, Phase 28) — 20 PowerShell
+diagnostics can now run on a different, approved machine instead of this one, gated by a second
+authorization (RemoteHost) layered on top of Scope.
+
+- **`src/app/remote-hosts/`** (new module, under Governance alongside Scope Management):
+  `remote-hosts-console.tsx` registers a host (+ optional credential up front), lists them with status
+  (`Pending approval`/`Approved`/`Revoked`) and whether a credential is on file, and lets an operator with
+  `hosts:manage` approve, revoke, or set/rotate the credential — the password field is write-only, never
+  redisplayed after save, same `<input type="password">` convention the login form already uses.
+  `remote-host-field.tsx` renders an operation's new `remoteHost` field type as a `<select>` of the
+  operator's own **approved** hosts only (`GET /remote-hosts?status=APPROVED`) — never free text, so a job
+  can only reference a host that actually went through approval.
+- **Submit-time credential popup**: picking an approved host that has no credential on file yet pops a small
+  modal asking for username/password right there, calling the same `POST /remote-hosts/:id/credential` the
+  admin page itself uses, then lets the job submission continue — picking an already-credentialed host just
+  works immediately, no popup. This only changes *when* a credential is captured; the server-side dual-gate
+  check (Scope membership + `RemoteHost` approval and credential) is unchanged and is what actually decides
+  whether a job may run, so the popup is a convenience, never a new trust boundary.
+- `SubmitJob` (`task-queue.tsx`) gained one new branch in its field-rendering switch for `f.type ===
+  'remoteHost'` → `RemoteHostField`. Sequence steps (`sequence-panel.tsx`) are left as free-typed
+  `remoteHostId=<uuid>` in the `dagi ... keng` line for now — that command-line builder's whole design is
+  typed syntax, not per-field pickers, so a dropdown there would cut against its own grain; typing the id
+  directly still works mechanically today.
+- New `server` icon (`lucide-react`'s `Server`) added to the module icon map for the new nav entry.
+- Regenerated `schema.d.ts`/`client.ts` for the new `RemoteHost`/`RemoteHostList`/`RemoteHostCreateRequest`/
+  `RemoteHostCredentialRequest` types and the `hosts:read`/`hosts:manage` permissions.
+- Verified live against the running dev server: registered a host, approved it, picked its remote operation
+  in Submit Job, confirmed the credential popup appears for an uncredentialed host and the `Target
+  host`/`Remote host` fields render correctly — all via a driven browser, not assumed.

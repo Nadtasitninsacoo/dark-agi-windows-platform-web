@@ -455,6 +455,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/remote-hosts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["RemoteHostsController_list"];
+        put?: never;
+        /** Register a remote execution target, optionally with its credential (audited); starts PENDING_APPROVAL */
+        post: operations["RemoteHostsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/remote-hosts/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authorize this platform to execute commands on this host (audited) */
+        post: operations["RemoteHostsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/remote-hosts/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw authorization; any queued job against this host is rejected from then on (audited) */
+        post: operations["RemoteHostsController_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/remote-hosts/{id}/credential": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set or replace the stored credential (encrypted at rest; never returned by any response) (audited) */
+        post: operations["RemoteHostsController_setCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/findings": {
         parameters: {
             query?: never;
@@ -1689,7 +1757,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -2236,7 +2304,7 @@ export interface components {
                 name: string;
                 label: string;
                 /** @enum {string} */
-                type: "targets" | "text" | "integer";
+                type: "targets" | "text" | "integer" | "remoteHost";
                 required: boolean;
                 default: (number | string) | null;
                 min: number | null;
@@ -2272,7 +2340,7 @@ export interface components {
                     name: string;
                     label: string;
                     /** @enum {string} */
-                    type: "targets" | "text" | "integer";
+                    type: "targets" | "text" | "integer" | "remoteHost";
                     required: boolean;
                     default: (number | string) | null;
                     min: number | null;
@@ -2287,6 +2355,62 @@ export interface components {
                 };
             }[];
         };
+        RemoteHost: {
+            id: string;
+            host: string;
+            label: string | null;
+            /** @enum {string} */
+            status: "PENDING_APPROVAL" | "APPROVED" | "REVOKED";
+            hasCredential: boolean;
+            /** @description The stored credential’s username, never its password */
+            credentialUsername: string | null;
+            credentialSetBy: string | null;
+            /** Format: date-time */
+            credentialSetAt: string | null;
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            approvedBy: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        RemoteHostCreateRequest: {
+            host: string;
+            label?: string;
+            username?: string;
+            password?: string;
+        };
+        RemoteHostCredentialRequest: {
+            username: string;
+            password: string;
+        };
+        RemoteHostList: {
+            items: {
+                id: string;
+                host: string;
+                label: string | null;
+                /** @enum {string} */
+                status: "PENDING_APPROVAL" | "APPROVED" | "REVOKED";
+                hasCredential: boolean;
+                /** @description The stored credential’s username, never its password */
+                credentialUsername: string | null;
+                credentialSetBy: string | null;
+                /** Format: date-time */
+                credentialSetAt: string | null;
+                createdBy: string;
+                /** Format: date-time */
+                createdAt: string;
+                approvedBy: string | null;
+                /** Format: date-time */
+                approvedAt: string | null;
+                /** Format: date-time */
+                revokedAt: string | null;
+            }[];
+        };
+        /** @enum {string} */
+        RemoteHostStatus: "PENDING_APPROVAL" | "APPROVED" | "REVOKED";
         Report: {
             id: string;
             title: string;
@@ -2760,7 +2884,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage")[];
             }[];
         };
         UserUpdateRequest: {
@@ -3462,6 +3586,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Sequence"];
+                };
+            };
+        };
+    };
+    RemoteHostsController_list: {
+        parameters: {
+            query?: {
+                status?: "PENDING_APPROVAL" | "APPROVED" | "REVOKED";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteHostList"];
+                };
+            };
+        };
+    };
+    RemoteHostsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoteHostCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteHost"];
+                };
+            };
+        };
+    };
+    RemoteHostsController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteHost"];
+                };
+            };
+        };
+    };
+    RemoteHostsController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteHost"];
+                };
+            };
+        };
+    };
+    RemoteHostsController_setCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoteHostCredentialRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RemoteHost"];
                 };
             };
         };

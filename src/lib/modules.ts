@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -75,6 +75,8 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'Point-in-time snapshots of findings and evidence, exportable as a standalone HTML document (PDF today is the browser’s own Print → Save as PDF).' },
   { slug: 'scopes', href: '/scopes', title: 'Scope Management', group: 'Governance', icon: 'target', status: 'live', phase: 4,
     summary: 'Authorized target scopes: the only addresses and domains network operations may touch.' },
+  { slug: 'remote-hosts', href: '/remote-hosts', title: 'Remote Hosts', group: 'Governance', icon: 'server', status: 'live', phase: 28,
+    summary: 'Machines this platform may run diagnostics on via PowerShell Remoting — a separate authorization from Scope, with its own approval and stored credential.' },
   { slug: 'permissions', href: '/permissions', title: 'Permissions', group: 'Governance', icon: 'lock', status: 'live', phase: 2,
     summary: 'Local users, roles and the permission matrix enforced on every API route.' },
   { slug: 'api-access', href: '/api-access', title: 'API Access', group: 'Governance', icon: 'key', status: 'live', phase: 4,
