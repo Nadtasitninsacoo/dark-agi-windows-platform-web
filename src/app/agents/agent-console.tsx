@@ -18,6 +18,7 @@ import {
   type AgentUpdateRequest,
   type AiModel,
   type AiModelList,
+  type AiProviderList,
   apiRequest,
 } from '@/lib/api/client';
 import { formatRelativeTime } from '@/lib/format';
@@ -34,32 +35,45 @@ const json = (method: string, body?: unknown): RequestInit => ({
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
 
-function AgentListPanel({ agents, selected, onSelect }: { agents: Agent[]; selected: string; onSelect: (id: string) => void }) {
+function AgentListPanel({ agents, providerStatusById, selected, onSelect }: { agents: Agent[]; providerStatusById: ReadonlyMap<string, string>; selected: string; onSelect: (id: string) => void }) {
   return (
     <Panel title="Agents" subtitle={`${agents.length} registered`}>
       <ul className="-m-1 space-y-0.5">
-        {agents.map((a) => (
-          <li key={a.id}>
-            <button
-              type="button"
-              onClick={() => onSelect(a.id)}
-              aria-current={a.id === selected}
-              className={`w-full rounded px-2 py-1.5 text-left transition-colors ${a.id === selected ? 'bg-accent-strong/15 ring-1 ring-accent/40' : 'hover:bg-panel-2'}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5">
-                  {a.stats.running > 0 ? <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-accent" style={{ boxShadow: '0 0 6px 1px rgb(46 232 143 / 0.8)' }} aria-hidden /> : null}
-                  <span className={`text-[12px] font-semibold ${a.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{a.name}</span>
-                  {a.autoRunEnabled ? <Zap className="size-3 text-accent" aria-label="Auto mode on" /> : null}
-                </span>
-                <span className="font-mono text-[10.5px] text-ink-3">
-                  {a.stats.succeeded}/{a.stats.runs}
-                </span>
-              </div>
-              <div className="truncate text-[11px] text-ink-3">{a.effectiveModel ?? 'no model assigned'}</div>
-            </button>
-          </li>
-        ))}
+        {agents.map((a) => {
+          const running = a.stats.running > 0;
+          const down = !running && downReason(a, providerStatusById) !== null;
+          return (
+            <li key={a.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(a.id)}
+                aria-current={a.id === selected}
+                className={`w-full rounded px-2 py-1.5 text-left transition-colors ${a.id === selected ? 'bg-accent-strong/15 ring-1 ring-accent/40' : 'hover:bg-panel-2'}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5">
+                    {running ? (
+                      <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-accent" style={{ boxShadow: '0 0 6px 1px rgb(46 232 143 / 0.8)' }} aria-hidden />
+                    ) : down ? (
+                      <span
+                        className="size-1.5 shrink-0 animate-pulse rounded-full bg-critical"
+                        style={{ animationDuration: '0.9s', boxShadow: '0 0 6px 1.5px rgb(248 113 113 / 0.9)' }}
+                        title={downReason(a, providerStatusById) ?? undefined}
+                        aria-label={`Not working: ${downReason(a, providerStatusById)}`}
+                      />
+                    ) : null}
+                    <span className={`text-[12px] font-semibold ${a.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{a.name}</span>
+                    {a.autoRunEnabled ? <Zap className="size-3 text-accent" aria-label="Auto mode on" /> : null}
+                  </span>
+                  <span className="font-mono text-[10.5px] text-ink-3">
+                    {a.stats.succeeded}/{a.stats.runs}
+                  </span>
+                </div>
+                <div className="truncate text-[11px] text-ink-3">{a.effectiveModel ?? 'no model assigned'}</div>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </Panel>
   );
@@ -79,16 +93,39 @@ function StatusBar({ stats }: { stats: Agent['stats'] }) {
   );
 }
 
-function AgentOverviewCard({ agent, onToggleAuto, busy }: { agent: Agent; onToggleAuto: (enabled: boolean) => void; busy: boolean }) {
+/** Why an agent's status light is red — shown as the dot's title/tooltip. */
+function downReason(agent: Agent, providerStatusById: ReadonlyMap<string, string>): string | null {
+  if (!agent.enabled) return 'Agent is disabled';
+  if (!agent.effectiveModel) return 'No model assigned (set one below, or configure AI_DEFAULT_MODEL)';
+  const providerId = agent.effectiveModel.split(':')[0] ?? '';
+  const status = providerStatusById.get(providerId);
+  if (status === 'error') return `Provider "${providerId}" is unreachable`;
+  if (status === 'not_configured') return `Provider "${providerId}" is not configured`;
+  return null;
+}
+
+function AgentOverviewCard({ agent, providerStatusById, onToggleAuto, busy }: { agent: Agent; providerStatusById: ReadonlyMap<string, string>; onToggleAuto: (enabled: boolean) => void; busy: boolean }) {
   const running = agent.stats.running > 0;
+  const down = !running && downReason(agent, providerStatusById) !== null;
   return (
     <div
-      className={`rounded-md border p-2.5 transition-colors ${running ? 'border-accent/50 bg-accent-strong/5' : 'border-edge bg-panel'}`}
+      className={`rounded-md border p-2.5 transition-colors ${running ? 'border-accent/50 bg-accent-strong/5' : down ? 'border-critical/40 bg-critical/5' : 'border-edge bg-panel'}`}
       style={running ? { animation: 'dagi-pulse 2.5s ease-in-out infinite', boxShadow: '0 0 0 1px rgb(46 232 143 / 0.15)' } : undefined}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          {running ? <Radar className="size-3.5 shrink-0 animate-spin text-accent" style={{ animationDuration: '2s' }} aria-hidden /> : <span className="size-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden />}
+          {running ? (
+            <Radar className="size-3.5 shrink-0 animate-spin text-accent" style={{ animationDuration: '2s' }} aria-hidden />
+          ) : down ? (
+            <span
+              className="size-1.5 shrink-0 animate-pulse rounded-full bg-critical"
+              style={{ animationDuration: '0.9s', boxShadow: '0 0 6px 1.5px rgb(248 113 113 / 0.9)' }}
+              title={downReason(agent, providerStatusById) ?? undefined}
+              aria-label={`Not working: ${downReason(agent, providerStatusById)}`}
+            />
+          ) : (
+            <span className="size-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden />
+          )}
           <span className={`truncate text-[12px] font-semibold ${agent.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{agent.name}</span>
         </div>
         <Toggle checked={agent.autoRunEnabled} onChange={onToggleAuto} disabled={busy} label={`Auto mode for ${agent.name}`} />
@@ -100,12 +137,14 @@ function AgentOverviewCard({ agent, onToggleAuto, busy }: { agent: Agent; onTogg
         </span>
         <span>{agent.autoRunEnabled ? `auto: ${formatRelativeTime(agent.lastAutoRunAt)}` : 'auto off'}</span>
       </div>
+      {down ? <p className="mt-1 text-[10.5px] text-critical">{downReason(agent, providerStatusById)}</p> : null}
     </div>
   );
 }
 
-function AgentOverviewPanel({ agents, onToggleAuto, onAutoAll, busyId, autoAllBusy }: {
+function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAll, busyId, autoAllBusy }: {
   agents: Agent[];
+  providerStatusById: ReadonlyMap<string, string>;
   onToggleAuto: (id: string, enabled: boolean) => void;
   onAutoAll: (enabled: boolean) => void;
   busyId: string | null;
@@ -113,10 +152,11 @@ function AgentOverviewPanel({ agents, onToggleAuto, onAutoAll, busyId, autoAllBu
 }) {
   const runningNow = agents.filter((a) => a.stats.running > 0).length;
   const autoOn = agents.filter((a) => a.autoRunEnabled).length;
+  const downNow = agents.filter((a) => a.stats.running === 0 && downReason(a, providerStatusById) !== null).length;
   return (
     <Panel
       title="Operations overview"
-      subtitle={`${runningNow} running now · ${autoOn}/${agents.length} on auto mode · polls every few seconds`}
+      subtitle={`${runningNow} running now · ${autoOn}/${agents.length} on auto mode${downNow > 0 ? ` · ${downNow} not working` : ''} · polls every few seconds`}
       actions={
         <div className="flex items-center gap-1.5">
           <Button busy={autoAllBusy} onClick={() => onAutoAll(true)}>
@@ -130,7 +170,7 @@ function AgentOverviewPanel({ agents, onToggleAuto, onAutoAll, busyId, autoAllBu
     >
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {agents.map((a) => (
-          <AgentOverviewCard key={a.id} agent={a} busy={busyId === a.id} onToggleAuto={(enabled) => onToggleAuto(a.id, enabled)} />
+          <AgentOverviewCard key={a.id} agent={a} providerStatusById={providerStatusById} busy={busyId === a.id} onToggleAuto={(enabled) => onToggleAuto(a.id, enabled)} />
         ))}
       </div>
     </Panel>
@@ -430,6 +470,8 @@ function HistoryPanel({ agent, names }: { agent: Agent; names: Record<string, st
 export function AgentConsole() {
   const agents = useSWR<AgentList>('/agents', { refreshInterval: 4_000 });
   const models = useSWR<AiModelList>('/ai/models?status=AVAILABLE');
+  const providers = useSWR<AiProviderList>('/ai/providers', { refreshInterval: 10_000 });
+  const providerStatusById = useMemo(() => new Map((providers.data?.providers ?? []).map((p) => [p.id, p.status])), [providers.data]);
   const [selected, setSelected] = useState('oracle');
   const [autoBusyId, setAutoBusyId] = useState<string | null>(null);
   const [autoAllBusy, setAutoAllBusy] = useState(false);
@@ -479,11 +521,20 @@ export function AgentConsole() {
         {agents.error ? <ErrorNotice error={agents.error} /> : null}
         {autoError ? <ErrorNotice error={autoError} /> : null}
         {!agents.data && !agents.error ? <Skeleton className="h-64 w-full" /> : null}
-        {agents.data ? <AgentOverviewPanel agents={items} onToggleAuto={(id, enabled) => void toggleAuto(id, enabled)} onAutoAll={(enabled) => void autoAll(enabled)} busyId={autoBusyId} autoAllBusy={autoAllBusy} /> : null}
+        {agents.data ? (
+          <AgentOverviewPanel
+            agents={items}
+            providerStatusById={providerStatusById}
+            onToggleAuto={(id, enabled) => void toggleAuto(id, enabled)}
+            onAutoAll={(enabled) => void autoAll(enabled)}
+            busyId={autoBusyId}
+            autoAllBusy={autoAllBusy}
+          />
+        ) : null}
         {agent && agents.data ? (
           <div className="grid gap-3 lg:grid-cols-[15rem_1fr]">
             <div className="space-y-3">
-              <AgentListPanel agents={items} selected={agent.id} onSelect={setSelected} />
+              <AgentListPanel agents={items} providerStatusById={providerStatusById} selected={agent.id} onSelect={setSelected} />
               <Panel title="Delegation limits">
                 <dl className="space-y-0.5 text-[11.5px] text-ink-2">
                   <div>Max depth: {agents.data.limits.maxDelegationDepth}</div>

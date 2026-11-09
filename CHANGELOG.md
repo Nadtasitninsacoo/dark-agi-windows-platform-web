@@ -372,3 +372,24 @@ deployment turns it on (`MSFRPC_ENABLED`); it's simply absent otherwise.
   shows once something's typed. The Sequence builder's filter is shared across every step's dropdown (one
   box, not one per step). The currently-selected operation always stays visible in `SubmitJob`'s list even
   if it no longer matches the filter, so picking a match never looks like it silently lost the selection.
+
+## AI Agents: a status light per agent, not just a running indicator
+
+The Operations Overview grid and the Agents sidebar already had a nice spinning `Radar` icon + pulsing glow
+for an agent actively running, but nothing showed when an agent genuinely *couldn't* run at all — a
+disabled agent, one with no model assigned, or one whose provider is unreachable all looked identical to a
+perfectly healthy, idle agent (a plain grey dot).
+
+- New `downReason(agent, providerStatusById)` in `agent-console.tsx` returns why an agent can't run right
+  now (disabled / no model assigned / its provider is `error` or `not_configured`), or `null` if it's fine.
+- Both `AgentOverviewCard` and `AgentListPanel`'s rows now show a **red, fast-pulsing dot** (with a red glow,
+  same visual language as the existing green "running" glow) whenever `downReason()` returns non-null and
+  the agent isn't currently running — running always takes visual priority over down, since an agent mid-run
+  is proof it's currently working regardless of other state. The reason is in the dot's `title`/`aria-label`,
+  and also printed as a line under the card in the Overview grid.
+- `AgentConsole()` now also fetches `/ai/providers` (10 s poll, matching the existing 4 s agent poll) and
+  builds a `providerId → status` map, threaded down to both panels — a provider's `error`/`not_configured`
+  status (e.g. a misconfigured or unreachable Gemini key) now visibly turns every agent assigned to it red,
+  not just a silent failure the next time something tries to run.
+- The Overview panel's subtitle gains a `· N not working` count when at least one agent is down, next to the
+  existing running/auto-mode counts.
