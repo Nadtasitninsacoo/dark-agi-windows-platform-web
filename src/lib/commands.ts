@@ -153,13 +153,13 @@ export function commandTemplate(op: Operation): string {
 }
 
 /**
- * Same command, but with the target field (`host`/`targets`) left out — the server fills it in from
- * the operator's one active scope instead (ExecutionService.autoResolveTargets). Only differs from
+ * Same command, but with the target field (`host`/`domain`/`targets`) left out — the server fills it in
+ * from the operator's one active scope instead (ExecutionService.autoResolveTargets). Only differs from
  * commandTemplate for `targetKind === 'network'` operations; local operations have no target field.
  */
 export function commandTemplateAuto(op: Operation): string {
   const alias = aliasFor(op) ?? key(op);
-  const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'targets']) : new Set<string>();
+  const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'domain', 'targets']) : new Set<string>();
   const parts = op.fields
     .filter((f) => !autoResolvable.has(f.name))
     .filter(belongsInCommandLine)
@@ -308,10 +308,10 @@ export function commandHint(line: string, operations: readonly Operation[]): Com
   const op = operationForAlias(alias, operations);
   if (!op) return { alias, operation: null, missingRequiredFields: [], ready: false };
   const present = new Set(tokens.slice(2).map((t) => t.slice(0, t.indexOf('='))).filter(Boolean));
-  // A network operation's host/targets field can be auto-resolved server-side from the one active scope (see
-  // ExecutionService.autoResolveTargets) — don't flag the command as "not ready" over a field that will fill
-  // itself in; every other required field still has to be typed.
-  const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'targets']) : new Set<string>();
+  // A network operation's host/domain/targets field can be auto-resolved server-side from the one active
+  // scope (see ExecutionService.autoResolveTargets) — don't flag the command as "not ready" over a field
+  // that will fill itself in; every other required field still has to be typed.
+  const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'domain', 'targets']) : new Set<string>();
   const missingRequiredFields = op.fields.filter((f) => f.required && !present.has(f.name) && !autoResolvable.has(f.name)).map((f) => f.name);
   const hasSuffix = tokens[tokens.length - 1] === COMMAND_SUFFIX && tokens.length > 2;
   return { alias, operation: op, missingRequiredFields, ready: missingRequiredFields.length === 0 && hasSuffix };

@@ -245,3 +245,11 @@ there is actually necessary — required fields (must be filled in) or optional 
 entirely, since the command runs correctly without it. Also fixes the same cosmetic issue on operations this
 session didn't touch directly (e.g. `tshark:live-capture`'s `maxPackets`/`durationSeconds` now show their
 real defaults inline instead of placeholders). 2 new/updated unit tests.
+
+## Unreleased — `domain` fields now also drop out of the AUTO command line
+
+The backend's `ExecutionService.autoResolveTargets` was extended to resolve a `domain` field (SharpHound's
+`ad-collect`, PingCastle's `ad-health-check`) from the active scope, the same way it already resolves
+`host`/`targets`. Both `autoResolvable` sets here (`commandTemplateAuto` and `commandHint`'s
+`missingRequiredFields`) now include `domain` too, so the AUTO command line and the "ready" check agree with
+what the backend will actually do.
