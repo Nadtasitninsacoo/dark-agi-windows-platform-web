@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Operation } from './api/client';
 import { CommandError, commandHint, COMMAND_ALIASES, commandTemplate, parseCommand, suggestCommand, tokenizeCommand } from './commands';
 
-const op = (toolId: string, operationId: string, fields: { name: string; type: 'text' | 'integer' | 'targets' }[]): Operation =>
-  ({ toolId, operationId, title: operationId, fields: fields.map((f) => ({ ...f, label: f.name, required: false, default: null, min: null, max: null, help: '' })) }) as unknown as Operation;
+const op = (toolId: string, operationId: string, fields: { name: string; type: 'text' | 'integer' | 'targets'; required?: boolean; default?: unknown }[]): Operation =>
+  ({ toolId, operationId, title: operationId, fields: fields.map((f) => ({ label: f.name, min: null, max: null, help: '', required: false, default: null, ...f })) }) as unknown as Operation;
 
 const OPS: Operation[] = [
   op('powershell', 'dns-inspection', [{ name: 'host', type: 'text' }]),
@@ -23,8 +23,17 @@ describe('DARK AGI command language', () => {
     expect(tokenizeCommand('dagi fs:hash path="C:\\Program Files\\a.exe" keng')).toEqual(['dagi', 'fs:hash', 'path=C:\\Program Files\\a.exe', 'keng']);
   });
 
-  it('builds a ready-to-type template with <field> placeholders', () => {
-    expect(commandTemplate(op('powershell', 'dns-inspection', [{ name: 'host', type: 'text' }]))).toBe('dagi net:dns host=<host> keng');
+  it('builds a ready-to-type template with <field> placeholders for required fields', () => {
+    expect(commandTemplate(op('powershell', 'dns-inspection', [{ name: 'host', type: 'text', required: true }]))).toBe('dagi net:dns host=<host> keng');
+  });
+
+  it('shows a real default inline, and omits an optional field with no default — the command must stay runnable as shown', () => {
+    const rustscan = op('powershell', 'tcp-connect-scan', [
+      { name: 'host', type: 'text', required: true },
+      { name: 'ports', type: 'text', required: false },
+      { name: 'topPorts', type: 'integer', required: false, default: 100 },
+    ]);
+    expect(commandTemplate(rustscan)).toBe('dagi net:scan host=<host> topPorts=100 keng');
   });
 
   it('gives every alias a unique verb', () => {

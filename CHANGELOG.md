@@ -231,3 +231,17 @@
 - Tool Registry's expanded tool detail (previously just a bare operation list with no runnable command at
   all) now cross-references the full `/operations` list by `${toolId}:${operationId}` and shows the same two
   copyable command lines under every available operation.
+
+## Unreleased — Fixed: the ready-to-run command line showed optional fields as if still required
+
+The operator spotted it directly from the Tool Registry screenshots: after the backend made several fields
+genuinely optional (masscan/nmap's `ports`, Gobuster/feroxbuster/ffuf's `wordlistPath`), the shown command
+line still printed `ports=<ports>` / `wordlistPath=<wordlistPath>` — identical in appearance to a truly
+required field like `host=<host>`, so the "ready to run" command still looked like it needed editing before
+it would actually work. Root cause: `commandTemplate`/`commandTemplateAuto` included every field
+unconditionally, regardless of its `required` flag. Fixed by only including a field when typing something
+there is actually necessary — required fields (must be filled in) or optional fields with a real default
+(shown so the operator can see what value will be used); an optional field with no default is now omitted
+entirely, since the command runs correctly without it. Also fixes the same cosmetic issue on operations this
+session didn't touch directly (e.g. `tshark:live-capture`'s `maxPackets`/`durationSeconds` now show their
+real defaults inline instead of placeholders). 2 new/updated unit tests.

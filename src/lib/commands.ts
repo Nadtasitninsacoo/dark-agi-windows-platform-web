@@ -136,10 +136,19 @@ export function aliasFor(op: Pick<Operation, 'toolId' | 'operationId'>): string 
   return COMMAND_ALIASES[key(op)];
 }
 
-/** A ready-to-type command line for an operation, with each field as `name=<name>` or its default. */
+/**
+ * A field belongs in a ready-to-run command line only if typing something there is actually necessary:
+ * required fields (must be filled in) or optional fields with a real default (shown so the operator can see
+ * what value will be used). An optional field with no default (e.g. `ports`, `wordlistPath` once a bundled
+ * fallback exists) genuinely runs fine omitted — showing it as `name=<name>` would make a working command
+ * look like it still needs editing before it can run.
+ */
+const belongsInCommandLine = (f: Operation['fields'][number]): boolean => f.required || (f.default !== null && f.default !== undefined);
+
+/** A ready-to-type, actually runnable command line for an operation: required fields and any real defaults. */
 export function commandTemplate(op: Operation): string {
   const alias = aliasFor(op) ?? key(op);
-  const parts = op.fields.map((f) => `${f.name}=${f.default !== null && f.default !== undefined ? f.default : `<${f.name}>`}`);
+  const parts = op.fields.filter(belongsInCommandLine).map((f) => `${f.name}=${f.default !== null && f.default !== undefined ? f.default : `<${f.name}>`}`);
   return [COMMAND_PREFIX, alias, ...parts, COMMAND_SUFFIX].join(' ');
 }
 
@@ -153,6 +162,7 @@ export function commandTemplateAuto(op: Operation): string {
   const autoResolvable = op.targetKind === 'network' ? new Set(['host', 'targets']) : new Set<string>();
   const parts = op.fields
     .filter((f) => !autoResolvable.has(f.name))
+    .filter(belongsInCommandLine)
     .map((f) => `${f.name}=${f.default !== null && f.default !== undefined ? f.default : `<${f.name}>`}`);
   return [COMMAND_PREFIX, alias, ...parts, COMMAND_SUFFIX].join(' ');
 }
