@@ -118,6 +118,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'nessus:import-scan-results': 'vuln:nessus',
   'age-inspect:inspect': 'crypto:age',
   'mitmproxy:capture-flows': 'web:mitmproxy',
+  'tshark:live-capture': 'net:tsharklive',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
