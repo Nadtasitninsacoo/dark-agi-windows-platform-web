@@ -125,6 +125,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'rizin:process-attach': 'malware:rizinattach',
   'gnupg:keyring-list': 'crypto:gpgkeyring',
   'powershell:certificate-store-inspector': 'crypto:certstore',
+  'owasp-zap:baseline-scan': 'web:zap',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
