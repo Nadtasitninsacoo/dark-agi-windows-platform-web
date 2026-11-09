@@ -59,7 +59,23 @@ export function TopBar() {
 
   return (
     <header className="flex h-11 items-center gap-3 border-b border-edge bg-panel px-4">
-      <Image src="/dark-agi-logo-small.png" alt="" width={99} height={72} className="h-7 w-auto" priority />
+      <div
+        className="rounded-md p-px"
+        style={{
+          background:
+            'conic-gradient(from var(--dagi-angle), transparent 0%, transparent 78%, rgb(46 232 143 / 0.9) 92%, rgb(190 255 225) 95%, rgb(46 232 143 / 0.9) 98%, transparent 100%)',
+          animation: 'dagi-border-spin 3.5s linear infinite',
+        }}
+      >
+        <Image
+          src="/dark-agi-logo-small.png"
+          alt=""
+          width={99}
+          height={72}
+          className="h-7 w-auto rounded-[calc(0.375rem-1px)] bg-canvas/60"
+          priority
+        />
+      </div>
       <span className="text-[13px] font-semibold tracking-wide">
         DARK AGI <span className="font-normal text-ink-3">· Windows Cyber Intelligence Platform</span>
       </span>

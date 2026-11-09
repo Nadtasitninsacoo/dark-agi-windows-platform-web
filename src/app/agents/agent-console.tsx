@@ -1,8 +1,25 @@
 'use client';
 
-import { Play, Radar, Square, Trash2, Zap } from 'lucide-react';
+import {
+  Binoculars,
+  Brain,
+  Fingerprint,
+  Globe,
+  KeyRound,
+  type LucideIcon,
+  Monitor,
+  Play,
+  Radar,
+  Satellite,
+  ShieldAlert,
+  ShieldCheck,
+  Skull,
+  Square,
+  Trash2,
+  Zap,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useMemo, useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, Toggle } from '@/components/ui';
@@ -35,6 +52,26 @@ const json = (method: string, body?: unknown): RequestInit => ({
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
 
+/** One distinctive icon per specialist agent, keyed by its catalogue name — purely an identity mark, so it
+ * always renders in a neutral tone and never competes with the cyan/red working status signal. */
+const AGENT_ICONS: Record<string, LucideIcon> = {
+  ORACLE: Brain,
+  SENTINEL: ShieldCheck,
+  RECON: Binoculars,
+  VULNERABILITY: ShieldAlert,
+  WEBGUARD: Globe,
+  FORENSICS: Fingerprint,
+  'MALWARE ANALYST': Skull,
+  'THREAT INTELLIGENCE': Satellite,
+  'WINDOWS SECURITY': Monitor,
+  'CRYPTO AUDITOR': KeyRound,
+};
+
+function AgentIcon({ name, className }: { name: string; className: string }) {
+  const Icon = AGENT_ICONS[name] ?? Zap;
+  return <Icon className={className} aria-hidden />;
+}
+
 function AgentListPanel({ agents, providerStatusById, selected, onSelect }: { agents: Agent[]; providerStatusById: ReadonlyMap<string, string>; selected: string; onSelect: (id: string) => void }) {
   return (
     <Panel title="Agents" subtitle={`${agents.length} registered`}>
@@ -53,15 +90,16 @@ function AgentListPanel({ agents, providerStatusById, selected, onSelect }: { ag
                 <div className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5">
                     {running ? (
-                      <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-accent" style={{ boxShadow: '0 0 6px 1px rgb(46 232 143 / 0.8)' }} aria-hidden />
+                      <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-cyan" aria-hidden />
                     ) : down ? (
                       <span
                         className="size-1.5 shrink-0 animate-pulse rounded-full bg-critical"
-                        style={{ animationDuration: '0.9s', boxShadow: '0 0 6px 1.5px rgb(248 113 113 / 0.9)' }}
+                        style={{ animationDuration: '0.9s' }}
                         title={downReason(a, providerStatusById) ?? undefined}
                         aria-label={`Not working: ${downReason(a, providerStatusById)}`}
                       />
                     ) : null}
+                    <AgentIcon name={a.name} className="size-3.5 shrink-0 text-ink-2" />
                     <span className={`text-[12px] font-semibold ${a.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{a.name}</span>
                     {a.autoRunEnabled ? <Zap className="size-3 text-accent" aria-label="Auto mode on" /> : null}
                   </span>
@@ -80,15 +118,52 @@ function AgentListPanel({ agents, providerStatusById, selected, onSelect }: { ag
 }
 
 /** Real counts only, animated by SWR's own re-renders as fresh data arrives — never a fabricated series. */
+const BEAD_COUNT = 20;
+/** Two-colour scheme by request: cyan/blue for "working" outcomes, red for "not working" ones — not a
+ * per-outcome rainbow, so the strip reads at a glance the same way the single status dot does. */
+const BEAD_CATEGORIES = [
+  { key: 'succeeded', className: 'bg-cyan' },
+  { key: 'running', className: 'bg-cyan' },
+  { key: 'failed', className: 'bg-critical' },
+  { key: 'cancelled', className: 'bg-critical/70' },
+] as const;
+
+/** Allocates BEAD_COUNT beads proportionally across categories (largest-remainder apportionment, so the
+ * bead counts always sum to exactly BEAD_COUNT regardless of rounding) — a string-of-LEDs status strip
+ * instead of a continuous bar, each bead individually glowing like a lit indicator on a control panel. */
+function allocateBeads(counts: readonly number[]): number[] {
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (total <= 0) return counts.map(() => 0);
+  const raw = counts.map((n) => (n / total) * BEAD_COUNT);
+  const base = raw.map(Math.floor);
+  let remaining = BEAD_COUNT - base.reduce((a, b) => a + b, 0);
+  const order = raw.map((n, i) => ({ i, frac: n - Math.floor(n) })).toSorted((a, b) => b.frac - a.frac);
+  for (const { i } of order) {
+    if (remaining <= 0) break;
+    base[i]! += 1;
+    remaining -= 1;
+  }
+  return base;
+}
+
 function StatusBar({ stats }: { stats: Agent['stats'] }) {
-  const total = stats.runs || 1;
-  const seg = (n: number) => `${(n / total) * 100}%`;
+  const working = stats.running > 0;
+  const beadCounts = allocateBeads(BEAD_CATEGORIES.map((c) => stats[c.key]));
+  const beads = BEAD_CATEGORIES.flatMap((c, ci) => Array.from({ length: beadCounts[ci]! }, () => c));
+  const empty = Math.max(0, BEAD_COUNT - beads.length);
+  // While the agent is actively working, every bead (lit or not) gets a travelling "chase" light — each
+  // one's animation-delay offset by its position, so the glow visibly runs along the strip rather than
+  // every bead just pulsing in unison.
+  const chaseStyle = (i: number): CSSProperties | undefined =>
+    working ? { animation: 'dagi-chase 1.4s linear infinite', animationDelay: `${i * 0.07}s` } : undefined;
   return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-panel-2">
-      <div className="h-full bg-good transition-all duration-700" style={{ width: seg(stats.succeeded) }} />
-      <div className="h-full bg-critical transition-all duration-700" style={{ width: seg(stats.failed) }} />
-      <div className="h-full bg-ink-3/50 transition-all duration-700" style={{ width: seg(stats.cancelled) }} />
-      <div className="h-full bg-cyan transition-all duration-700" style={{ width: seg(stats.running) }} />
+    <div className="flex items-center gap-[3px]" role="img" aria-label={`${stats.succeeded} succeeded, ${stats.failed} failed, ${stats.cancelled} cancelled, ${stats.running} running`}>
+      {beads.map((b, i) => (
+        <span key={`${b.key}-${i}`} className={`size-1.5 shrink-0 rounded-full ${b.className}`} style={chaseStyle(i)} aria-hidden />
+      ))}
+      {Array.from({ length: empty }, (_, i) => (
+        <span key={`empty-${i}`} className="size-1.5 shrink-0 rounded-full bg-panel-2" style={chaseStyle(beads.length + i)} aria-hidden />
+      ))}
     </div>
   );
 }
@@ -109,23 +184,24 @@ function AgentOverviewCard({ agent, providerStatusById, onToggleAuto, busy }: { 
   const down = !running && downReason(agent, providerStatusById) !== null;
   return (
     <div
-      className={`rounded-md border p-2.5 transition-colors ${running ? 'border-accent/50 bg-accent-strong/5' : down ? 'border-critical/40 bg-critical/5' : 'border-edge bg-panel'}`}
-      style={running ? { animation: 'dagi-pulse 2.5s ease-in-out infinite', boxShadow: '0 0 0 1px rgb(46 232 143 / 0.15)' } : undefined}
+      className={`rounded-md border p-2.5 transition-colors ${running ? 'border-cyan/50 bg-cyan/5' : down ? 'border-critical/40 bg-critical/5' : 'border-edge bg-panel'}`}
+      style={running ? { animation: 'dagi-pulse 2.5s ease-in-out infinite', boxShadow: '0 0 0 1px rgb(34 211 238 / 0.2)' } : undefined}
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1.5">
           {running ? (
-            <Radar className="size-3.5 shrink-0 animate-spin text-accent" style={{ animationDuration: '2s' }} aria-hidden />
+            <Radar className="size-3.5 shrink-0 animate-spin text-cyan" style={{ animationDuration: '2s' }} aria-hidden />
           ) : down ? (
             <span
               className="size-1.5 shrink-0 animate-pulse rounded-full bg-critical"
-              style={{ animationDuration: '0.9s', boxShadow: '0 0 6px 1.5px rgb(248 113 113 / 0.9)' }}
+              style={{ animationDuration: '0.9s' }}
               title={downReason(agent, providerStatusById) ?? undefined}
               aria-label={`Not working: ${downReason(agent, providerStatusById)}`}
             />
           ) : (
             <span className="size-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden />
           )}
+          <AgentIcon name={agent.name} className="size-3.5 shrink-0 text-ink-2" />
           <span className={`truncate text-[12px] font-semibold ${agent.enabled ? 'text-ink' : 'text-ink-3 line-through'}`}>{agent.name}</span>
         </div>
         <Toggle checked={agent.autoRunEnabled} onChange={onToggleAuto} disabled={busy} label={`Auto mode for ${agent.name}`} />

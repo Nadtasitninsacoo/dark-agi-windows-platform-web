@@ -393,3 +393,26 @@ perfectly healthy, idle agent (a plain grey dot).
   not just a silent failure the next time something tries to run.
 - The Overview panel's subtitle gains a `· N not working` count when at least one agent is down, next to the
   existing running/auto-mode counts.
+- Follow-up: `StatusBar` (the succeeded/failed/cancelled/running ratio strip under each agent card) is now a
+  row of 20 individually glowing beads (largest-remainder apportionment keeps the count exact regardless of
+  rounding) instead of a continuous filled bar — a "string of LEDs" look, by request.
+- Follow-up: recolored to a strict two-tone scheme — cyan/blue for anything "working" (succeeded or
+  currently running beads, the single running dot, the card border/glow, the spinning `Radar` icon), red for
+  anything "not working" (failed/cancelled beads, the down dot) — replacing the earlier four-colour scheme
+  so the strip reads the same way the single status dot already did.
+- Follow-up: while an agent has a run in progress, every bead in its strip (lit or unlit) now runs a
+  travelling "chase" animation (`dagi-chase` keyframe in `globals.css`, staggered per-bead via
+  `animation-delay`) so the light visibly runs along the strip instead of just pulsing in place.
+- Follow-up: removed the blurred glow (`box-shadow` with a blur radius) from every bead and status dot —
+  it read as a hazy smear once beads sat close together, especially on a long run of the same colour. Beads
+  and dots are now plain flat-colour circles; the card's own thin 1px running-border ring (zero blur) is
+  unaffected.
+- Added a distinctive `lucide-react` icon per agent (`AGENT_ICONS` in `agent-console.tsx`, keyed by the
+  agent's catalogue name) next to its name in both the Overview grid and the sidebar list — Oracle (`Brain`),
+  Sentinel (`ShieldCheck`), Recon (`Binoculars`), Vulnerability (`ShieldAlert`), WebGuard (`Globe`), Forensics
+  (`Fingerprint`), Malware Analyst (`Skull`), Threat Intelligence (`Satellite`), Windows Security (`Monitor`),
+  Crypto Auditor (`KeyRound`) — a neutral-toned identity mark, deliberately not cyan/red, so it never
+  competes with the working/not-working status signal.
+- The top-bar logo (`top-bar.tsx`) now sits inside the same spinning conic-gradient running-light border
+  already used around the sign-in card (`dagi-border-spin` in `globals.css`), so the brand mark stays visibly
+  "alive" on every page, not just the login screen.
