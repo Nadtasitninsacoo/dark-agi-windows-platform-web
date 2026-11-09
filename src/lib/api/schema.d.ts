@@ -2309,6 +2309,7 @@ export interface components {
                 default: (number | string) | null;
                 min: number | null;
                 max: number | null;
+                options: string[] | null;
                 help: string;
             }[];
             inputSchema: {
@@ -2345,6 +2346,7 @@ export interface components {
                     default: (number | string) | null;
                     min: number | null;
                     max: number | null;
+                    options: string[] | null;
                     help: string;
                 }[];
                 inputSchema: {

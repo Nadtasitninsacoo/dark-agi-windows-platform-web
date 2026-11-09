@@ -167,6 +167,17 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
             <div className="mt-1">
               <RemoteHostField value={values[f.name] ?? ''} onChange={(id) => setValues({ ...values, [f.name]: id })} />
             </div>
+          ) : f.options ? (
+            <select className={`${inputClass} mt-1`} value={values[f.name] ?? ''} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}>
+              <option value="" disabled>
+                Pick one…
+              </option>
+              {f.options.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
           ) : (
             <input
               className={`${inputClass} mt-1 ${f.type === 'integer' ? 'w-40' : ''}`}

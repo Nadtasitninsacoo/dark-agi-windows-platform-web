@@ -351,3 +351,18 @@ authorization (RemoteHost) layered on top of Scope.
   builder's operation picker filled steps with an unparseable line (`dagi powershell:system-info-remote ...`
   — not a recognized alias, "Unknown command" on every one). Added a `remote:` category alias for each
   (`remote:sysinfo`, `remote:procs`, `remote:hash`, etc.), mirroring its local counterpart's existing alias.
+
+## Unreleased — real exploit launch (Metasploit RPC), one bounded job
+
+Backs dark-agi-backend's Phase 29 (`metasploit:exploit-launch`) — minimal frontend changes, since the new
+operation appears in Submit Job/Sequences the same way every other catalogued operation already does once a
+deployment turns it on (`MSFRPC_ENABLED`); it's simply absent otherwise.
+
+- `Operation['fields'][number]` gained an optional `options: string[] | null` (payload's curated allow-list
+  rides this). `SubmitJob` (`task-queue.tsx`) gained one new branch in its field-rendering switch: a field
+  with `options` renders as a `<select>` instead of free text — generic, not exploit-specific, so any future
+  enum-shaped field gets the same picker for free.
+- Added `metasploit:exploit-launch`'s `exploit:launch` alias to `commands.ts`'s `COMMAND_ALIASES` up front
+  this time, learned from the `-remote` operations' fix just above — no "Unknown command" surprise in the
+  Sequence builder for this one.
+- Regenerated `schema.d.ts`/`client.ts` for the new `options` field.

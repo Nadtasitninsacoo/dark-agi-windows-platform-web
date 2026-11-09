@@ -149,6 +149,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'sysmon:event-query-remote': 'remote:sysmon',
   'event-viewer:event-query-remote': 'remote:eventquery',
   'event-viewer:security-log-summary-remote': 'remote:secsummary',
+
+  'metasploit:exploit-launch': 'exploit:launch',
 };
 
 const KEY_BY_ALIAS = new Map(Object.entries(COMMAND_ALIASES).map(([key, alias]) => [alias, key]));
