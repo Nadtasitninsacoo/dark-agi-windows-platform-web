@@ -178,6 +178,25 @@ function AiSearch({ operations, canSubmit }: { operations: Operation[]; canSubmi
   );
 }
 
+function PageNav({ page, totalPages, total, onChange }: { page: number; totalPages: number; total: number; onChange: (page: number) => void }) {
+  if (total === 0) return null;
+  return (
+    <div className="flex items-center justify-between text-[12px] text-ink-2">
+      <span>
+        Page {page} of {totalPages} · {total} command{total === 1 ? '' : 's'}
+      </span>
+      <div className="flex items-center gap-2">
+        <Button disabled={page <= 1} onClick={() => onChange(page - 1)}>
+          Previous
+        </Button>
+        <Button disabled={page >= totalPages} onClick={() => onChange(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 const LAUNCHER: { repo: string; script: string; command: string; description: string }[] = [
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'setup', description: 'First install: npm install, create the database, migrate and build' },
   { repo: 'dark-agi-backend', script: 'dark-agi-api.ps1', command: 'start', description: 'Start PostgreSQL and the API (7411); prints the setup token on first run' },
@@ -192,19 +211,28 @@ const LAUNCHER: { repo: string; script: string; command: string; description: st
   { repo: 'dark-agi-frontend', script: 'dark-agi-web.ps1', command: 'check', description: 'Typecheck, lint and run the test suite' },
 ];
 
+const PAGE_SIZE = 25;
+
 export function CommandReference() {
   const { can } = useAuth();
   const operations = useSWR<OperationList>('/operations');
   const tools = useSWR<ToolList>('/tools');
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
 
   const q = query.trim().toLowerCase();
+  const matched = useMemo(
+    () => (operations.data?.items ?? []).filter((o) => !q || `${o.title} ${o.toolId} ${o.operationId} ${o.description}`.toLowerCase().includes(q)),
+    [operations.data, q],
+  );
+  const totalPages = Math.max(1, Math.ceil(matched.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = useMemo(() => matched.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE), [matched, safePage]);
   const grouped = useMemo(() => {
-    const items = (operations.data?.items ?? []).filter((o) => !q || `${o.title} ${o.toolId} ${o.operationId} ${o.description}`.toLowerCase().includes(q));
     const map = new Map<string, Operation[]>();
-    for (const o of items) map.set(o.category, [...(map.get(o.category) ?? []), o]);
+    for (const o of pageItems) map.set(o.category, [...(map.get(o.category) ?? []), o]);
     return [...map.entries()];
-  }, [operations.data, q]);
+  }, [pageItems]);
 
   const planned = useMemo(
     () =>
@@ -228,7 +256,10 @@ export function CommandReference() {
               placeholder="Search commands"
               aria-label="Search commands"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
             />
           </label>
         }
@@ -238,6 +269,7 @@ export function CommandReference() {
         <AiSearch operations={operations.data?.items ?? []} canSubmit={can('jobs:submit')} />
         {operations.error ? <ErrorNotice error={operations.error} /> : null}
         {!operations.data && !operations.error ? <Skeleton className="h-48 w-full" /> : null}
+        {operations.data ? <PageNav page={safePage} totalPages={totalPages} total={matched.length} onChange={setPage} /> : null}
         {grouped.map(([category, ops]) => (
           <Panel key={category} title={CATEGORY_LABEL[category] ?? category} subtitle={`${ops.length} executable command${ops.length === 1 ? '' : 's'}`}>
             <div className="grid gap-3 xl:grid-cols-2">
@@ -247,7 +279,8 @@ export function CommandReference() {
             </div>
           </Panel>
         ))}
-        {operations.data && grouped.length === 0 ? <p className="text-[12px] text-ink-3">No executable command matches “{query}”.</p> : null}
+        {operations.data && matched.length === 0 ? <p className="text-[12px] text-ink-3">No executable command matches “{query}”.</p> : null}
+        {operations.data && matched.length > 0 ? <PageNav page={safePage} totalPages={totalPages} total={matched.length} onChange={setPage} /> : null}
 
         <Panel title="Before your first command" subtitle="Order matters">
           <ol className="list-decimal space-y-1 pl-5 text-[12px] text-ink-2">

@@ -443,3 +443,13 @@ by digging into an individual job's detail view.
 - `JobDetail`'s "Requested by" line also gains the API key label and source IP, for the full-detail view.
 - Verified live: a job submitted via a freshly-created API key shows `API key "<label>"` plus its IP; one
   submitted via the console's own session shows just the IP; agent auto-run jobs show neither.
+
+## Command Reference: paginated, 25 commands per page
+
+130 operations rendered as one long scroll on a single request. Added client-side pagination: a new
+`PageNav` (Previous/Next, "Page N of M · total commands") above and below the grouped operation cards,
+slicing the already-filtered/matched list to 25 per page before grouping by category — a page can span
+multiple category panels, or show just one if a category has more than 25 of its own. Typing in the search
+box resets to page 1. Purely a display-layer change: `GET /operations` itself is untouched and still returns
+the full catalogue in one response, so nothing that reads it directly (an API key, MCP, another integration)
+is affected.
