@@ -24,6 +24,8 @@ const SEQUENCE_STATUS: Record<Sequence['status'], { tone: StatusTone; label: str
 const ACTIVE: Sequence['status'][] = ['SCHEDULED', 'PENDING', 'RUNNING', 'PAUSED_FOR_APPROVAL'];
 
 type DraftStep = { id: number; line: string; error: string | null };
+type DelayUnit = 'seconds' | 'minutes' | 'hours';
+const DELAY_UNIT_MS: Record<DelayUnit, number> = { seconds: 1000, minutes: 60_000, hours: 3_600_000 };
 
 /**
  * An ordered list of operations the engine runs one at a time — step N+1 never starts until step N
@@ -35,7 +37,10 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
   const [name, setName] = useState('');
   const [steps, setSteps] = useState<DraftStep[]>([{ id: 0, line: '', error: null }]);
   const [schedule, setSchedule] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState<'at' | 'in'>('at');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [delayAmount, setDelayAmount] = useState('');
+  const [delayUnit, setDelayUnit] = useState<DelayUnit>('minutes');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const nextId = useState(() => ({ current: 1 }))[0];
@@ -76,13 +81,26 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
     );
     if (hadError) return;
 
+    let scheduledAtIso: string | undefined;
+    if (schedule && scheduleMode === 'at' && scheduledAt) {
+      scheduledAtIso = new Date(scheduledAt).toISOString();
+    } else if (schedule && scheduleMode === 'in') {
+      const amount = Number.parseFloat(delayAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setError(new Error('Enter how long from now to wait (a positive number)'));
+        return;
+      }
+      scheduledAtIso = new Date(Date.now() + amount * DELAY_UNIT_MS[delayUnit]).toISOString();
+    }
+
     setBusy(true);
     try {
-      await apiRequest('/sequences', post({ name: name.trim() || undefined, scheduledAt: schedule && scheduledAt ? new Date(scheduledAt).toISOString() : undefined, steps: parsed }));
+      await apiRequest('/sequences', post({ name: name.trim() || undefined, scheduledAt: scheduledAtIso, steps: parsed }));
       setName('');
       setSteps([{ id: 0, line: '', error: null }]);
       setSchedule(false);
       setScheduledAt('');
+      setDelayAmount('');
       await onCreated();
     } catch (err) {
       setError(err);
@@ -123,19 +141,60 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
       <button type="button" onClick={addStep} className="flex items-center gap-1 text-[11.5px] text-accent hover:underline">
         <Plus className="size-3.5" aria-hidden /> Add step
       </button>
-      <div className="flex flex-wrap items-center gap-3 border-t border-edge pt-2">
-        <label className="flex items-center gap-1.5 text-[11.5px] text-ink-2">
-          <input type="checkbox" checked={schedule} onChange={(e) => setSchedule(e.target.checked)} />
-          Schedule for later
-        </label>
+      <div className="space-y-2 border-t border-edge pt-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[11.5px] text-ink-2">
+            <input type="checkbox" checked={schedule} onChange={(e) => setSchedule(e.target.checked)} />
+            Schedule for later
+          </label>
+          {!schedule ? <span className="text-[11.5px] text-ink-3">Runs immediately once submitted</span> : null}
+          <Button type="submit" variant="primary" busy={busy}>
+            <ListOrdered className="size-3.5" aria-hidden /> Queue sequence
+          </Button>
+        </div>
         {schedule ? (
-          <input type="datetime-local" className={`${inputClass} w-auto`} value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} required={schedule} />
-        ) : (
-          <span className="text-[11.5px] text-ink-3">Runs immediately once submitted</span>
-        )}
-        <Button type="submit" variant="primary" busy={busy}>
-          <ListOrdered className="size-3.5" aria-hidden /> Queue sequence
-        </Button>
+          <div className="flex flex-wrap items-center gap-2 pl-5">
+            <select
+              className="rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink"
+              value={scheduleMode}
+              onChange={(e) => setScheduleMode(e.target.value as 'at' | 'in')}
+            >
+              <option value="at">At a specific time</option>
+              <option value="in">After a delay</option>
+            </select>
+            {scheduleMode === 'at' ? (
+              <input
+                type="datetime-local"
+                className="w-[190px] rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink"
+                value={scheduledAt}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                required={schedule && scheduleMode === 'at'}
+              />
+            ) : (
+              <>
+                <span className="text-[11.5px] text-ink-2">In</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="any"
+                  className="w-16 rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink"
+                  value={delayAmount}
+                  onChange={(e) => setDelayAmount(e.target.value)}
+                  required={schedule && scheduleMode === 'in'}
+                />
+                <select
+                  className="rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink"
+                  value={delayUnit}
+                  onChange={(e) => setDelayUnit(e.target.value as DelayUnit)}
+                >
+                  <option value="seconds">seconds</option>
+                  <option value="minutes">minutes</option>
+                  <option value="hours">hours</option>
+                </select>
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
     </form>
   );

@@ -289,3 +289,10 @@ Phase 27) with three pieces of UI:
   the suggestion card renders correctly on a finished job's detail view, including the honest "No model
   specified" error state this dev machine's empty Model Registry actually produces — confirmed via a driven
   browser screenshot, not assumed.
+- Follow-up: `sequence-panel.tsx`'s "Schedule for later" now offers a choice between an absolute
+  `datetime-local` ("At a specific time") and a relative offset ("After a delay": a number plus a
+  seconds/minutes/hours unit dropdown, converted to the same ISO `scheduledAt` client-side before
+  `POST /sequences`). Also fixed these schedule inputs rendering full-width — they'd inherited `w-full` from
+  the shared `inputClass` string, which a trailing `w-auto` doesn't reliably override since Tailwind's
+  cascade order depends on each utility's position in the generated stylesheet, not on className string
+  order — by giving them their own fixed-width classes instead.
