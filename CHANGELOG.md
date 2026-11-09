@@ -366,3 +366,9 @@ deployment turns it on (`MSFRPC_ENABLED`); it's simply absent otherwise.
   this time, learned from the `-remote` operations' fix just above — no "Unknown command" surprise in the
   Sequence builder for this one.
 - Regenerated `schema.d.ts`/`client.ts` for the new `options` field.
+- Follow-up: the operation catalogue is now 130 entries — both `SubmitJob` (`task-queue.tsx`) and the
+  Sequence builder (`sequence-panel.tsx`) gained a plain text search box above their operation picker(s),
+  filtering by alias/`toolId:operationId`/title (case-insensitive); a "N of 130 operations match" counter
+  shows once something's typed. The Sequence builder's filter is shared across every step's dropdown (one
+  box, not one per step). The currently-selected operation always stays visible in `SubmitJob`'s list even
+  if it no longer matches the filter, so picking a match never looks like it silently lost the selection.

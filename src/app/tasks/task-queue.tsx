@@ -104,10 +104,13 @@ function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: (
 
 function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation[]; initial: string | null; onSubmitted: (job: Job) => Promise<unknown> }) {
   const [key, setKey] = useState(initial ?? '');
+  const [filter, setFilter] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const op = operations.find((o) => `${o.toolId}:${o.operationId}` === key) ?? operations.find((o) => o.available);
+  const filterLower = filter.trim().toLowerCase();
+  const filteredOperations = filterLower === '' ? operations : operations.filter((o) => o === op || `${o.toolId}:${o.operationId} ${o.title}`.toLowerCase().includes(filterLower));
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -135,6 +138,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
   return (
     <form className="space-y-2" onSubmit={(e) => void submit(e)}>
       {error ? <ErrorNotice error={error} /> : null}
+      <input className={inputClass} placeholder="Search operations… e.g. remote, exploit, process" value={filter} onChange={(e) => setFilter(e.target.value)} />
       <select
         className={inputClass}
         aria-label="Operation"
@@ -144,13 +148,14 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
           setValues({});
         }}
       >
-        {operations.map((o) => (
+        {filteredOperations.map((o) => (
           <option key={`${o.toolId}:${o.operationId}`} value={`${o.toolId}:${o.operationId}`} disabled={!o.available}>
             {o.toolId} · {o.title}
             {o.available ? '' : ` — ${o.unavailableReason}`}
           </option>
         ))}
       </select>
+      {filterLower !== '' ? <p className="text-[11px] text-ink-3">{filteredOperations.length} of {operations.length} operations match</p> : null}
       <div className="flex flex-wrap items-center gap-2 text-[11.5px] text-ink-3">
         <span>{op.description}</span>
         <StatusBadge tone={RISK[op.risk] ?? 'neutral'} label={`${op.risk} risk`} />

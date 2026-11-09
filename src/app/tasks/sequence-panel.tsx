@@ -44,10 +44,14 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
   const [delayAmount, setDelayAmount] = useState('');
   const [delayUnit, setDelayUnit] = useState<DelayUnit>('minutes');
   const [language, setLanguage] = useState<'en' | 'th'>('en');
+  const [filter, setFilter] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const nextId = useState(() => ({ current: 1 }))[0];
   const sortedOperations = [...operations].sort((a, b) => (aliasFor(a) ?? '').localeCompare(aliasFor(b) ?? ''));
+  const filterLower = filter.trim().toLowerCase();
+  const filteredOperations =
+    filterLower === '' ? sortedOperations : sortedOperations.filter((o) => `${aliasFor(o) ?? `${o.toolId}:${o.operationId}`} ${o.title}`.toLowerCase().includes(filterLower));
 
   const updateStep = (id: number, line: string) => setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, line, error: null } : s)));
   const addStep = () => setSteps((prev) => [...prev, { id: nextId.current++, line: '', error: null }]);
@@ -128,6 +132,12 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
           {language === 'en' ? 'EN' : 'TH'}
         </button>
       </div>
+      <input className={inputClass} placeholder="Search operations… e.g. remote, exploit, process" value={filter} onChange={(e) => setFilter(e.target.value)} />
+      {filterLower !== '' ? (
+        <p className="text-[11px] text-ink-3">
+          {filteredOperations.length} of {sortedOperations.length} operations match — applies to every step below
+        </p>
+      ) : null}
       <div className="space-y-2">
         {steps.map((s, i) => {
           const hint = commandHint(s.line, operations);
@@ -147,7 +157,7 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
                   <option value="" disabled>
                     Pick an operation…
                   </option>
-                  {sortedOperations.map((o) => (
+                  {filteredOperations.map((o) => (
                     <option key={`${o.toolId}:${o.operationId}`} value={`${o.toolId}:${o.operationId}`} disabled={!o.available}>
                       {aliasFor(o) ?? `${o.toolId}:${o.operationId}`} · {operationTitle(o, language)}
                       {o.available ? '' : ` — not installed/discovered yet`}
