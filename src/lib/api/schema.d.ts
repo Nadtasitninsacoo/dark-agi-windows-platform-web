@@ -2184,6 +2184,10 @@ export interface components {
                 type: "USER" | "AGENT" | "SYSTEM";
                 id: string;
             };
+            /** @description Network address of the caller that submitted this job (browser session or API key) */
+            sourceIp: string | null;
+            /** @description Label of the API key used, or null for a browser session */
+            apiKeyLabel: string | null;
             agentRunId: string | null;
             decision: {
                 by: string;
@@ -2239,6 +2243,10 @@ export interface components {
                     type: "USER" | "AGENT" | "SYSTEM";
                     id: string;
                 };
+                /** @description Network address of the caller that submitted this job (browser session or API key) */
+                sourceIp: string | null;
+                /** @description Label of the API key used, or null for a browser session */
+                apiKeyLabel: string | null;
                 agentRunId: string | null;
                 decision: {
                     by: string;

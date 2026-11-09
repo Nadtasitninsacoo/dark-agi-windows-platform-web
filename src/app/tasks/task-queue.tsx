@@ -102,6 +102,49 @@ function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: (
   );
 }
 
+/** Every call into the engine, newest first — the console, an AI agent, or an external API key. A running
+ * job gets the same travelling "chase" light used on the AI Agents page; a failed one shows its error
+ * inline, so a bad call from an external integration is visible here without expanding the row below. */
+function LiveActivityPanel({ jobs }: { jobs: Job[] }) {
+  const recent = jobs.slice(0, 8);
+  if (recent.length === 0) return null;
+  return (
+    <Panel title="Live activity" subtitle="Most recent calls into the execution engine — console, AI agent, or external API key">
+      <ul className="space-y-1.5">
+        {recent.map((j) => {
+          const s = STATUS[j.status];
+          const dotClass = j.status === 'RUNNING' || j.status === 'SUCCEEDED' ? 'bg-cyan' : j.status === 'FAILED' || j.status === 'CANCELLED' || j.status === 'REJECTED' ? 'bg-critical' : 'bg-ink-3';
+          return (
+            <li key={j.id} className="flex items-start gap-2 rounded border border-edge px-2 py-1.5">
+              <span className={`mt-1 size-1.5 shrink-0 rounded-full ${dotClass}`} style={j.status === 'RUNNING' ? { animation: 'dagi-chase 1.4s linear infinite' } : undefined} aria-hidden />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span className="text-ink">{j.operationTitle}</span>
+                  <span className="font-mono text-[11px] text-ink-3">
+                    {j.toolId}:{j.operationId}
+                  </span>
+                  <StatusBadge tone={s.tone} label={s.label} />
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-ink-3">
+                  <span>{j.targets.join(', ') || 'this machine'}</span>
+                  <span>·</span>
+                  <span>
+                    {j.requestedBy.type === 'AGENT' ? 'agent ' : ''}
+                    {j.requestedBy.id}
+                    {j.apiKeyLabel ? ` · API key "${j.apiKeyLabel}"` : ''}
+                  </span>
+                  {j.sourceIp ? <span className="font-mono">{j.sourceIp}</span> : null}
+                </div>
+                {j.status === 'FAILED' && j.error ? <p className="mt-0.5 break-all text-critical">{j.error}</p> : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
+  );
+}
+
 function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation[]; initial: string | null; onSubmitted: (job: Job) => Promise<unknown> }) {
   const [key, setKey] = useState(initial ?? '');
   const [filter, setFilter] = useState('');
@@ -233,6 +276,8 @@ function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unkn
         <dd>
           {job.requestedBy.type === 'AGENT' ? 'Agent ' : ''}
           {job.requestedBy.id}
+          {job.apiKeyLabel ? ` · API key "${job.apiKeyLabel}"` : ''}
+          {job.sourceIp ? <span className="ml-2 font-mono text-[11px] text-ink-3">from {job.sourceIp}</span> : null}
           {job.agentRunId ? (
             <Link className="ml-2 text-accent hover:underline" href="/agents">
               view agent runs
@@ -359,6 +404,8 @@ export function TaskQueue() {
       <div className="space-y-3 p-4">
         {engine.error ? <ErrorNotice error={engine.error} /> : null}
         {engine.data ? <EnginePanel engine={engine.data} onChanged={refresh} /> : <Skeleton className="h-28 w-full" />}
+
+        <LiveActivityPanel jobs={items} />
 
         {can('jobs:submit') ? (
           <Panel title="Submit job">

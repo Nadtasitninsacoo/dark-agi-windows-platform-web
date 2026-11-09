@@ -425,3 +425,21 @@ but the global SWR fetcher passes that key into `apiRequest()`, which expects a 
 the base URL itself — so the base URL ended up in the request twice, nested inside the path. Fixed by
 building the key as a plain relative path + `URLSearchParams` (`/findings?severity=...&status=...&limit=100`),
 matching how every other page on this console builds a filtered SWR key.
+
+## Task Queue: a "Live activity" feed — what's running, who called it, and why it failed
+
+External systems can call into this platform's execution API (REST, MCP, or command mode) using an API key,
+and the backend now records each job's calling machine and API key (see the backend changelog). This surfaces
+that on Task Queue, so a bad call from an external integration is visible immediately, not just discoverable
+by digging into an individual job's detail view.
+
+- New `LiveActivityPanel` at the top of Task Queue (right under the engine status, above Submit Job): the 8
+  most recent jobs, newest first, each showing its operation, targets, status, requester (console user,
+  `agent <name>`, or an API key's label), and — when the backend captured one — the calling machine's IP.
+  A `RUNNING` job gets the same travelling "chase" light used on the AI Agents page (`dagi-chase`,
+  cyan/`bg-cyan`); a `FAILED` one shows its error inline, right there, no need to expand the row.
+  Internally-triggered jobs (agent auto-runs, scheduled sequence steps) show neither an API key label nor an
+  IP — there's no calling machine to attribute those to.
+- `JobDetail`'s "Requested by" line also gains the API key label and source IP, for the full-detail view.
+- Verified live: a job submitted via a freshly-created API key shows `API key "<label>"` plus its IP; one
+  submitted via the console's own session shows just the IP; agent auto-run jobs show neither.
