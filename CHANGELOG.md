@@ -296,3 +296,15 @@ Phase 27) with three pieces of UI:
   the shared `inputClass` string, which a trailing `w-auto` doesn't reliably override since Tailwind's
   cascade order depends on each utility's position in the generated stylesheet, not on className string
   order — by giving them their own fixed-width classes instead.
+- Follow-up: each sequence step now also has an operation picker `<select>` (same `toolId · title` listing
+  `SubmitJob` already uses in `task-queue.tsx`) alongside the existing free-typed `dagi ... keng` line —
+  picking one fills the line with `commandTemplate()`'s ready-to-run command, still fully editable
+  afterwards. Below each step, a live hint (driven by `commandHint()`, the same live-preview helper the
+  Terminal already uses) shows the resolved operation's title, description, risk badge and
+  "Needs approval" badge, so an operator can see what a step actually does before queuing it — whether they
+  picked it from the dropdown or typed the alias directly. New `src/lib/operation-titles-th.ts` is a static
+  Thai translation table for every catalogue operation's title (keyed by `toolId:operationId`, fetched from
+  the live `/operations` catalogue and translated once rather than built as another AI call — titles are
+  fixed metadata, not a per-job judgment call, so a plain lookup is simpler and has no "model not
+  configured" failure mode); the panel's EN/TH toggle (same `Languages`-icon button style as
+  `next-suggestions.tsx`) switches every step's displayed title between the two.

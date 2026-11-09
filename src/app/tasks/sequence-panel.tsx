@@ -1,16 +1,18 @@
 'use client';
 
-import { ChevronDown, ChevronRight, ListOrdered, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Languages, ListOrdered, Plus, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, Fragment, useState } from 'react';
 import useSWR from 'swr';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
 import { apiRequest, type Operation, type OperationList, type Sequence, type SequenceList } from '@/lib/api/client';
-import { CommandError, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
+import { aliasFor, CommandError, commandHint, commandTemplate, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
 import { formatDateTime } from '@/lib/format';
+import { operationTitle } from '@/lib/operation-titles-th';
 
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
 const post = (body?: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+const RISK: Record<string, StatusTone> = { low: 'neutral', moderate: 'warning', high: 'critical' };
 
 const SEQUENCE_STATUS: Record<Sequence['status'], { tone: StatusTone; label: string }> = {
   SCHEDULED: { tone: 'neutral', label: 'Scheduled' },
@@ -41,9 +43,11 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
   const [scheduledAt, setScheduledAt] = useState('');
   const [delayAmount, setDelayAmount] = useState('');
   const [delayUnit, setDelayUnit] = useState<DelayUnit>('minutes');
+  const [language, setLanguage] = useState<'en' | 'th'>('en');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const nextId = useState(() => ({ current: 1 }))[0];
+  const sortedOperations = [...operations].sort((a, b) => (aliasFor(a) ?? '').localeCompare(aliasFor(b) ?? ''));
 
   const updateStep = (id: number, line: string) => setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, line, error: null } : s)));
   const addStep = () => setSteps((prev) => [...prev, { id: nextId.current++, line: '', error: null }]);
@@ -112,31 +116,73 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
   return (
     <form className="space-y-2" onSubmit={(e) => void submit(e)}>
       {error ? <ErrorNotice error={error} /> : null}
-      <input className={inputClass} placeholder="Sequence name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="space-y-1.5">
-        {steps.map((s, i) => (
-          <div key={s.id}>
-            <div className="flex items-center gap-1.5">
-              <span className="w-5 shrink-0 text-center text-[11px] text-ink-3">{i + 1}.</span>
-              <input
-                className={`${inputClass} font-mono`}
-                placeholder={`${COMMAND_PREFIX} net:ping host=<host> ${COMMAND_SUFFIX}`}
-                value={s.line}
-                onChange={(e) => updateStep(s.id, e.target.value)}
-              />
-              <button type="button" onClick={() => move(s.id, -1)} disabled={i === 0} className="shrink-0 text-ink-3 hover:text-ink disabled:opacity-30" title="Move up">
-                <ChevronDown className="size-3.5 rotate-180" aria-hidden />
-              </button>
-              <button type="button" onClick={() => move(s.id, 1)} disabled={i === steps.length - 1} className="shrink-0 text-ink-3 hover:text-ink disabled:opacity-30" title="Move down">
-                <ChevronDown className="size-3.5" aria-hidden />
-              </button>
-              <button type="button" onClick={() => removeStep(s.id)} disabled={steps.length === 1} className="shrink-0 text-ink-3 hover:text-critical disabled:opacity-30" title="Remove step">
-                <Trash2 className="size-3.5" aria-hidden />
-              </button>
+      <div className="flex items-center gap-2">
+        <input className={inputClass} placeholder="Sequence name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+        <button
+          type="button"
+          onClick={() => setLanguage((l) => (l === 'en' ? 'th' : 'en'))}
+          title="Switch the operation names below between English and Thai"
+          className="flex shrink-0 items-center gap-1 rounded border border-edge-strong px-1.5 py-1 text-[11px] text-ink-3 hover:border-accent/60"
+        >
+          <Languages className="size-3" aria-hidden />
+          {language === 'en' ? 'EN' : 'TH'}
+        </button>
+      </div>
+      <div className="space-y-2">
+        {steps.map((s, i) => {
+          const hint = commandHint(s.line, operations);
+          return (
+            <div key={s.id} className="rounded border border-edge/60 p-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-5 shrink-0 text-center text-[11px] text-ink-3">{i + 1}.</span>
+                <select
+                  className="w-auto shrink-0 rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink"
+                  value=""
+                  aria-label={`Pick an operation for step ${i + 1}`}
+                  onChange={(e) => {
+                    const op = operations.find((o) => `${o.toolId}:${o.operationId}` === e.target.value);
+                    if (op) updateStep(s.id, commandTemplate(op));
+                  }}
+                >
+                  <option value="" disabled>
+                    Pick an operation…
+                  </option>
+                  {sortedOperations.map((o) => (
+                    <option key={`${o.toolId}:${o.operationId}`} value={`${o.toolId}:${o.operationId}`} disabled={!o.available}>
+                      {aliasFor(o) ?? `${o.toolId}:${o.operationId}`} · {operationTitle(o, language)}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className={`${inputClass} font-mono`}
+                  placeholder={`${COMMAND_PREFIX} net:ping host=<host> ${COMMAND_SUFFIX}`}
+                  value={s.line}
+                  onChange={(e) => updateStep(s.id, e.target.value)}
+                />
+                <button type="button" onClick={() => move(s.id, -1)} disabled={i === 0} className="shrink-0 text-ink-3 hover:text-ink disabled:opacity-30" title="Move up">
+                  <ChevronDown className="size-3.5 rotate-180" aria-hidden />
+                </button>
+                <button type="button" onClick={() => move(s.id, 1)} disabled={i === steps.length - 1} className="shrink-0 text-ink-3 hover:text-ink disabled:opacity-30" title="Move down">
+                  <ChevronDown className="size-3.5" aria-hidden />
+                </button>
+                <button type="button" onClick={() => removeStep(s.id)} disabled={steps.length === 1} className="shrink-0 text-ink-3 hover:text-critical disabled:opacity-30" title="Remove step">
+                  <Trash2 className="size-3.5" aria-hidden />
+                </button>
+              </div>
+              {hint.operation ? (
+                <p className="ml-6.5 mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-3">
+                  <span className="font-semibold text-ink-2">{operationTitle(hint.operation, language)}</span>
+                  <span>— {hint.operation.description}</span>
+                  <StatusBadge tone={RISK[hint.operation.risk] ?? 'neutral'} label={`${hint.operation.risk} risk`} />
+                  {hint.operation.requiresApproval ? <StatusBadge tone="warning" label="Needs approval" /> : null}
+                </p>
+              ) : s.line.trim() !== '' ? (
+                <p className="ml-6.5 mt-1 text-[11px] text-ink-3">Unrecognized command — pick an operation above, or check the alias and syntax.</p>
+              ) : null}
+              {s.error ? <p className="ml-6.5 mt-1 text-[11px] text-critical">{s.error}</p> : null}
             </div>
-            {s.error ? <p className="ml-6.5 text-[11px] text-critical">{s.error}</p> : null}
-          </div>
-        ))}
+          );
+        })}
       </div>
       <button type="button" onClick={addStep} className="flex items-center gap-1 text-[11.5px] text-accent hover:underline">
         <Plus className="size-3.5" aria-hidden /> Add step
