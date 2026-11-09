@@ -12,6 +12,19 @@ import { apiRequest, type Operation, type OperationList, type Tool, type ToolDis
 import { commandTemplate, commandTemplateAuto, operationForAlias } from '@/lib/commands';
 
 /**
+ * Where the command boxes below actually come from, and where a field dropping out of them is decided:
+ *  - `src/lib/commands.ts` — `commandTemplate()` / `commandTemplateAuto()` build the `$ dagi ...` text itself;
+ *    `belongsInCommandLine()` decides whether a field appears at all (required, or optional with a real
+ *    default) or is left out entirely (optional, no default — would make a runnable command look unfinished).
+ *  - `src/lib/commands.ts` — the `autoResolvable` sets in `commandTemplateAuto()` and `commandHint()` list
+ *    which network-target field names (`host`/`domain`/`targets`) the AUTO line can safely omit.
+ *  - dark-agi-backend `src/execution/execution.service.ts` — `autoResolveTargets()` is what actually fills
+ *    those omitted fields in at submit time, from the operator's one active scope.
+ *  - dark-agi-backend `docs/architecture/field-defaults/` — the human-readable map of which operations get
+ *    a default and which can't, and why.
+ */
+
+/**
  * For a tool with zero automated operations of its own (not Windows-native, or GUI-only by design), the
  * already-runnable `dagi` command that does the same job natively — so "no operations" never means "no
  * command to copy" when a real substitute exists. Keyed by tool id; value is a command alias from
