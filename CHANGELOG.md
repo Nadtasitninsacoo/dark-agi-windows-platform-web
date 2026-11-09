@@ -308,3 +308,10 @@ Phase 27) with three pieces of UI:
   fixed metadata, not a per-job judgment call, so a plain lookup is simpler and has no "model not
   configured" failure mode); the panel's EN/TH toggle (same `Languages`-icon button style as
   `next-suggestions.tsx`) switches every step's displayed title between the two.
+- Follow-up: picking a network-targeted operation from the dropdown now fills the step with
+  `commandTemplateAuto()`'s line (target field omitted) rather than `commandTemplate()`'s — so a step for a
+  network operation never forces typing a target by hand; the server fills it in from the operator's one
+  active scope when the step actually runs, same as everywhere else this AUTO convention already applies
+  (Tool Registry, Terminal). The live hint now says as much for any network operation. Each disabled
+  (greyed-out) dropdown entry also now states why it can't be picked (`— not installed/discovered yet`)
+  instead of just appearing unselectable with no explanation.

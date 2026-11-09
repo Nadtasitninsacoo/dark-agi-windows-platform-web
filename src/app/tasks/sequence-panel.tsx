@@ -6,7 +6,7 @@ import { type FormEvent, Fragment, useState } from 'react';
 import useSWR from 'swr';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
 import { apiRequest, type Operation, type OperationList, type Sequence, type SequenceList } from '@/lib/api/client';
-import { aliasFor, CommandError, commandHint, commandTemplate, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
+import { aliasFor, CommandError, commandHint, commandTemplate, commandTemplateAuto, COMMAND_PREFIX, COMMAND_SUFFIX, parseCommand } from '@/lib/commands';
 import { formatDateTime } from '@/lib/format';
 import { operationTitle } from '@/lib/operation-titles-th';
 
@@ -141,7 +141,7 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
                   aria-label={`Pick an operation for step ${i + 1}`}
                   onChange={(e) => {
                     const op = operations.find((o) => `${o.toolId}:${o.operationId}` === e.target.value);
-                    if (op) updateStep(s.id, commandTemplate(op));
+                    if (op) updateStep(s.id, op.targetKind === 'network' ? commandTemplateAuto(op) : commandTemplate(op));
                   }}
                 >
                   <option value="" disabled>
@@ -150,6 +150,7 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
                   {sortedOperations.map((o) => (
                     <option key={`${o.toolId}:${o.operationId}`} value={`${o.toolId}:${o.operationId}`} disabled={!o.available}>
                       {aliasFor(o) ?? `${o.toolId}:${o.operationId}`} · {operationTitle(o, language)}
+                      {o.available ? '' : ` — not installed/discovered yet`}
                     </option>
                   ))}
                 </select>
@@ -175,6 +176,9 @@ function SequenceBuilder({ operations, onCreated }: { operations: Operation[]; o
                   <span>— {hint.operation.description}</span>
                   <StatusBadge tone={RISK[hint.operation.risk] ?? 'neutral'} label={`${hint.operation.risk} risk`} />
                   {hint.operation.requiresApproval ? <StatusBadge tone="warning" label="Needs approval" /> : null}
+                  {hint.operation.targetKind === 'network' ? (
+                    <span>No target typed? It&apos;s filled in from your one active scope when the step runs.</span>
+                  ) : null}
                 </p>
               ) : s.line.trim() !== '' ? (
                 <p className="ml-6.5 mt-1 text-[11px] text-ink-3">Unrecognized command — pick an operation above, or check the alias and syntax.</p>
