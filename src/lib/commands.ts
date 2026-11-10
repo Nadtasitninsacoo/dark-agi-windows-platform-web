@@ -20,6 +20,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'nmap:host-discovery': 'net:ping',
   'nmap:port-inventory': 'net:ports',
   'nmap:service-identification': 'net:services',
+  'nmap:os-fingerprint': 'net:osfingerprint',
+  'nmap:script-scan': 'net:nse',
   'masscan:rate-limited-port-scan': 'net:masscan',
   'powershell:dns-inspection': 'net:dns',
   'powershell:arp-discovery': 'net:arp',
