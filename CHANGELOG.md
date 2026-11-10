@@ -503,3 +503,8 @@ entries rendered for inspection, and the Scopes table above was unchanged before
   /scopes/:id` "Edit targets" already uses; no new endpoint. Selection clears on every new fetch and after
   adding. Verified live: selecting 2 entries and adding grew the scope's real target list from 3 to 5 with
   exactly those two IPs, confirmed via the Scopes table and reverted afterward.
+- Fix: reported live — a browser autofilled a saved password into the bearer-token field (a plain
+  `type="password"` input invites that), causing a confusing 401 with no indication why. Added
+  `autoComplete="new-password"`/`"off"` to discourage the browser from touching either field, and a label
+  spelling out that the token is a secret for the *other* system's endpoint, never the user's own DARK AGI
+  password — the two are unrelated credentials and neither is ever interchangeable with the other.
