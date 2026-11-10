@@ -241,6 +241,23 @@ export interface paths {
         patch: operations["ScopesController_update"];
         trace?: never;
     };
+    "/api/v1/scopes/sync-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** This deployment's configured asset-sync URL (never the token) — lets the UI default to it instead of retyping on every machine */
+        get: operations["ScopesController_syncConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scopes/set-all": {
         parameters: {
             query?: never;
@@ -2697,6 +2714,10 @@ export interface components {
         ScopeSetAllResult: {
             updated: number;
         };
+        ScopeSyncConfig: {
+            /** @description The configured ASSET_SYNC_URL for this deployment, or null if unset — never the token, which stays server-side */
+            url: string | null;
+        };
         ScopeUpdateRequest: {
             description?: string;
             targets?: string[];
@@ -3349,6 +3370,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Scope"];
+                };
+            };
+        };
+    };
+    ScopesController_syncConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeSyncConfig"];
                 };
             };
         };

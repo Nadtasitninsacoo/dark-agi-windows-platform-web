@@ -508,3 +508,10 @@ entries rendered for inspection, and the Scopes table above was unchanged before
   `autoComplete="new-password"`/`"off"` to discourage the browser from touching either field, and a label
   spelling out that the token is a secret for the *other* system's endpoint, never the user's own DARK AGI
   password — the two are unrelated credentials and neither is ever interchangeable with the other.
+- By request: the Endpoint URL field now defaults to this machine's own configured sync URL (the new `GET
+  /scopes/sync-config`), so moving between machines never means retyping it by hand — each deployment's own
+  `.env` is the source of truth. Derived at render time (`effectiveUrl`), not set via an effect, so it falls
+  back to the configured default only while the field is genuinely untouched, never clobbering a URL the
+  operator is deliberately typing. The token is never defaulted client-side — the server supplies its own
+  configured token automatically only when the URL matches exactly. Verified live: expanding "Preview
+  source" fills the URL with no typing required.

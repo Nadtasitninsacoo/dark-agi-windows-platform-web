@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
-import { apiRequest, type Scope, type ScopeCreateRequest, type ScopeList, type ScopePreviewSyncResult } from '@/lib/api/client';
+import { apiRequest, type Scope, type ScopeCreateRequest, type ScopeList, type ScopePreviewSyncResult, type ScopeSyncConfig } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
@@ -64,7 +64,7 @@ function CreateScope({ onCreated }: { onCreated: () => Promise<unknown> }) {
   );
 }
 
-function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: boolean; onChanged: () => Promise<unknown> }) {
+function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scope; canManage: boolean; onChanged: () => Promise<unknown>; defaultSyncUrl: string | null }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [editing, setEditing] = useState(false);
@@ -72,6 +72,10 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
 
   const [previewing, setPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  // Falls back to this machine's own configured ASSET_SYNC_URL (set once per deployment in .env) whenever
+  // the field is still untouched, so nobody has to retype the same endpoint by hand on every machine —
+  // derived at render time, not an effect, so it never clobbers a URL the operator is deliberately typing.
+  const effectiveUrl = previewUrl !== '' ? previewUrl : (defaultSyncUrl ?? '');
   const [previewToken, setPreviewToken] = useState('');
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<unknown>(null);
@@ -125,7 +129,7 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
     setPreviewResult(null);
     setSelected(new Set());
     try {
-      setPreviewResult(await apiRequest<ScopePreviewSyncResult>('/scopes/preview-sync', send('POST', { url: previewUrl, token: previewToken.trim() || undefined })));
+      setPreviewResult(await apiRequest<ScopePreviewSyncResult>('/scopes/preview-sync', send('POST', { url: effectiveUrl, token: previewToken.trim() || undefined })));
     } catch (err) {
       setPreviewError(err);
     } finally {
@@ -194,13 +198,13 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
             <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => void preview(e)}>
               <label className="min-w-64 flex-1 text-[11.5px] text-ink-3">
                 Endpoint URL
-                <input className={`${inputClass} mt-0.5`} placeholder="http://127.0.0.1:3001/api/saved-ips" autoComplete="off" value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} />
+                <input className={`${inputClass} mt-0.5`} placeholder="http://127.0.0.1:3001/api/saved-ips" autoComplete="off" value={effectiveUrl} onChange={(e) => setPreviewUrl(e.target.value)} />
               </label>
               <label className="min-w-48 text-[11.5px] text-ink-3">
                 Bearer token (optional) — a secret for the other system&apos;s endpoint, never your own DARK AGI password
                 <input className={`${inputClass} mt-0.5 font-mono`} type="password" autoComplete="new-password" value={previewToken} onChange={(e) => setPreviewToken(e.target.value)} />
               </label>
-              <Button type="submit" busy={previewBusy} disabled={previewUrl.trim() === ''}>
+              <Button type="submit" busy={previewBusy} disabled={effectiveUrl.trim() === ''}>
                 <Eye className="size-3.5" aria-hidden /> Preview
               </Button>
             </form>
@@ -289,6 +293,8 @@ export function ScopesConsole() {
   const { can } = useAuth();
   const scopes = useSWR<ScopeList>('/scopes');
   const canManage = can('scopes:manage');
+  const syncConfig = useSWR<ScopeSyncConfig>(canManage ? '/scopes/sync-config' : null);
+  const defaultSyncUrl = syncConfig.data?.url ?? null;
 
   return (
     <div>
@@ -317,7 +323,7 @@ export function ScopesConsole() {
                 </thead>
                 <tbody>
                   {scopes.data.items.map((s) => (
-                    <ScopeRow key={s.id} scope={s} canManage={canManage} onChanged={() => scopes.mutate()} />
+                    <ScopeRow key={s.id} scope={s} canManage={canManage} onChanged={() => scopes.mutate()} defaultSyncUrl={defaultSyncUrl} />
                   ))}
                 </tbody>
               </table>
