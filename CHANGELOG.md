@@ -493,3 +493,7 @@ optional bearer-token form, backed by the new read-only `POST /scopes/preview-sy
 entry the source returns in a table (valid ones in green, invalid ones in red with why), with an explicit
 "nothing here has been saved as a scope" note. Verified live against the real candidate source: all ~6,000
 entries rendered for inspection, and the Scopes table above was unchanged before and after.
+- Follow-up, by request: moved from a separate panel into a "Preview source" button on each scope's own
+  row, expanding inline (same row-expansion pattern as "Edit targets") instead of living in its own section
+  further down the page. Still strictly read-only — the inline note names the specific scope it will never
+  change. Confirmed with the user it must stay display-only, never auto-apply as real targets.

@@ -1,7 +1,7 @@
 'use client';
 
 import { Eye, Plus } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { Fragment, type FormEvent, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
@@ -70,6 +70,13 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
   const [editing, setEditing] = useState(false);
   const [targets, setTargets] = useState(scope.targets.join('\n'));
 
+  const [previewing, setPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewToken, setPreviewToken] = useState('');
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewError, setPreviewError] = useState<unknown>(null);
+  const [previewResult, setPreviewResult] = useState<ScopePreviewSyncResult | null>(null);
+
   const update = async (body: Record<string, unknown>) => {
     setBusy(true);
     setError(null);
@@ -84,146 +91,142 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
     }
   };
 
-  return (
-    <tr className="border-b border-edge/60 align-top last:border-0">
-      <td className="py-2 pr-3">
-        <div className="font-semibold text-ink">{scope.name}</div>
-        {scope.description ? <div className="max-w-xs text-[11.5px] text-ink-3">{scope.description}</div> : null}
-        {error ? (
-          <div className="mt-1">
-            <ErrorNotice error={error} />
-          </div>
-        ) : null}
-      </td>
-      <td className="py-2 pr-3">
-        {editing ? (
-          <div className="space-y-1.5">
-            <textarea className={`${inputClass} h-20 w-64 font-mono`} value={targets} onChange={(e) => setTargets(e.target.value)} />
-            <div className="flex gap-1.5">
-              <Button variant="primary" busy={busy} onClick={() => void update({ targets: splitTargets(targets) })}>
-                Save
-              </Button>
-              <Button onClick={() => setEditing(false)}>Cancel</Button>
-            </div>
-          </div>
-        ) : (
-          <ul className="font-mono text-[11.5px] text-ink-2">
-            {scope.targets.map((t) => (
-              <li key={t}>{t}</li>
-            ))}
-          </ul>
-        )}
-      </td>
-      <td className="py-2 pr-3 font-mono text-ink-2">{scope.addressCount.toLocaleString()}</td>
-      <td className="py-2 pr-3">
-        <StatusBadge tone={scope.active ? 'good' : 'neutral'} label={scope.active ? 'Active' : scope.enabled ? 'Expired' : 'Disabled'} />
-        {scope.expiresAt ? <div className="mt-0.5 text-[11px] text-ink-3">until {formatDateTime(scope.expiresAt)}</div> : null}
-      </td>
-      <td className="py-2 pr-3 text-ink-2">{scope.owner.username}</td>
-      <td className="py-2 pr-3 font-mono text-ink-2">{scope.jobCount}</td>
-      <td className="py-2 text-right">
-        {canManage && !editing ? (
-          <div className="flex justify-end gap-1.5">
-            <Button onClick={() => setEditing(true)}>Edit targets</Button>
-            <Button busy={busy} onClick={() => void update({ enabled: !scope.enabled })}>
-              {scope.enabled ? 'Disable' : 'Enable'}
-            </Button>
-          </div>
-        ) : null}
-      </td>
-    </tr>
-  );
-}
-
-/**
- * Fetches and validates a target list from any external endpoint — read-only, never creates or
- * changes a scope. Lets an operator see exactly what a source would produce (every entry, including
- * malformed ones) before ever deciding to point the live, automatically-trusted sync at it.
- */
-function PreviewSyncPanel() {
-  const [url, setUrl] = useState('');
-  const [token, setToken] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [result, setResult] = useState<ScopePreviewSyncResult | null>(null);
-
   const preview = async (e: FormEvent) => {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    setResult(null);
+    setPreviewBusy(true);
+    setPreviewError(null);
+    setPreviewResult(null);
     try {
-      setResult(await apiRequest<ScopePreviewSyncResult>('/scopes/preview-sync', send('POST', { url, token: token.trim() || undefined })));
+      setPreviewResult(await apiRequest<ScopePreviewSyncResult>('/scopes/preview-sync', send('POST', { url: previewUrl, token: previewToken.trim() || undefined })));
     } catch (err) {
-      setError(err);
+      setPreviewError(err);
     } finally {
-      setBusy(false);
+      setPreviewBusy(false);
     }
   };
 
   return (
-    <Panel title="Preview an external source" subtitle="Read-only — fetches and validates a target list, but never creates or changes a scope">
-      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => void preview(e)}>
-        <label className="min-w-64 flex-1 text-[11.5px] text-ink-3">
-          Endpoint URL
-          <input className={`${inputClass} mt-0.5`} placeholder="http://127.0.0.1:3001/api/saved-ips" value={url} onChange={(e) => setUrl(e.target.value)} />
-        </label>
-        <label className="min-w-48 text-[11.5px] text-ink-3">
-          Bearer token (optional)
-          <input className={`${inputClass} mt-0.5 font-mono`} type="password" value={token} onChange={(e) => setToken(e.target.value)} />
-        </label>
-        <Button type="submit" busy={busy} disabled={url.trim() === ''}>
-          <Eye className="size-3.5" aria-hidden /> Preview
-        </Button>
-      </form>
-      {error ? (
-        <div className="mt-2">
-          <ErrorNotice error={error} />
-        </div>
+    <Fragment>
+      <tr className="border-b border-edge/60 align-top last:border-0">
+        <td className="py-2 pr-3">
+          <div className="font-semibold text-ink">{scope.name}</div>
+          {scope.description ? <div className="max-w-xs text-[11.5px] text-ink-3">{scope.description}</div> : null}
+          {error ? (
+            <div className="mt-1">
+              <ErrorNotice error={error} />
+            </div>
+          ) : null}
+        </td>
+        <td className="py-2 pr-3">
+          {editing ? (
+            <div className="space-y-1.5">
+              <textarea className={`${inputClass} h-20 w-64 font-mono`} value={targets} onChange={(e) => setTargets(e.target.value)} />
+              <div className="flex gap-1.5">
+                <Button variant="primary" busy={busy} onClick={() => void update({ targets: splitTargets(targets) })}>
+                  Save
+                </Button>
+                <Button onClick={() => setEditing(false)}>Cancel</Button>
+              </div>
+            </div>
+          ) : (
+            <ul className="font-mono text-[11.5px] text-ink-2">
+              {scope.targets.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          )}
+        </td>
+        <td className="py-2 pr-3 font-mono text-ink-2">{scope.addressCount.toLocaleString()}</td>
+        <td className="py-2 pr-3">
+          <StatusBadge tone={scope.active ? 'good' : 'neutral'} label={scope.active ? 'Active' : scope.enabled ? 'Expired' : 'Disabled'} />
+          {scope.expiresAt ? <div className="mt-0.5 text-[11px] text-ink-3">until {formatDateTime(scope.expiresAt)}</div> : null}
+        </td>
+        <td className="py-2 pr-3 text-ink-2">{scope.owner.username}</td>
+        <td className="py-2 pr-3 font-mono text-ink-2">{scope.jobCount}</td>
+        <td className="py-2 text-right">
+          {canManage && !editing ? (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              <Button onClick={() => setPreviewing((v) => !v)}>
+                <Eye className="size-3.5" aria-hidden /> {previewing ? 'Hide preview' : 'Preview source'}
+              </Button>
+              <Button onClick={() => setEditing(true)}>Edit targets</Button>
+              <Button busy={busy} onClick={() => void update({ enabled: !scope.enabled })}>
+                {scope.enabled ? 'Disable' : 'Enable'}
+              </Button>
+            </div>
+          ) : null}
+        </td>
+      </tr>
+      {previewing ? (
+        <tr className="border-b border-edge/60 bg-canvas/40">
+          <td colSpan={7} className="p-3">
+            <p className="mb-2 text-[11.5px] text-ink-3">
+              Read-only — fetches and validates a target list from any URL, but never creates or changes <span className="text-ink-2">{scope.name}</span> or any other scope.
+            </p>
+            <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => void preview(e)}>
+              <label className="min-w-64 flex-1 text-[11.5px] text-ink-3">
+                Endpoint URL
+                <input className={`${inputClass} mt-0.5`} placeholder="http://127.0.0.1:3001/api/saved-ips" value={previewUrl} onChange={(e) => setPreviewUrl(e.target.value)} />
+              </label>
+              <label className="min-w-48 text-[11.5px] text-ink-3">
+                Bearer token (optional)
+                <input className={`${inputClass} mt-0.5 font-mono`} type="password" value={previewToken} onChange={(e) => setPreviewToken(e.target.value)} />
+              </label>
+              <Button type="submit" busy={previewBusy} disabled={previewUrl.trim() === ''}>
+                <Eye className="size-3.5" aria-hidden /> Preview
+              </Button>
+            </form>
+            {previewError ? (
+              <div className="mt-2">
+                <ErrorNotice error={previewError} />
+              </div>
+            ) : null}
+            {previewResult ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-[11.5px] text-ink-3">
+                  {previewResult.total} entr{previewResult.total === 1 ? 'y' : 'ies'} returned · <span className="text-good">{previewResult.valid.length} valid</span> ·{' '}
+                  <span className="text-critical">{previewResult.invalid.length} invalid</span> — nothing here has been saved as a scope
+                </p>
+                <div className="max-h-96 overflow-auto rounded border border-edge">
+                  <table className="w-full text-left text-[12px]">
+                    <thead className="sticky top-0 bg-panel text-[10.5px] uppercase tracking-wider text-ink-3">
+                      <tr>
+                        <th className="py-1 pl-2 pr-3 font-medium">#</th>
+                        <th className="py-1 pr-3 font-medium">Value</th>
+                        <th className="py-1 pr-3 font-medium">Status</th>
+                        <th className="py-1 pr-3 font-medium">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewResult.valid.map((v, i) => (
+                        <tr key={`v-${v}`} className="border-t border-edge/50">
+                          <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{i + 1}</td>
+                          <td className="py-1 pr-3 font-mono text-ink">{v}</td>
+                          <td className="py-1 pr-3">
+                            <StatusBadge tone="good" label="valid" />
+                          </td>
+                          <td className="py-1 pr-3 text-ink-3">—</td>
+                        </tr>
+                      ))}
+                      {previewResult.invalid.map((v, i) => (
+                        <tr key={`i-${v.value}-${i}`} className="border-t border-edge/50">
+                          <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{previewResult.valid.length + i + 1}</td>
+                          <td className="py-1 pr-3 font-mono text-ink">{v.value}</td>
+                          <td className="py-1 pr-3">
+                            <StatusBadge tone="critical" label="invalid" />
+                          </td>
+                          <td className="py-1 pr-3 text-ink-2">{v.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </td>
+        </tr>
       ) : null}
-      {result ? (
-        <div className="mt-3 space-y-2">
-          <p className="text-[11.5px] text-ink-3">
-            {result.total} entr{result.total === 1 ? 'y' : 'ies'} returned · <span className="text-good">{result.valid.length} valid</span> ·{' '}
-            <span className="text-critical">{result.invalid.length} invalid</span> — nothing here has been saved as a scope
-          </p>
-          <div className="max-h-96 overflow-auto rounded border border-edge">
-            <table className="w-full text-left text-[12px]">
-              <thead className="sticky top-0 bg-panel text-[10.5px] uppercase tracking-wider text-ink-3">
-                <tr>
-                  <th className="py-1 pl-2 pr-3 font-medium">#</th>
-                  <th className="py-1 pr-3 font-medium">Value</th>
-                  <th className="py-1 pr-3 font-medium">Status</th>
-                  <th className="py-1 pr-3 font-medium">Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.valid.map((v, i) => (
-                  <tr key={`v-${v}`} className="border-t border-edge/50">
-                    <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{i + 1}</td>
-                    <td className="py-1 pr-3 font-mono text-ink">{v}</td>
-                    <td className="py-1 pr-3">
-                      <StatusBadge tone="good" label="valid" />
-                    </td>
-                    <td className="py-1 pr-3 text-ink-3">—</td>
-                  </tr>
-                ))}
-                {result.invalid.map((v, i) => (
-                  <tr key={`i-${v.value}-${i}`} className="border-t border-edge/50">
-                    <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{result.valid.length + i + 1}</td>
-                    <td className="py-1 pr-3 font-mono text-ink">{v.value}</td>
-                    <td className="py-1 pr-3">
-                      <StatusBadge tone="critical" label="invalid" />
-                    </td>
-                    <td className="py-1 pr-3 text-ink-2">{v.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
-    </Panel>
+    </Fragment>
   );
 }
 
@@ -273,7 +276,6 @@ export function ScopesConsole() {
         ) : (
           <p className="text-[12px] text-ink-3">Creating and changing scopes requires the OPERATOR or ADMIN role.</p>
         )}
-        {canManage ? <PreviewSyncPanel /> : null}
       </div>
     </div>
   );
