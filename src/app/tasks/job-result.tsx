@@ -4,7 +4,17 @@ type Row = Record<string, unknown>;
 
 const cell = (v: unknown): string => (v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
-function NmapHosts({ hosts }: { hosts: { address: string; hostnames: string[]; status: string; reason: string; ports: { protocol: string; port: number; state: string; service: string | null; product: string | null; version: string | null }[] }[] }) {
+interface NmapHost {
+  address: string;
+  hostnames: string[];
+  status: string;
+  reason: string;
+  ports: { protocol: string; port: number; state: string; service: string | null; product: string | null; version: string | null }[];
+  os?: { name: string; accuracy: number }[];
+  scripts?: { id: string; output: string }[];
+}
+
+function NmapHosts({ hosts }: { hosts: NmapHost[] }) {
   if (hosts.length === 0) return <p className="text-ink-3">No hosts reported.</p>;
   return (
     <div className="space-y-2">
@@ -16,6 +26,19 @@ function NmapHosts({ hosts }: { hosts: { address: string; hostnames: string[]; s
             <span className={h.status === 'up' ? 'text-good' : 'text-ink-3'}>{h.status}</span>
             <span className="text-[11px] text-ink-3">({h.reason})</span>
           </div>
+          {h.os && h.os.length > 0 ? (
+            <p className="mt-1 text-[11.5px] text-ink-2">
+              OS guess:{' '}
+              {h.os.map((m, i) => (
+                <span key={`${m.name}-${i}`} className="font-mono">
+                  {i > 0 ? ', ' : ''}
+                  {m.name} ({m.accuracy}%)
+                </span>
+              ))}
+            </p>
+          ) : h.os ? (
+            <p className="mt-1 text-[11.5px] text-ink-3">OS detection ran but found no confident match.</p>
+          ) : null}
           {h.ports.length > 0 ? (
             <table className="mt-1.5 w-full text-left text-[11.5px]">
               <thead className="text-[10px] uppercase tracking-wider text-ink-3">
@@ -39,6 +62,16 @@ function NmapHosts({ hosts }: { hosts: { address: string; hostnames: string[]; s
                 ))}
               </tbody>
             </table>
+          ) : null}
+          {h.scripts && h.scripts.length > 0 ? (
+            <div className="mt-1.5 space-y-1">
+              {h.scripts.map((s, i) => (
+                <details key={`${s.id}-${i}`} className="rounded border border-edge/60 bg-canvas/40 px-2 py-1">
+                  <summary className="cursor-pointer font-mono text-[11px] text-ink-2">{s.id}</summary>
+                  <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-ink-3">{s.output}</pre>
+                </details>
+              ))}
+            </div>
           ) : null}
         </div>
       ))}
