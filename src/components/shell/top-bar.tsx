@@ -57,6 +57,7 @@ function ScopesToggle() {
   const [busy, setBusy] = useState(false);
   if (!data || data.items.length === 0) return null;
   const allEnabled = data.items.every((s) => s.enabled);
+  const activeCount = data.items.filter((s) => s.active).length;
 
   const toggle = async () => {
     setBusy(true);
@@ -79,7 +80,9 @@ function ScopesToggle() {
       }`}
     >
       <Target className={`size-3.5 ${allEnabled ? 'text-accent' : ''}`} aria-hidden />
-      <span className="hidden sm:inline">{allEnabled ? 'Scopes: all ON' : 'Scopes: some OFF'}</span>
+      <span className="hidden sm:inline">
+        Scopes: {activeCount}/{data.items.length} active
+      </span>
     </button>
   );
 }

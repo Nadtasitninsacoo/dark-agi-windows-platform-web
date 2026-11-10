@@ -519,3 +519,10 @@ entries rendered for inspection, and the Scopes table above was unchanged before
   server-side by design. Instead of leaving that unexplained, the field's placeholder now says so directly:
   "Leave blank — this machine already has one configured" when the URL matches the default, "Required for
   this URL" otherwise — so it's clear at a glance when the field matters and when it can just stay empty.
+
+## Scopes master switch now shows a live count, not just on/off
+
+By request: the top-bar "Scopes" badge read as a plain "all ON"/"some OFF" with no sense of how many. Now
+reads `Scopes: {active}/{total} active` (e.g. "3/3 active"), matching the same wording Scope Management's
+own "Scopes" panel already uses. The toggle's own enable/disable behavior is unchanged — still flips every
+scope's `enabled` flag in one call — this is a display-only change. Verified live.
