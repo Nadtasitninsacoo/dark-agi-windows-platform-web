@@ -256,7 +256,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
       for (const f of op.fields) {
         const raw = (values[f.name] ?? '').trim();
         if (raw === '') continue;
-        input[f.name] = f.type === 'targets' ? raw.split(/[\s,]+/).filter(Boolean) : f.type === 'integer' ? Number(raw) : raw;
+        input[f.name] = f.type === 'targets' || f.type === 'list' ? raw.split(/[\s,]+/).filter(Boolean) : f.type === 'integer' ? Number(raw) : raw;
       }
       const job = await apiRequest<Job>('/jobs', post({ toolId: op.toolId, operationId: op.operationId, input }));
       setValues({});
@@ -300,8 +300,13 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
         <label key={f.name} className="block text-[11.5px] text-ink-2">
           {f.label}
           {f.required ? ' *' : ''}
-          {f.type === 'targets' ? (
-            <textarea className={`${inputClass} mt-1 h-16 font-mono`} value={values[f.name] ?? ''} placeholder="127.0.0.1" onChange={(e) => setValues({ ...values, [f.name]: e.target.value })} />
+          {f.type === 'targets' || f.type === 'list' ? (
+            <textarea
+              className={`${inputClass} mt-1 h-16 font-mono`}
+              value={values[f.name] ?? ''}
+              placeholder={f.type === 'targets' ? '127.0.0.1' : 'default,banner'}
+              onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+            />
           ) : f.type === 'remoteHost' ? (
             <div className="mt-1">
               <RemoteHostField value={values[f.name] ?? ''} onChange={(id) => setValues({ ...values, [f.name]: id })} />

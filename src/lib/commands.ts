@@ -229,7 +229,7 @@ function coerce(field: Operation['fields'][number], value: string): unknown {
     if (!Number.isFinite(n)) throw new CommandError(`"${field.name}" must be a number`);
     return n;
   }
-  if (field.type === 'targets') return value.split(',').map((t) => t.trim()).filter(Boolean);
+  if (field.type === 'targets' || field.type === 'list') return value.split(',').map((t) => t.trim()).filter(Boolean);
   return value;
 }
 

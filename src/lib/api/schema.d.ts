@@ -385,7 +385,8 @@ export interface paths {
         get: operations["ExecutionController_get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete one terminal job (audited) — refused for an active job or one a Security Finding still links to; see jobs/clear-history for bulk deletion */
+        delete: operations["ExecutionController_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -469,23 +470,6 @@ export interface paths {
         /** Resubmit a failed or cancelled job as a new job (validated and approved again) */
         post: operations["ExecutionController_retry"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete one terminal job (audited) — refused for an active job or one a Security Finding still links to; see jobs/clear-history for bulk deletion */
-        delete: operations["ExecutionController_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2861,7 +2845,7 @@ export interface components {
                 name: string;
                 label: string;
                 /** @enum {string} */
-                type: "targets" | "text" | "integer" | "remoteHost";
+                type: "targets" | "text" | "integer" | "remoteHost" | "list";
                 required: boolean;
                 default: (number | string) | null;
                 min: number | null;
@@ -2898,7 +2882,7 @@ export interface components {
                     name: string;
                     label: string;
                     /** @enum {string} */
-                    type: "targets" | "text" | "integer" | "remoteHost";
+                    type: "targets" | "text" | "integer" | "remoteHost" | "list";
                     required: boolean;
                     default: (number | string) | null;
                     min: number | null;
@@ -4064,6 +4048,25 @@ export interface operations {
             };
         };
     };
+    ExecutionController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     ExecutionController_clearHistory: {
         parameters: {
             query?: never;
@@ -4176,25 +4179,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Job"];
                 };
-            };
-        };
-    };
-    ExecutionController_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
