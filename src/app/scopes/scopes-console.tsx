@@ -166,12 +166,14 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
               </div>
             </div>
           ) : (
-            <div>
-              <ul className="font-mono text-[11.5px] text-ink-2">
+            <div className="max-w-2xl">
+              <div className="grid grid-cols-4 gap-1 font-mono text-[11.5px] text-ink-2">
                 {targetsPageItems.map((t) => (
-                  <li key={t}>{t}</li>
+                  <span key={t} className="rounded bg-panel-2 px-1 py-0.5" title={t}>
+                    {t}
+                  </span>
                 ))}
-              </ul>
+              </div>
               {scope.targets.length > TARGETS_PAGE_SIZE ? (
                 <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-3">
                   <Button disabled={targetsPageSafe <= 1} onClick={() => setTargetsPage((p) => p - 1)}>
