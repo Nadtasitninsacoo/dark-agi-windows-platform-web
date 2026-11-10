@@ -34,12 +34,13 @@ const fetchSuggestions = ([, jobId, language]: Key): Promise<AgentSuggestNextRes
 
 /**
  * "What should I run next?" — shown once a job reaches a terminal status, in both the Terminal
- * (terminal-console.tsx) and the Task Queue (task-queue.tsx's JobDetail). Fetches
- * POST /agents/suggest-next for the finished job; purely a recommendation until the operator (or
- * autopilot) actually clicks "Run this" to submit it through the normal POST /jobs path — a suggested
- * pick is never auto-submitted as-is except when autopilot is explicitly on, and even then it still goes
- * through the same submit path, so an approval-required pick still waits for a human exactly as it would
- * if submitted by hand.
+ * (terminal-console.tsx) and the Task Queue (task-queue.tsx's JobDetail). The single Autopilot switch is
+ * this feature's only on/off control: while it's off, nothing here ever calls the AI gateway at all (no
+ * POST /agents/suggest-next, no model usage) — not even to fetch a suggestion to just look at. Turning it
+ * on both starts fetching suggestions for each finished job *and* submits the top pick automatically
+ * through the exact same POST /jobs path "Run this" uses, so an approval-required pick still waits for a
+ * human exactly as it would if submitted by hand. Off is the default for a browser that has never touched
+ * this switch, and it stays off across reloads until explicitly turned on.
  */
 export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: (job: Job) => void }) {
   const [language, setLanguage] = useState<'en' | 'th'>('en');
@@ -48,7 +49,7 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
   const autopilotRanFor = useRef<AgentSuggestNextResult | null>(null);
 
   const terminal = job.status === 'SUCCEEDED' || job.status === 'FAILED';
-  const { data, error, isLoading } = useSWR<AgentSuggestNextResult, unknown, Key | null>(terminal ? (['suggest-next', job.id, language] as const) : null, fetchSuggestions);
+  const { data, error, isLoading } = useSWR<AgentSuggestNextResult, unknown, Key | null>(terminal && autopilot ? (['suggest-next', job.id, language] as const) : null, fetchSuggestions);
   const suggestions = data?.suggestions ?? null;
 
   const run = async (pick: Suggestion, index: number) => {
@@ -107,18 +108,19 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
           </button>
         </div>
       </div>
-      {isLoading ? (
+      {!autopilot ? <p className="mt-2 text-ink-3">Off — turning this on calls the AI gateway to suggest (and auto-run) a next step.</p> : null}
+      {autopilot && isLoading ? (
         <p className="mt-2 flex items-center gap-1.5 text-ink-3">
           <Loader2 className="size-3 animate-spin" aria-hidden /> Thinking…
         </p>
       ) : null}
-      {error ? (
+      {autopilot && error ? (
         <div className="mt-2">
           <ErrorNotice error={error} />
         </div>
       ) : null}
-      {!isLoading && !error && suggestions && suggestions.length === 0 ? <p className="mt-2 text-ink-3">No obvious next step.</p> : null}
-      {suggestions && suggestions.length > 0 ? (
+      {autopilot && !isLoading && !error && suggestions && suggestions.length === 0 ? <p className="mt-2 text-ink-3">No obvious next step.</p> : null}
+      {autopilot && suggestions && suggestions.length > 0 ? (
         <ul className="mt-2 space-y-1.5">
           {suggestions.map((s, i) => (
             <li key={`${s.toolId}:${s.operationId}:${i}`} className="flex items-start justify-between gap-2 rounded border border-edge bg-canvas/60 px-2 py-1.5">
