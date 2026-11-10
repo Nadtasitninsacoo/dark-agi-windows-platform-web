@@ -1,5 +1,7 @@
+'use client';
+
 import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, XCircle } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 
 export function Panel({
   title,
@@ -56,28 +58,95 @@ export function Button({
   busy,
   variant = 'secondary',
   type = 'button',
+  autoFocus,
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
   busy?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'danger';
   type?: 'button' | 'submit';
+  autoFocus?: boolean;
 }) {
   const styles =
     variant === 'primary'
       ? 'border-accent-strong bg-accent-strong/90 text-white hover:bg-accent-strong'
-      : 'border-edge-strong bg-panel-2 text-ink hover:border-accent/60';
+      : variant === 'danger'
+        ? 'border-critical/60 bg-critical/20 text-critical hover:bg-critical/30'
+        : 'border-edge-strong bg-panel-2 text-ink hover:border-accent/60';
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={disabled || busy}
+      autoFocus={autoFocus}
       className={`inline-flex items-center gap-1.5 rounded border px-2.5 py-1 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${styles}`}
     >
       {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
       {children}
     </button>
+  );
+}
+
+/**
+ * A styled stand-in for `window.confirm` — same job (make sure a destructive, unrecoverable action was
+ * meant), but matching this app's own look instead of the browser's native chrome. Escape and a click on
+ * the backdrop both cancel; the default-focused button is always Cancel, never the destructive one, so
+ * an accidental Enter never confirms it.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel = 'Confirm',
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  body: ReactNode;
+  confirmLabel?: string;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/70 p-4 backdrop-blur-[1px]" onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="dagi-confirm-title"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-md border border-critical/30 bg-panel shadow-2xl"
+      >
+        <div className="flex items-start gap-2.5 border-b border-edge px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-critical" aria-hidden />
+          <h2 id="dagi-confirm-title" className="text-[13px] font-semibold text-ink">
+            {title}
+          </h2>
+        </div>
+        <div className="px-4 py-3 text-[12.5px] text-ink-2">{body}</div>
+        <div className="flex items-center justify-end gap-2 border-t border-edge px-4 py-3">
+          <Button onClick={onCancel} disabled={busy} autoFocus>
+            Cancel
+          </Button>
+          <Button variant="danger" busy={busy} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -132,6 +201,20 @@ export function Toggle({ checked, onChange, disabled, label }: { checked: boolea
     >
       <span className={`inline-block size-3 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : 'translate-x-0.5'}`} />
     </button>
+  );
+}
+
+/** A fixed-height, scrollable monospace pane for data that can run arbitrarily long (a target list with
+ * hundreds of addresses, raw command argv, stdout/stderr) — looks and behaves like a terminal window
+ * instead of stretching the page down. Content scrolls inside; the page around it never grows with it. */
+export function TerminalBox({ children, className = '', maxHeight = '7rem' }: { children: ReactNode; className?: string; maxHeight?: string }) {
+  return (
+    <pre
+      className={`overflow-y-auto overflow-x-hidden rounded border border-edge-strong bg-canvas px-2 py-1.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all text-ink-2 ${className}`}
+      style={{ maxHeight }}
+    >
+      {children}
+    </pre>
   );
 }
 

@@ -474,6 +474,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete one terminal job (audited) — refused for an active job or one a Security Finding still links to; see jobs/clear-history for bulk deletion */
+        delete: operations["ExecutionController_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sequences": {
         parameters: {
             query?: never;
@@ -1202,6 +1219,76 @@ export interface paths {
         head?: never;
         /** Update an IOC’s status, severity or notes (audited) */
         patch: operations["ThreatIntelController_update"];
+        trace?: never;
+    };
+    "/api/v1/defense/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Active-defense event log: honeypot hits, auto-blocked IOCs and manual reports, newest first */
+        get: operations["DefenseController_events"];
+        put?: never;
+        /** Feed a detection into the active-defense pipeline (alert, or block if auto-block is enabled and severity warrants it) — for a manual report or an external detector */
+        post: operations["DefenseController_createEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/defense/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Active-defense posture and counters, for the radar dashboard */
+        get: operations["DefenseController_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/defense/blocked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** IPv4 addresses blocked at the Windows Firewall by this platform */
+        get: operations["DefenseController_blocked"];
+        put?: never;
+        /** Manually block one IPv4 address at the Windows Firewall (audited; applies even if auto-block is off) */
+        post: operations["DefenseController_block"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/defense/blocked/{id}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove this platform’s own firewall rule for a blocked address (audited) */
+        post: operations["DefenseController_unblock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/reports": {
@@ -2012,6 +2099,43 @@ export interface components {
             /** @description The DARK AGI console ASCII banner, plain text (no ANSI colour codes) */
             text: string;
         };
+        BlockedIp: {
+            id: string;
+            ip: string;
+            reason: string;
+            source: string;
+            active: boolean;
+            /** Format: date-time */
+            blockedAt: string;
+            /** Format: date-time */
+            expiresAt: string | null;
+            /** Format: date-time */
+            unblockedAt: string | null;
+            unblockedBy: string | null;
+            createdBy: string;
+        };
+        BlockedIpList: {
+            items: {
+                id: string;
+                ip: string;
+                reason: string;
+                source: string;
+                active: boolean;
+                /** Format: date-time */
+                blockedAt: string;
+                /** Format: date-time */
+                expiresAt: string | null;
+                /** Format: date-time */
+                unblockedAt: string | null;
+                unblockedBy: string | null;
+                createdBy: string;
+            }[];
+        };
+        BlockIpCreateRequest: {
+            ip: string;
+            reason: string;
+            ttlMs?: number;
+        };
         ChangePasswordRequest: {
             currentPassword: string;
             newPassword: string;
@@ -2022,7 +2146,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -2045,6 +2169,80 @@ export interface components {
             serverVersion: string | null;
             appliedMigrations: number | null;
             error: string | null;
+        };
+        DefenseEvent: {
+            id: string;
+            /** Format: date-time */
+            occurredAt: string;
+            /** @enum {string} */
+            kind: "HONEYPOT_HIT" | "IOC_AUTO_BLOCK" | "MANUAL";
+            /** @enum {string} */
+            severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            sourceIp: string | null;
+            target: string | null;
+            summary: string;
+            detail: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            action: "ALERTED" | "BLOCKED" | "BLOCK_FAILED" | "ALREADY_BLOCKED" | "UNBLOCKED";
+            blockedIpId: string | null;
+            createdBy: string;
+        };
+        DefenseEventCreateRequest: {
+            /**
+             * @default MANUAL
+             * @enum {string}
+             */
+            kind: "HONEYPOT_HIT" | "IOC_AUTO_BLOCK" | "MANUAL";
+            /**
+             * @default UNKNOWN
+             * @enum {string}
+             */
+            severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+            sourceIp?: string;
+            target?: string;
+            summary: string;
+            /** @default {} */
+            detail: {
+                [key: string]: unknown;
+            };
+        };
+        DefenseEventPage: {
+            items: {
+                id: string;
+                /** Format: date-time */
+                occurredAt: string;
+                /** @enum {string} */
+                kind: "HONEYPOT_HIT" | "IOC_AUTO_BLOCK" | "MANUAL";
+                /** @enum {string} */
+                severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+                sourceIp: string | null;
+                target: string | null;
+                summary: string;
+                detail: {
+                    [key: string]: unknown;
+                };
+                /** @enum {string} */
+                action: "ALERTED" | "BLOCKED" | "BLOCK_FAILED" | "ALREADY_BLOCKED" | "UNBLOCKED";
+                blockedIpId: string | null;
+                createdBy: string;
+            }[];
+            /** Format: date-time */
+            nextBefore: string | null;
+        };
+        DefenseStats: {
+            autoBlockEnabled: boolean;
+            honeypotPorts: number[];
+            blockTtlMs: number;
+            totalEvents: number;
+            events24h: number;
+            honeypotHits24h: number;
+            activeBlocks: number;
+            topSourceIps: {
+                ip: string;
+                count: number;
+            }[];
         };
         EngineStatus: {
             /** @description Emergency stop is active: nothing runs and new jobs are refused */
@@ -3271,7 +3469,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
             }[];
         };
         UserUpdateRequest: {
@@ -3978,6 +4176,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Job"];
                 };
+            };
+        };
+    };
+    ExecutionController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5085,6 +5302,136 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Ioc"];
+                };
+            };
+        };
+    };
+    DefenseController_events: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+                kind?: "HONEYPOT_HIT" | "IOC_AUTO_BLOCK" | "MANUAL";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefenseEventPage"];
+                };
+            };
+        };
+    };
+    DefenseController_createEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefenseEventCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefenseEvent"];
+                };
+            };
+        };
+    };
+    DefenseController_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefenseStats"];
+                };
+            };
+        };
+    };
+    DefenseController_blocked: {
+        parameters: {
+            query?: {
+                active?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedIpList"];
+                };
+            };
+        };
+    };
+    DefenseController_block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BlockIpCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedIp"];
+                };
+            };
+        };
+    };
+    DefenseController_unblock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedIp"];
                 };
             };
         };

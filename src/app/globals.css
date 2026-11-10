@@ -92,3 +92,36 @@ body {
     filter: brightness(1.6);
   }
 }
+
+/* Active Defense radar (src/app/defense/defense-radar.tsx). Unlike dagi-pulse above, this sweep and its
+ * blips are not decorative — the sweep's rotation is the only purely cosmetic part; every blip plotted on
+ * it is one real DefenseEvent streamed from the backend's /defense Socket.IO namespace. */
+@keyframes dagi-radar-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dagi-blip-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes dagi-ring-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 59 92 / 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 28px rgb(255 59 92 / 0);
+  }
+}

@@ -1,13 +1,13 @@
 'use client';
 
-import { ChevronDown, ChevronRight, OctagonX, Play, RotateCcw, Send } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, OctagonX, Play, RotateCcw, Send, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { type FormEvent, Fragment, type MouseEvent, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
-import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
+import { Button, ConfirmDialog, ErrorNotice, Panel, Skeleton, StatusBadge, TerminalBox, type StatusTone } from '@/components/ui';
 import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { RemoteHostField } from '@/app/remote-hosts/remote-host-field';
@@ -29,6 +29,24 @@ const STATUS: Record<Job['status'], { tone: StatusTone; label: string }> = {
 };
 const RISK: Record<string, StatusTone> = { low: 'neutral', moderate: 'warning', high: 'critical' };
 const ACTIVE: Job['status'][] = ['AWAITING_APPROVAL', 'QUEUED', 'RUNNING'];
+const TERMINAL: Job['status'][] = ['SUCCEEDED', 'FAILED', 'CANCELLED', 'REJECTED'];
+const PAGE_SIZE = 20;
+/** A handful of targets reads fine inline; past this, join(', ') gets long enough to stretch the whole
+ * page rather than the job it belongs to — switch to a fixed-height, scrollable TerminalBox instead. */
+const TARGETS_INLINE_LIMIT = 6;
+
+function TargetList({ targets, maxHeight }: { targets: string[]; maxHeight?: string }) {
+  if (targets.length === 0) return <span className="text-ink-2">this machine</span>;
+  const text = targets.join(', ');
+  if (targets.length <= TARGETS_INLINE_LIMIT) return <span className="text-ink-2">{text}</span>;
+  return (
+    <TerminalBox maxHeight={maxHeight}>
+      {text}
+      {'\n'}
+      <span className="text-ink-3">— {targets.length} targets —</span>
+    </TerminalBox>
+  );
+}
 
 function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: () => Promise<unknown> }) {
   const { can } = useAuth();
@@ -145,8 +163,24 @@ function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: (
 
 /** Every call into the engine, newest first — the console, an AI agent, or an external API key. A running
  * job gets the same travelling "chase" light used on the AI Agents page; a failed one shows its error
- * inline, so a bad call from an external integration is visible here without expanding the row below. */
-function LiveActivityPanel({ jobs }: { jobs: Job[] }) {
+ * inline. Each row expands in place into the same JobDetail the table below uses ("ดูทั้งหมด" — see
+ * everything: full input, argv and output, all inside scrollable TerminalBoxes) and carries the same
+ * Stop/Delete actions, so this panel is never just a read-only summary of the table underneath it. */
+function LiveActivityPanel({
+  jobs,
+  open,
+  onToggle,
+  canCancel,
+  canDelete,
+  onChanged,
+}: {
+  jobs: Job[];
+  open: string | null;
+  onToggle: (id: string) => void;
+  canCancel: (job: Job) => boolean;
+  canDelete: boolean;
+  onChanged: () => Promise<unknown>;
+}) {
   const recent = jobs.slice(0, 8);
   if (recent.length === 0) return null;
   return (
@@ -154,30 +188,46 @@ function LiveActivityPanel({ jobs }: { jobs: Job[] }) {
       <ul className="space-y-1.5">
         {recent.map((j) => {
           const s = STATUS[j.status];
+          const expanded = open === j.id;
           const dotClass = j.status === 'RUNNING' || j.status === 'SUCCEEDED' ? 'bg-cyan' : j.status === 'FAILED' || j.status === 'CANCELLED' || j.status === 'REJECTED' ? 'bg-critical' : 'bg-ink-3';
           return (
-            <li key={j.id} className="flex items-start gap-2 rounded border border-edge px-2 py-1.5">
-              <span className={`mt-1 size-1.5 shrink-0 rounded-full ${dotClass}`} style={j.status === 'RUNNING' ? { animation: 'dagi-chase 1.4s linear infinite' } : undefined} aria-hidden />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className="text-ink">{j.operationTitle}</span>
-                  <span className="font-mono text-[11px] text-ink-3">
-                    {j.toolId}:{j.operationId}
-                  </span>
-                  <StatusBadge tone={s.tone} label={s.label} />
+            <li key={j.id} className="rounded border border-edge">
+              <div className="flex items-start gap-2 px-2 py-1.5">
+                <button type="button" aria-expanded={expanded} onClick={() => onToggle(j.id)} className="mt-0.5 shrink-0 text-ink-3 hover:text-ink">
+                  {expanded ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}
+                </button>
+                <span className={`mt-1 size-1.5 shrink-0 rounded-full ${dotClass}`} style={j.status === 'RUNNING' ? { animation: 'dagi-chase 1.4s linear infinite' } : undefined} aria-hidden />
+                <button type="button" onClick={() => onToggle(j.id)} className="min-w-0 flex-1 text-left">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <span className="text-ink">{j.operationTitle}</span>
+                    <span className="font-mono text-[11px] text-ink-3">
+                      {j.toolId}:{j.operationId}
+                    </span>
+                    <StatusBadge tone={s.tone} label={s.label} />
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-ink-3">
+                    <span>
+                      {j.requestedBy.type === 'AGENT' ? 'agent ' : ''}
+                      {j.requestedBy.id}
+                      {j.apiKeyLabel ? ` · API key "${j.apiKeyLabel}"` : ''}
+                    </span>
+                    {j.sourceIp ? <span className="font-mono">{j.sourceIp}</span> : null}
+                  </div>
+                  <div className="mt-1 font-mono" onClick={(e) => e.stopPropagation()}>
+                    <TargetList targets={j.targets} maxHeight="5rem" />
+                  </div>
+                  {j.status === 'FAILED' && j.error ? <p className="mt-0.5 break-all text-critical">{j.error}</p> : null}
+                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <StopButton job={j} canCancel={canCancel(j)} onChanged={onChanged} />
+                  <DeleteButton job={j} canDelete={canDelete} onChanged={() => onChanged().then(() => expanded && onToggle(j.id))} />
                 </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-ink-3">
-                  <span>{j.targets.join(', ') || 'this machine'}</span>
-                  <span>·</span>
-                  <span>
-                    {j.requestedBy.type === 'AGENT' ? 'agent ' : ''}
-                    {j.requestedBy.id}
-                    {j.apiKeyLabel ? ` · API key "${j.apiKeyLabel}"` : ''}
-                  </span>
-                  {j.sourceIp ? <span className="font-mono">{j.sourceIp}</span> : null}
-                </div>
-                {j.status === 'FAILED' && j.error ? <p className="mt-0.5 break-all text-critical">{j.error}</p> : null}
               </div>
+              {expanded ? (
+                <div className="border-t border-edge">
+                  <JobDetail job={j} onChanged={onChanged} />
+                </div>
+              ) : null}
             </li>
           );
         })}
@@ -326,6 +376,61 @@ function StopButton({ job, canCancel, onChanged }: { job: Job; canCancel: boolea
   );
 }
 
+/** Deletes one terminal job (backend refuses an active one or one a Security Finding still links to —
+ * see DELETE /jobs/:id). Same permission as the bulk "Clear finished history" action on the engine panel;
+ * this is just the single-row equivalent for when only one job needs to go, not the whole history. */
+function DeleteButton({ job, canDelete, onChanged }: { job: Job; canDelete: boolean; onChanged: () => Promise<unknown> }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (!canDelete || !TERMINAL.includes(job.status)) return null;
+
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiRequest(`/jobs/${job.id}`, { method: 'DELETE' });
+      setConfirming(false);
+      await onChanged();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation(); // don't also toggle row expansion
+          setError(null);
+          setConfirming(true);
+        }}
+        title="Delete this job"
+        className="inline-flex items-center gap-1 rounded border border-edge-strong px-1.5 py-0.5 text-[11px] text-ink-2 hover:border-critical/60 hover:text-critical disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Trash2 className="size-3" aria-hidden />
+      </button>
+      {error ? <span className="text-[10.5px] text-critical">{error instanceof Error ? error.message : String(error)}</span> : null}
+      <ConfirmDialog
+        open={confirming}
+        title="Delete job"
+        body={
+          <>
+            Delete <strong className="text-ink">{job.operationTitle}</strong> ({job.toolId}:{job.operationId}), created {formatDateTime(job.createdAt)}? This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        busy={busy}
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirming(false)}
+      />
+    </span>
+  );
+}
+
 function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unknown> }) {
   const { user, can } = useAuth();
   const [note, setNote] = useState('');
@@ -379,10 +484,16 @@ function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unkn
           </>
         ) : null}
         <dt className="text-ink-3">Input</dt>
-        <dd className="font-mono text-[11.5px]">{JSON.stringify(job.input)}</dd>
+        <dd>
+          <TerminalBox maxHeight="6rem" className="text-[11.5px]">
+            {JSON.stringify(job.input)}
+          </TerminalBox>
+        </dd>
         <dt className="text-ink-3">Command (argv)</dt>
-        <dd className="break-all font-mono text-[11px]">
-          {job.executable ?? '<executable>'} {job.args.map((a) => (a.length > 60 ? `${a.slice(0, 24)}…` : a)).join(' ')}
+        <dd>
+          <TerminalBox maxHeight="6rem">
+            {job.executable ?? '<executable>'} {job.args.join(' ')}
+          </TerminalBox>
         </dd>
         {job.startedAt ? (
           <>
@@ -460,9 +571,18 @@ export function TaskQueue() {
   const params = useSearchParams();
   const [status, setStatus] = useState<Job['status'] | ''>('');
   const [open, setOpen] = useState<string | null>(params.get('job'));
-  const jobs = useSWR<JobPage>(`/jobs?limit=50${status ? `&status=${status}` : ''}`, {
+  // Cursor-based pagination (the backend is cursor/`before`-paged, not offset-paged): cursors[i] is the
+  // `before` value that fetches page i, discovered from the previous page's `nextBefore` as you go
+  // forward — so "Next" is only ever enabled once that next page's cursor is actually known, and "Back"
+  // just replays a cursor already seen, never re-deriving one.
+  const [cursors, setCursors] = useState<(string | null)[]>([null]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const cursor = cursors[pageIndex] ?? null;
+  const jobs = useSWR<JobPage>(`/jobs?limit=${PAGE_SIZE}${status ? `&status=${status}` : ''}${cursor ? `&before=${encodeURIComponent(cursor)}` : ''}`, {
     refreshInterval: (data) => (data?.items.some((j) => ACTIVE.includes(j.status)) ? 2000 : 10_000),
   });
+  // Independent of the Jobs table's current page/filter — always the engine's actual most recent calls.
+  const liveJobs = useSWR<JobPage>('/jobs?limit=8', { refreshInterval: 2000 });
   const engine = useSWR<EngineStatus>('/engine', { refreshInterval: 5000 });
   const operations = useSWR<OperationList>('/operations');
   const openJob = useSWR<Job>(open && !jobs.data?.items.some((j) => j.id === open) ? `/jobs/${open}` : null);
@@ -472,7 +592,21 @@ export function TaskQueue() {
     return openJob.data && !list.some((j) => j.id === openJob.data!.id) ? [openJob.data, ...list] : list;
   }, [jobs.data, openJob.data]);
 
-  const refresh = () => Promise.all([jobs.mutate(), engine.mutate()]);
+  const setStatusFilter = (next: Job['status'] | '') => {
+    setStatus(next);
+    setCursors([null]);
+    setPageIndex(0);
+  };
+
+  const goNext = () => {
+    const nextCursor = jobs.data?.nextBefore;
+    if (!nextCursor) return;
+    setCursors((prev) => (pageIndex === prev.length - 1 ? [...prev, nextCursor] : prev));
+    setPageIndex((i) => i + 1);
+  };
+  const goBack = () => setPageIndex((i) => Math.max(0, i - 1));
+
+  const refresh = () => Promise.all([jobs.mutate(), liveJobs.mutate(), engine.mutate()]);
 
   return (
     <div>
@@ -484,7 +618,14 @@ export function TaskQueue() {
         {engine.error ? <ErrorNotice error={engine.error} /> : null}
         {engine.data ? <EnginePanel engine={engine.data} onChanged={refresh} /> : <Skeleton className="h-28 w-full" />}
 
-        <LiveActivityPanel jobs={items} />
+        <LiveActivityPanel
+          jobs={liveJobs.data?.items ?? []}
+          open={open}
+          onToggle={(id) => setOpen((current) => (current === id ? null : id))}
+          canCancel={(j) => ((j.requestedBy.type === 'USER' && j.requestedBy.id === user.username) || can('jobs:approve')) && can('jobs:submit')}
+          canDelete={can('jobs:approve')}
+          onChanged={refresh}
+        />
 
         {can('jobs:submit') ? (
           <Panel title="Submit job">
@@ -508,20 +649,43 @@ export function TaskQueue() {
 
         <Panel
           title="Jobs"
+          subtitle={`Page ${pageIndex + 1} · ${PAGE_SIZE} per page`}
           actions={
-            <select className={`${inputClass} w-auto`} aria-label="Status filter" value={status} onChange={(e) => setStatus(e.target.value as Job['status'] | '')}>
-              <option value="">All statuses</option>
-              {(Object.keys(STATUS) as Job['status'][]).map((s) => (
-                <option key={s} value={s}>
-                  {STATUS[s].label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <select className={`${inputClass} w-auto`} aria-label="Status filter" value={status} onChange={(e) => setStatusFilter(e.target.value as Job['status'] | '')}>
+                <option value="">All statuses</option>
+                {(Object.keys(STATUS) as Job['status'][]).map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS[s].label}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={pageIndex === 0}
+                  onClick={goBack}
+                  aria-label="Previous page"
+                  className="inline-flex items-center rounded border border-edge-strong p-1 text-ink-2 hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronLeft className="size-3.5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  disabled={!jobs.data?.nextBefore}
+                  onClick={goNext}
+                  aria-label="Next page"
+                  className="inline-flex items-center rounded border border-edge-strong p-1 text-ink-2 hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronRight className="size-3.5" aria-hidden />
+                </button>
+              </div>
+            </div>
           }
         >
           {jobs.error ? <ErrorNotice error={jobs.error} /> : null}
           {!jobs.data && !jobs.error ? <Skeleton className="h-24 w-full" /> : null}
-          {jobs.data && items.length === 0 ? <p className="text-[12px] text-ink-3">No jobs yet.</p> : null}
+          {jobs.data && items.length === 0 ? <p className="text-[12px] text-ink-3">{pageIndex > 0 ? 'No more jobs.' : 'No jobs yet.'}</p> : null}
           {items.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[12px]">
@@ -551,7 +715,11 @@ export function TaskQueue() {
                               </span>
                             </button>
                           </td>
-                          <td className="py-1.5 pr-3 font-mono text-[11.5px] text-ink-2">{j.targets.join(', ') || 'this machine'}</td>
+                          <td className="py-1.5 pr-3 font-mono text-[11.5px] text-ink-2">
+                            <div className="max-w-xs">
+                              <TargetList targets={j.targets} maxHeight="4.5rem" />
+                            </div>
+                          </td>
                           <td className="py-1.5 pr-3">
                             <div className="flex flex-wrap items-center gap-1.5">
                               <StatusBadge tone={s.tone} label={s.label} />
@@ -559,6 +727,14 @@ export function TaskQueue() {
                                 job={j}
                                 canCancel={((j.requestedBy.type === 'USER' && j.requestedBy.id === user.username) || can('jobs:approve')) && can('jobs:submit')}
                                 onChanged={refresh}
+                              />
+                              <DeleteButton
+                                job={j}
+                                canDelete={can('jobs:approve')}
+                                onChanged={async () => {
+                                  if (expanded) setOpen(null);
+                                  await refresh();
+                                }}
                               />
                             </div>
                           </td>

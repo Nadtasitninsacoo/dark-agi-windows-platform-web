@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -58,6 +58,8 @@ export const MODULES: readonly ConsoleModule[] = [
   { slug: 'malware', href: '/malware', title: 'Malware Analysis', group: 'Security Domains', icon: 'bug', status: 'live', phase: 7, category: 'malware-analysis',
     summary: 'Static analysis only — capa, FLOSS and ClamAV read a local file; none of them execute it. File metadata/hashing is on Digital Forensics; YARA and sandbox report ingestion are still planned.',
     planned: ['YARA rule matching', 'Sandbox report ingestion (no local sample execution)'] },
+  { slug: 'defense', href: '/defense', title: 'Active Defense', group: 'Security Domains', icon: 'shield', status: 'live', phase: 30,
+    summary: 'Layered, real-time containment: honeypot decoys and CRITICAL/HIGH IP IOCs feed an auto-block pipeline that cuts this host off from the source at the Windows Firewall — never a counter-attack against it.' },
   { slug: 'crypto', href: '/crypto', title: 'Cryptographic Audit', group: 'Security Domains', icon: 'key', status: 'live', phase: 8, category: 'cryptographic-audit',
     summary: 'TLS and certificate inspection for approved hosts; GnuPG signature and key inspection, both read-only — neither ever touches a keyring.',
     planned: ['Cipher policy evaluation', 'Hash auditing restricted to registered test data'] },
