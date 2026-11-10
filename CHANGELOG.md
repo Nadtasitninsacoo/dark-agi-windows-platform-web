@@ -535,3 +535,25 @@ tall. Added the same Previous/Next pagination pattern Command Reference already 
 with "Page N of M (total) total" — only shown at all once a scope has more than 50 targets, so every normal,
 small scope renders exactly as before. Verified live: a 6,013-target scope now shows 50 at a time, "Page 2
 of 121 (6,013 total)" after clicking Next.
+
+- Follow-up by request: laid the per-page targets out as a 4-column grid of chips instead of a vertical
+  list, so a page of 50 fits in a short, wide block instead of a tall one.
+
+## Attack Graph: a new page for AI-ranked attack-path analysis (read-only)
+
+New console page (`/attack-graph`, under AI in the sidebar) for the backend's new attack-graph reasoning
+layer: a unified graph of AD objects and vulnerable hosts discovered by past jobs, with candidate paths
+between two nodes and an AI-ranked, MITRE ATT&CK-tagged explanation of the most relevant ones.
+
+- Graph rendered with `@xyflow/react` (new dependency) — a simple column layout by node type (hosts,
+  services, AD users/computers/groups, vulnerabilities), color-coded, with the active path's edges
+  highlighted and animated once a path is found or AI-ranked.
+- "Find a path" (`GET /attack-graph/paths`) runs first, free, no AI call — "Ask AI to rank & explain"
+  (`POST /attack-graph/reason`, gated on the new `attack-graph:reason` permission) only appears once at
+  least one candidate path exists, so the AI is never asked to search a graph it hasn't already been shown
+  has a path through.
+- This page never submits, approves or runs a job — it is read-only analysis over what past approved jobs
+  already collected. Acting on a proposed path still means submitting it normally from Command Reference.
+- Verified live: seeded a real AD path (user → session → domain controller → AdminTo → Domain Admins),
+  confirmed the graph renders with correct colors/edges, "Find a path" highlights the real path, and "Ask
+  AI" returns a correct, ATT&CK-tagged explanation.

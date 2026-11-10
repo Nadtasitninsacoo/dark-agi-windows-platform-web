@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -35,6 +35,8 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'AI providers (Gemini, OpenAI, Claude, OpenAI-compatible, local Ollama), discovered models, and a streaming test console with fallback.' },
   { slug: 'tools', href: '/tools', title: 'Tool Registry', group: 'AI', icon: 'wrench', status: 'live', phase: 2,
     summary: 'Every supported security tool with verified installation status, version, Windows support and planned operations.' },
+  { slug: 'attack-graph', href: '/attack-graph', title: 'Attack Graph', group: 'AI', icon: 'git-branch', status: 'live', phase: 10,
+    summary: 'Unified graph of AD objects and vulnerable hosts discovered by past jobs, with AI-ranked, ATT&CK-tagged candidate attack paths between two nodes — read-only analysis; nothing here ever runs a job.' },
   { slug: 'network', href: '/network', title: 'Network Intelligence', group: 'Security Domains', icon: 'network', status: 'live', phase: 5, category: 'network-intelligence',
     summary: 'Authorised host discovery, port and service inventory, DNS inspection — scope-enforced and rate-limited.',
     planned: ['Masscan & ARP discovery adapters', 'Packet-capture analysis (TShark)', 'Scan history and comparison'] },

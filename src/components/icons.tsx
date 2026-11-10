@@ -1,5 +1,5 @@
 import {
-  BookOpen, Bot, Bug, Cpu, FileText, Fingerprint, Flag, Gauge, Globe, Key, List, Lock, Monitor, Network, Radar,
+  BookOpen, Bot, Bug, Cpu, FileText, Fingerprint, Flag, Gauge, GitBranch, Globe, Key, List, Lock, Monitor, Network, Radar,
   ScrollText, Search, Server, Settings, ShieldAlert, SquareTerminal, Target, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type { IconName } from '@/lib/modules';
@@ -28,4 +28,5 @@ export const MODULE_ICONS: Record<IconName, LucideIcon> = {
   flag: Flag,
   fingerprint: Fingerprint,
   server: Server,
+  'git-branch': GitBranch,
 };

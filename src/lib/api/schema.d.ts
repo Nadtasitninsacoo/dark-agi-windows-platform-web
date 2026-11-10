@@ -643,6 +643,142 @@ export interface paths {
         patch: operations["ForensicsController_update"];
         trace?: never;
     };
+    "/api/v1/attack-graph/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The current attack graph (nodes + edges), capped and newest-seen first */
+        get: operations["AttackGraphController_snapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attack-graph/paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Candidate attack paths between two nodes (graph-theoretic only, no AI) by their natural key */
+        get: operations["AttackGraphController_paths"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/attack-graph/reason": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** AI-ranked, ATT&CK-tagged explanation of candidate paths between two nodes — read-only, proposes nothing to run */
+        post: operations["AttackGraphController_reason"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Configured AI providers with health, latency and session usage */
+        get: operations["AiGatewayController_providers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/providers/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Query providers' model listings and reconcile the model registry (audited) */
+        post: operations["AiGatewayController_discover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Model registry */
+        get: operations["AiGatewayController_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Chat completion with model fallback (audited; prompt content is not logged) */
+        post: operations["AiGatewayController_chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/chat/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Streaming chat completion (text/event-stream) */
+        post: operations["AiGatewayController_chatStream"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -773,91 +909,6 @@ export interface paths {
         get: operations["TelemetryController_history"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ai/providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Configured AI providers with health, latency and session usage */
-        get: operations["AiGatewayController_providers"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ai/providers/discover": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Query providers' model listings and reconcile the model registry (audited) */
-        post: operations["AiGatewayController_discover"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ai/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Model registry */
-        get: operations["AiGatewayController_models"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ai/chat": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Chat completion with model fallback (audited; prompt content is not logged) */
-        post: operations["AiGatewayController_chat"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/ai/chat/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Streaming chat completion (text/event-stream) */
-        post: operations["AiGatewayController_chatStream"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1748,6 +1799,131 @@ export interface components {
                 expiresAt: string;
             }[];
         };
+        AttackPath: {
+            nodes: {
+                id: string;
+                /** @enum {string} */
+                type: "HOST" | "AD_USER" | "AD_COMPUTER" | "AD_GROUP" | "SERVICE" | "VULNERABILITY";
+                /** @description Natural key: an AD SID, a hostname, "host:port/service", or a CVE id */
+                key: string;
+                label: string;
+                properties: {
+                    [key: string]: unknown;
+                };
+                sourceJobId: string | null;
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            edges: {
+                id: string;
+                /** @enum {string} */
+                type: "MEMBER_OF" | "ADMIN_TO" | "HAS_SESSION" | "RDP_TO" | "CAN_RDP" | "GENERIC_ALL" | "EXPOSES_SERVICE" | "VULNERABLE_TO";
+                fromId: string;
+                toId: string;
+                properties: {
+                    [key: string]: unknown;
+                };
+                sourceJobId: string | null;
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            hops: number;
+        };
+        AttackPathPage: {
+            paths: {
+                nodes: {
+                    id: string;
+                    /** @enum {string} */
+                    type: "HOST" | "AD_USER" | "AD_COMPUTER" | "AD_GROUP" | "SERVICE" | "VULNERABILITY";
+                    /** @description Natural key: an AD SID, a hostname, "host:port/service", or a CVE id */
+                    key: string;
+                    label: string;
+                    properties: {
+                        [key: string]: unknown;
+                    };
+                    sourceJobId: string | null;
+                    /** Format: date-time */
+                    firstSeenAt: string;
+                    /** Format: date-time */
+                    lastSeenAt: string;
+                }[];
+                edges: {
+                    id: string;
+                    /** @enum {string} */
+                    type: "MEMBER_OF" | "ADMIN_TO" | "HAS_SESSION" | "RDP_TO" | "CAN_RDP" | "GENERIC_ALL" | "EXPOSES_SERVICE" | "VULNERABLE_TO";
+                    fromId: string;
+                    toId: string;
+                    properties: {
+                        [key: string]: unknown;
+                    };
+                    sourceJobId: string | null;
+                    /** Format: date-time */
+                    firstSeenAt: string;
+                    /** Format: date-time */
+                    lastSeenAt: string;
+                }[];
+                hops: number;
+            }[];
+        };
+        AttackReasonRequest: {
+            /** @description The "key" of the starting GraphNode */
+            from: string;
+            /** @description The "key" of the goal GraphNode */
+            to: string;
+            /** @description Plain-language statement of what the operator is trying to assess */
+            goal: string;
+            /**
+             * @default en
+             * @enum {string}
+             */
+            language: "en" | "th";
+        };
+        AttackReasonResponse: {
+            paths: {
+                path: {
+                    nodes: {
+                        id: string;
+                        /** @enum {string} */
+                        type: "HOST" | "AD_USER" | "AD_COMPUTER" | "AD_GROUP" | "SERVICE" | "VULNERABILITY";
+                        /** @description Natural key: an AD SID, a hostname, "host:port/service", or a CVE id */
+                        key: string;
+                        label: string;
+                        properties: {
+                            [key: string]: unknown;
+                        };
+                        sourceJobId: string | null;
+                        /** Format: date-time */
+                        firstSeenAt: string;
+                        /** Format: date-time */
+                        lastSeenAt: string;
+                    }[];
+                    edges: {
+                        id: string;
+                        /** @enum {string} */
+                        type: "MEMBER_OF" | "ADMIN_TO" | "HAS_SESSION" | "RDP_TO" | "CAN_RDP" | "GENERIC_ALL" | "EXPOSES_SERVICE" | "VULNERABLE_TO";
+                        fromId: string;
+                        toId: string;
+                        properties: {
+                            [key: string]: unknown;
+                        };
+                        sourceJobId: string | null;
+                        /** Format: date-time */
+                        firstSeenAt: string;
+                        /** Format: date-time */
+                        lastSeenAt: string;
+                    }[];
+                    hops: number;
+                };
+                rank: number;
+                explanation: string;
+                /** @description MITRE ATT&CK technique IDs relevant to this path's edges */
+                attackTechniques: string[];
+            }[];
+        };
         AuditEvent: {
             /** @description Monotonic sequence number (bigint serialised as string) */
             seq: string;
@@ -1829,7 +2005,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -2077,6 +2253,72 @@ export interface components {
             /** @enum {string} */
             status: "OPEN" | "RESOLVED" | "IGNORED";
             note?: string;
+        };
+        GraphEdge: {
+            id: string;
+            /** @enum {string} */
+            type: "MEMBER_OF" | "ADMIN_TO" | "HAS_SESSION" | "RDP_TO" | "CAN_RDP" | "GENERIC_ALL" | "EXPOSES_SERVICE" | "VULNERABLE_TO";
+            fromId: string;
+            toId: string;
+            properties: {
+                [key: string]: unknown;
+            };
+            sourceJobId: string | null;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        GraphNode: {
+            id: string;
+            /** @enum {string} */
+            type: "HOST" | "AD_USER" | "AD_COMPUTER" | "AD_GROUP" | "SERVICE" | "VULNERABILITY";
+            /** @description Natural key: an AD SID, a hostname, "host:port/service", or a CVE id */
+            key: string;
+            label: string;
+            properties: {
+                [key: string]: unknown;
+            };
+            sourceJobId: string | null;
+            /** Format: date-time */
+            firstSeenAt: string;
+            /** Format: date-time */
+            lastSeenAt: string;
+        };
+        GraphSnapshot: {
+            nodes: {
+                id: string;
+                /** @enum {string} */
+                type: "HOST" | "AD_USER" | "AD_COMPUTER" | "AD_GROUP" | "SERVICE" | "VULNERABILITY";
+                /** @description Natural key: an AD SID, a hostname, "host:port/service", or a CVE id */
+                key: string;
+                label: string;
+                properties: {
+                    [key: string]: unknown;
+                };
+                sourceJobId: string | null;
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            edges: {
+                id: string;
+                /** @enum {string} */
+                type: "MEMBER_OF" | "ADMIN_TO" | "HAS_SESSION" | "RDP_TO" | "CAN_RDP" | "GENERIC_ALL" | "EXPOSES_SERVICE" | "VULNERABLE_TO";
+                fromId: string;
+                toId: string;
+                properties: {
+                    [key: string]: unknown;
+                };
+                sourceJobId: string | null;
+                /** Format: date-time */
+                firstSeenAt: string;
+                /** Format: date-time */
+                lastSeenAt: string;
+            }[];
+            /** @description True if the node count exceeded the response cap and some nodes were left out */
+            truncated: boolean;
         };
         HealthReport: {
             /**
@@ -2992,7 +3234,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
             }[];
         };
         UserUpdateRequest: {
@@ -3993,6 +4235,182 @@ export interface operations {
             };
         };
     };
+    AttackGraphController_snapshot: {
+        parameters: {
+            query?: {
+                type?: "HOST" | "AD_USER" | "AD_COMPUTER" | "AD_GROUP" | "SERVICE" | "VULNERABILITY";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphSnapshot"];
+                };
+            };
+        };
+    };
+    AttackGraphController_paths: {
+        parameters: {
+            query: {
+                maxPaths?: number;
+                maxHops?: number;
+                to: string;
+                from: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttackPathPage"];
+                };
+            };
+        };
+    };
+    AttackGraphController_reason: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttackReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttackReasonResponse"];
+                };
+            };
+        };
+    };
+    AiGatewayController_providers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderList"];
+                };
+            };
+        };
+    };
+    AiGatewayController_discover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiDiscoverRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiDiscoveryResult"];
+                };
+            };
+        };
+    };
+    AiGatewayController_models: {
+        parameters: {
+            query?: {
+                status?: "AVAILABLE" | "UNAVAILABLE";
+                providerId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiModelList"];
+                };
+            };
+        };
+    };
+    AiGatewayController_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiChatRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiChatResponse"];
+                };
+            };
+        };
+    };
+    AiGatewayController_chatStream: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiChatRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     HealthController_health: {
         parameters: {
             query?: never;
@@ -4152,114 +4570,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HostMetricsHistory"];
                 };
-            };
-        };
-    };
-    AiGatewayController_providers: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiProviderList"];
-                };
-            };
-        };
-    };
-    AiGatewayController_discover: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AiDiscoverRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiDiscoveryResult"];
-                };
-            };
-        };
-    };
-    AiGatewayController_models: {
-        parameters: {
-            query?: {
-                status?: "AVAILABLE" | "UNAVAILABLE";
-                providerId?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiModelList"];
-                };
-            };
-        };
-    };
-    AiGatewayController_chat: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AiChatRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AiChatResponse"];
-                };
-            };
-        };
-    };
-    AiGatewayController_chatStream: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AiChatRequest"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
