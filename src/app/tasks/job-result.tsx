@@ -36,8 +36,6 @@ function NmapHosts({ hosts }: { hosts: NmapHost[] }) {
                 </span>
               ))}
             </p>
-          ) : h.os ? (
-            <p className="mt-1 text-[11.5px] text-ink-3">OS detection ran but found no confident match.</p>
           ) : null}
           {h.ports.length > 0 ? (
             <table className="mt-1.5 w-full text-left text-[11.5px]">
