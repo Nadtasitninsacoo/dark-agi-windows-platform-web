@@ -497,3 +497,9 @@ entries rendered for inspection, and the Scopes table above was unchanged before
   row, expanding inline (same row-expansion pattern as "Edit targets") instead of living in its own section
   further down the page. Still strictly read-only — the inline note names the specific scope it will never
   change. Confirmed with the user it must stay display-only, never auto-apply as real targets.
+- Follow-up: added a checkbox per valid entry and an "Add N selected to &lt;scope&gt;" action, so a human
+  can tick only the specific entries they personally vouch for as actually authorized, instead of an
+  all-or-nothing import — merges the selection into that scope's existing targets via the same `PATCH
+  /scopes/:id` "Edit targets" already uses; no new endpoint. Selection clears on every new fetch and after
+  adding. Verified live: selecting 2 entries and adding grew the scope's real target list from 3 to 5 with
+  exactly those two IPs, confirmed via the Scopes table and reverted afterward.

@@ -76,6 +76,9 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewError, setPreviewError] = useState<unknown>(null);
   const [previewResult, setPreviewResult] = useState<ScopePreviewSyncResult | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState<unknown>(null);
 
   const update = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -91,11 +94,36 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
     }
   };
 
+  const toggleSelected = (value: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
+  const addSelectedToScope = async () => {
+    setAddBusy(true);
+    setAddError(null);
+    try {
+      const merged = [...new Set([...scope.targets, ...selected])];
+      await apiRequest<Scope>(`/scopes/${scope.id}`, send('PATCH', { targets: merged }));
+      setSelected(new Set());
+      await onChanged();
+    } catch (err) {
+      setAddError(err);
+    } finally {
+      setAddBusy(false);
+    }
+  };
+
   const preview = async (e: FormEvent) => {
     e.preventDefault();
     setPreviewBusy(true);
     setPreviewError(null);
     setPreviewResult(null);
+    setSelected(new Set());
     try {
       setPreviewResult(await apiRequest<ScopePreviewSyncResult>('/scopes/preview-sync', send('POST', { url: previewUrl, token: previewToken.trim() || undefined })));
     } catch (err) {
@@ -185,13 +213,36 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
               <div className="mt-3 space-y-2">
                 <p className="text-[11.5px] text-ink-3">
                   {previewResult.total} entr{previewResult.total === 1 ? 'y' : 'ies'} returned · <span className="text-good">{previewResult.valid.length} valid</span> ·{' '}
-                  <span className="text-critical">{previewResult.invalid.length} invalid</span> — nothing here has been saved as a scope
+                  <span className="text-critical">{previewResult.invalid.length} invalid</span> — nothing here has been saved as a scope. Tick the ones you personally vouch
+                  for as actually authorized, then add just those to {scope.name}.
                 </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11.5px] text-ink-3">{selected.size} selected</span>
+                  <Button
+                    variant="primary"
+                    busy={addBusy}
+                    disabled={selected.size === 0}
+                    onClick={() => void addSelectedToScope()}
+                  >
+                    Add {selected.size || ''} selected to {scope.name}
+                  </Button>
+                  {selected.size > 0 ? (
+                    <Button onClick={() => setSelected(new Set())}>Clear selection</Button>
+                  ) : previewResult.valid.length > 0 ? (
+                    <Button onClick={() => setSelected(new Set(previewResult.valid))}>Select all valid</Button>
+                  ) : null}
+                </div>
+                {addError ? (
+                  <div>
+                    <ErrorNotice error={addError} />
+                  </div>
+                ) : null}
                 <div className="max-h-96 overflow-auto rounded border border-edge">
                   <table className="w-full text-left text-[12px]">
                     <thead className="sticky top-0 bg-panel text-[10.5px] uppercase tracking-wider text-ink-3">
                       <tr>
-                        <th className="py-1 pl-2 pr-3 font-medium">#</th>
+                        <th className="w-8 py-1 pl-2 pr-1 font-medium" />
+                        <th className="py-1 pr-3 font-medium">#</th>
                         <th className="py-1 pr-3 font-medium">Value</th>
                         <th className="py-1 pr-3 font-medium">Status</th>
                         <th className="py-1 pr-3 font-medium">Reason</th>
@@ -200,7 +251,10 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
                     <tbody>
                       {previewResult.valid.map((v, i) => (
                         <tr key={`v-${v}`} className="border-t border-edge/50">
-                          <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{i + 1}</td>
+                          <td className="py-1 pl-2 pr-1">
+                            <input type="checkbox" checked={selected.has(v)} onChange={() => toggleSelected(v)} aria-label={`Select ${v}`} />
+                          </td>
+                          <td className="py-1 pr-3 font-mono text-ink-3">{i + 1}</td>
                           <td className="py-1 pr-3 font-mono text-ink">{v}</td>
                           <td className="py-1 pr-3">
                             <StatusBadge tone="good" label="valid" />
@@ -210,7 +264,8 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
                       ))}
                       {previewResult.invalid.map((v, i) => (
                         <tr key={`i-${v.value}-${i}`} className="border-t border-edge/50">
-                          <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{previewResult.valid.length + i + 1}</td>
+                          <td className="py-1 pl-2 pr-1" />
+                          <td className="py-1 pr-3 font-mono text-ink-3">{previewResult.valid.length + i + 1}</td>
                           <td className="py-1 pr-3 font-mono text-ink">{v.value}</td>
                           <td className="py-1 pr-3">
                             <StatusBadge tone="critical" label="invalid" />
