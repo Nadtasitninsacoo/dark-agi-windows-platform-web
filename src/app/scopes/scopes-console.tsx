@@ -201,8 +201,15 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
                 <input className={`${inputClass} mt-0.5`} placeholder="http://127.0.0.1:3001/api/saved-ips" autoComplete="off" value={effectiveUrl} onChange={(e) => setPreviewUrl(e.target.value)} />
               </label>
               <label className="min-w-48 text-[11.5px] text-ink-3">
-                Bearer token (optional) — a secret for the other system&apos;s endpoint, never your own DARK AGI password
-                <input className={`${inputClass} mt-0.5 font-mono`} type="password" autoComplete="new-password" value={previewToken} onChange={(e) => setPreviewToken(e.target.value)} />
+                Bearer token — never your own DARK AGI password
+                <input
+                  className={`${inputClass} mt-0.5 font-mono`}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={effectiveUrl === defaultSyncUrl ? 'Leave blank — this machine already has one configured' : 'Required for this URL'}
+                  value={previewToken}
+                  onChange={(e) => setPreviewToken(e.target.value)}
+                />
               </label>
               <Button type="submit" busy={previewBusy} disabled={effectiveUrl.trim() === ''}>
                 <Eye className="size-3.5" aria-hidden /> Preview

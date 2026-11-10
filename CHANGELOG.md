@@ -515,3 +515,7 @@ entries rendered for inspection, and the Scopes table above was unchanged before
   operator is deliberately typing. The token is never defaulted client-side — the server supplies its own
   configured token automatically only when the URL matches exactly. Verified live: expanding "Preview
   source" fills the URL with no typing required.
+- By request: the token field never had (and never will have) an actual secret to auto-fill — it stays
+  server-side by design. Instead of leaving that unexplained, the field's placeholder now says so directly:
+  "Leave blank — this machine already has one configured" when the URL matches the default, "Required for
+  this URL" otherwise — so it's clear at a glance when the field matters and when it can just stay empty.
