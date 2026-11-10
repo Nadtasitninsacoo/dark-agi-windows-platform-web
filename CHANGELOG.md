@@ -483,3 +483,13 @@ clicking "Disable" on each row to get down to exactly one active scope, which au
 - This only flips `enabled` — it never changes which targets a scope covers. "All ON" still means every
   scope stays restricted to its own pre-defined target list, confirmed directly with the user: it is not an
   "allow everything" switch.
+
+## Scope Management: preview an external source before ever trusting it
+
+By request, right after a real candidate sync source turned out to return ~6,000 IPs spread across many
+countries — clearly not one operator's own assets, and not something that should become a live
+authorization boundary sight-unseen. New "Preview an external source" panel (`scopes:manage` only): a URL +
+optional bearer-token form, backed by the new read-only `POST /scopes/preview-sync` — shows every single
+entry the source returns in a table (valid ones in green, invalid ones in red with why), with an explicit
+"nothing here has been saved as a scope" note. Verified live against the real candidate source: all ~6,000
+entries rendered for inspection, and the Scopes table above was unchanged before and after.

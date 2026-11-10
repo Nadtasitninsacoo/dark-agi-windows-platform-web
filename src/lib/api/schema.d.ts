@@ -258,6 +258,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scopes/preview-sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fetch and validate a target list from an external endpoint WITHOUT creating or changing any scope — inspect a source before deciding to sync it */
+        post: operations["ScopesController_previewSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/operations": {
         parameters: {
             query?: never;
@@ -2658,6 +2675,22 @@ export interface components {
                 updatedAt: string;
             }[];
         };
+        ScopePreviewSyncRequest: {
+            /** Format: uri */
+            url: string;
+            token?: string;
+        };
+        ScopePreviewSyncResult: {
+            /** @description How many entries the source returned, before validation */
+            total: number;
+            /** @description Entries that would become Scope targets, deduplicated and normalised */
+            valid: string[];
+            /** @description Entries rejected, and why — nothing here is ever synced */
+            invalid: {
+                value: string;
+                reason: string;
+            }[];
+        };
         ScopeSetAllRequest: {
             enabled: boolean;
         };
@@ -3339,6 +3372,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScopeSetAllResult"];
+                };
+            };
+        };
+    };
+    ScopesController_previewSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopePreviewSyncRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopePreviewSyncResult"];
                 };
             };
         };

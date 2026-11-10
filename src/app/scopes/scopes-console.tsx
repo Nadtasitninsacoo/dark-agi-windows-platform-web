@@ -1,12 +1,12 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Eye, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
-import { apiRequest, type Scope, type ScopeCreateRequest, type ScopeList } from '@/lib/api/client';
+import { apiRequest, type Scope, type ScopeCreateRequest, type ScopeList, type ScopePreviewSyncResult } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
@@ -135,6 +135,98 @@ function ScopeRow({ scope, canManage, onChanged }: { scope: Scope; canManage: bo
   );
 }
 
+/**
+ * Fetches and validates a target list from any external endpoint — read-only, never creates or
+ * changes a scope. Lets an operator see exactly what a source would produce (every entry, including
+ * malformed ones) before ever deciding to point the live, automatically-trusted sync at it.
+ */
+function PreviewSyncPanel() {
+  const [url, setUrl] = useState('');
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [result, setResult] = useState<ScopePreviewSyncResult | null>(null);
+
+  const preview = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      setResult(await apiRequest<ScopePreviewSyncResult>('/scopes/preview-sync', send('POST', { url, token: token.trim() || undefined })));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Panel title="Preview an external source" subtitle="Read-only — fetches and validates a target list, but never creates or changes a scope">
+      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => void preview(e)}>
+        <label className="min-w-64 flex-1 text-[11.5px] text-ink-3">
+          Endpoint URL
+          <input className={`${inputClass} mt-0.5`} placeholder="http://127.0.0.1:3001/api/saved-ips" value={url} onChange={(e) => setUrl(e.target.value)} />
+        </label>
+        <label className="min-w-48 text-[11.5px] text-ink-3">
+          Bearer token (optional)
+          <input className={`${inputClass} mt-0.5 font-mono`} type="password" value={token} onChange={(e) => setToken(e.target.value)} />
+        </label>
+        <Button type="submit" busy={busy} disabled={url.trim() === ''}>
+          <Eye className="size-3.5" aria-hidden /> Preview
+        </Button>
+      </form>
+      {error ? (
+        <div className="mt-2">
+          <ErrorNotice error={error} />
+        </div>
+      ) : null}
+      {result ? (
+        <div className="mt-3 space-y-2">
+          <p className="text-[11.5px] text-ink-3">
+            {result.total} entr{result.total === 1 ? 'y' : 'ies'} returned · <span className="text-good">{result.valid.length} valid</span> ·{' '}
+            <span className="text-critical">{result.invalid.length} invalid</span> — nothing here has been saved as a scope
+          </p>
+          <div className="max-h-96 overflow-auto rounded border border-edge">
+            <table className="w-full text-left text-[12px]">
+              <thead className="sticky top-0 bg-panel text-[10.5px] uppercase tracking-wider text-ink-3">
+                <tr>
+                  <th className="py-1 pl-2 pr-3 font-medium">#</th>
+                  <th className="py-1 pr-3 font-medium">Value</th>
+                  <th className="py-1 pr-3 font-medium">Status</th>
+                  <th className="py-1 pr-3 font-medium">Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.valid.map((v, i) => (
+                  <tr key={`v-${v}`} className="border-t border-edge/50">
+                    <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{i + 1}</td>
+                    <td className="py-1 pr-3 font-mono text-ink">{v}</td>
+                    <td className="py-1 pr-3">
+                      <StatusBadge tone="good" label="valid" />
+                    </td>
+                    <td className="py-1 pr-3 text-ink-3">—</td>
+                  </tr>
+                ))}
+                {result.invalid.map((v, i) => (
+                  <tr key={`i-${v.value}-${i}`} className="border-t border-edge/50">
+                    <td className="py-1 pl-2 pr-3 font-mono text-ink-3">{result.valid.length + i + 1}</td>
+                    <td className="py-1 pr-3 font-mono text-ink">{v.value}</td>
+                    <td className="py-1 pr-3">
+                      <StatusBadge tone="critical" label="invalid" />
+                    </td>
+                    <td className="py-1 pr-3 text-ink-2">{v.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
+
 export function ScopesConsole() {
   const { can } = useAuth();
   const scopes = useSWR<ScopeList>('/scopes');
@@ -181,6 +273,7 @@ export function ScopesConsole() {
         ) : (
           <p className="text-[12px] text-ink-3">Creating and changing scopes requires the OPERATOR or ADMIN role.</p>
         )}
+        {canManage ? <PreviewSyncPanel /> : null}
       </div>
     </div>
   );

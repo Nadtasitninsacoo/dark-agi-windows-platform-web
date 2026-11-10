@@ -42,6 +42,7 @@ export type ToolDiscoveryResult = Schemas['ToolDiscoveryResult'];
 export type Scope = Schemas['Scope'];
 export type ScopeList = Schemas['ScopeList'];
 export type ScopeCreateRequest = Schemas['ScopeCreateRequest'];
+export type ScopePreviewSyncResult = Schemas['ScopePreviewSyncResult'];
 export type Operation = Schemas['Operation'];
 export type OperationList = Schemas['OperationList'];
 export type Job = Schemas['Job'];
