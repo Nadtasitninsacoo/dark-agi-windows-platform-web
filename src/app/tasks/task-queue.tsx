@@ -3,12 +3,12 @@
 import { ChevronDown, ChevronRight, OctagonX, Play, RotateCcw, Send } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type FormEvent, Fragment, useMemo, useState } from 'react';
+import { type FormEvent, Fragment, type MouseEvent, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
-import { apiRequest, type EngineStatus, type Job, type JobPage, type Operation, type OperationList } from '@/lib/api/client';
+import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { RemoteHostField } from '@/app/remote-hosts/remote-host-field';
 import { JobResult } from './job-result';
@@ -35,6 +35,7 @@ function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: (
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [clearResult, setClearResult] = useState<JobClearHistoryResult | null>(null);
 
   const act = async (path: string, body?: unknown) => {
     setBusy(true);
@@ -42,6 +43,21 @@ function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: (
     try {
       await apiRequest<EngineStatus>(path, post(body));
       setReason('');
+      await onChanged();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const clearHistory = async (stopActive: boolean, deleteStopped: boolean) => {
+    setBusy(true);
+    setError(null);
+    setClearResult(null);
+    try {
+      const result = await apiRequest<JobClearHistoryResult>('/jobs/clear-history', post({ stopActive, deleteStopped }));
+      setClearResult(result);
       await onChanged();
     } catch (err) {
       setError(err);
@@ -95,6 +111,31 @@ function EnginePanel({ engine, onChanged }: { engine: EngineStatus; onChanged: (
               <OctagonX className="size-3.5" aria-hidden /> Emergency stop
             </button>
             <span className="text-[11px] text-ink-3">Cancels every queued and running job and refuses new ones until resumed.</span>
+          </div>
+        ) : null}
+        {can('jobs:approve') ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-edge pt-3">
+            <span className="text-[11px] text-ink-3">Job history:</span>
+            <Button busy={busy} onClick={() => void clearHistory(false, false)}>
+              Clear finished history
+            </Button>
+            {c.AWAITING_APPROVAL + c.QUEUED + c.RUNNING > 0 ? (
+              <>
+                <Button busy={busy} onClick={() => void clearHistory(true, false)}>
+                  Stop active jobs (keep)
+                </Button>
+                <Button busy={busy} onClick={() => void clearHistory(true, true)}>
+                  Stop active jobs (delete)
+                </Button>
+              </>
+            ) : null}
+            {clearResult ? (
+              <span className="text-[11px] text-ink-3">
+                {clearResult.stopped > 0 ? `Stopped ${clearResult.stopped}. ` : ''}
+                Deleted {clearResult.deleted}
+                {clearResult.skippedWithFindings > 0 ? `, kept ${clearResult.skippedWithFindings} (linked findings)` : ''}.
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -247,6 +288,44 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
   );
 }
 
+/** The collapsed row's own Stop button — a job otherwise needs expanding to reach Cancel in JobDetail,
+ * which is slow when you just want to kill something right now. Same cancellable-status/permission gate
+ * and same POST /jobs/:id/cancel as JobDetail's "Cancel job", just reachable without expanding first. */
+function StopButton({ job, canCancel, onChanged }: { job: Job; canCancel: boolean; onChanged: () => Promise<unknown> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  if (!canCancel || !ACTIVE.includes(job.status)) return null;
+
+  const stop = async (e: MouseEvent) => {
+    e.stopPropagation(); // don't also toggle row expansion
+    setBusy(true);
+    setError(null);
+    try {
+      await apiRequest<Job>(`/jobs/${job.id}/cancel`, post());
+      await onChanged();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={(e) => void stop(e)}
+        title="Stop this job"
+        className="inline-flex items-center gap-1 rounded border border-edge-strong px-1.5 py-0.5 text-[11px] text-ink-2 hover:border-critical/60 hover:text-critical disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <OctagonX className="size-3" aria-hidden /> Stop
+      </button>
+      {error ? <span className="text-[10.5px] text-critical">{error instanceof Error ? error.message : String(error)}</span> : null}
+    </span>
+  );
+}
+
 function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unknown> }) {
   const { user, can } = useAuth();
   const [note, setNote] = useState('');
@@ -377,7 +456,7 @@ function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unkn
 }
 
 export function TaskQueue() {
-  const { can } = useAuth();
+  const { user, can } = useAuth();
   const params = useSearchParams();
   const [status, setStatus] = useState<Job['status'] | ''>('');
   const [open, setOpen] = useState<string | null>(params.get('job'));
@@ -474,7 +553,14 @@ export function TaskQueue() {
                           </td>
                           <td className="py-1.5 pr-3 font-mono text-[11.5px] text-ink-2">{j.targets.join(', ') || 'this machine'}</td>
                           <td className="py-1.5 pr-3">
-                            <StatusBadge tone={s.tone} label={s.label} />
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <StatusBadge tone={s.tone} label={s.label} />
+                              <StopButton
+                                job={j}
+                                canCancel={((j.requestedBy.type === 'USER' && j.requestedBy.id === user.username) || can('jobs:approve')) && can('jobs:submit')}
+                                onChanged={refresh}
+                              />
+                            </div>
                           </td>
                           <td className="py-1.5 pr-3 text-ink-2">
                             {j.requestedBy.type === 'AGENT' ? <span className="text-warning">agent </span> : null}

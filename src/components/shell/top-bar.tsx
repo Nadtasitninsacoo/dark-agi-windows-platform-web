@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, SquareTerminal, Target, UserRound } from 'lucide-react';
+import { LogOut, OctagonX, SquareTerminal, Target, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +19,53 @@ function EngineBadge() {
     <Link href="/tasks">
       <StatusBadge tone="critical" label="ENGINE STOPPED" />
     </Link>
+  );
+}
+
+/**
+ * The platform's ultimate override: one click, no typing, no confirmation dialog — on every page, not
+ * just Task Queue. Calls the exact same POST /engine/emergency-stop every other Emergency Stop control
+ * uses (execution.service.ts's emergencyStop(): pauses new submissions, cancels every queued/awaiting-
+ * approval job, and aborts every currently-running process via its AbortController). However capable the
+ * AI Agents or any future autonomous layer become, this stays a plain human-operated kill switch they have
+ * no path to call themselves — no agent-facing route exists for it, only this UI and Task Queue's own
+ * form, both gated on `engine:control`, a permission no agent actor holds.
+ * Hidden once already stopped — EngineBadge (above) already shows that state; this button has nothing
+ * further to do until someone resumes from Task Queue. While any job is actually RUNNING (an agent, a
+ * scan, anything), it turns solid red and pulses — a quiet idle state the rest of the time, impossible to
+ * miss the moment something is actually executing.
+ */
+function EmergencyStopButton() {
+  const { can } = useAuth();
+  const { data, mutate } = useSWR<EngineStatus>(can('engine:control') ? '/engine' : null, { refreshInterval: 3_000 });
+  const [busy, setBusy] = useState(false);
+  if (!can('engine:control') || !data || data.paused) return null;
+  const active = data.counts.RUNNING > 0;
+
+  const stop = async () => {
+    setBusy(true);
+    try {
+      await apiRequest('/engine/emergency-stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: 'Emergency stop (navbar)' }) });
+      await mutate();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void stop()}
+      disabled={busy}
+      title={active ? `Stop every job immediately — ${data.counts.RUNNING} running right now. No confirmation, no delay.` : 'Stop every job immediately — queued, awaiting approval, and running. No confirmation, no delay.'}
+      className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[12px] font-bold disabled:cursor-not-allowed disabled:opacity-60 ${
+        active ? 'border-critical bg-critical/70 text-white hover:bg-critical/80' : 'border-critical/70 bg-critical/20 text-critical hover:bg-critical/30'
+      }`}
+      style={active ? { animation: 'dagi-pulse 1s ease-in-out infinite' } : undefined}
+    >
+      <OctagonX className="size-3.5" aria-hidden />
+      <span className="hidden sm:inline">{busy ? 'Stopping…' : active ? `STOP (${data.counts.RUNNING} running)` : 'STOP'}</span>
+    </button>
   );
 }
 
@@ -155,6 +202,7 @@ export function TopBar() {
         <span className="hidden sm:inline">Terminal</span>
       </button>
       <div className="ml-auto flex items-center gap-2">
+        <EmergencyStopButton />
         <ScopesToggle />
         <EngineBadge />
         <ApprovalBadge />

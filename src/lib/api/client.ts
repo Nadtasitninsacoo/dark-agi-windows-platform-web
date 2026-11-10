@@ -50,6 +50,7 @@ export type GraphSnapshot = Schemas['GraphSnapshot'];
 export type AttackPath = Schemas['AttackPath'];
 export type AttackPathPage = Schemas['AttackPathPage'];
 export type AttackReasonResponse = Schemas['AttackReasonResponse'];
+export type JobClearHistoryResult = Schemas['JobClearHistoryResult'];
 export type Operation = Schemas['Operation'];
 export type OperationList = Schemas['OperationList'];
 export type Job = Schemas['Job'];

@@ -557,3 +557,20 @@ between two nodes and an AI-ranked, MITRE ATT&CK-tagged explanation of the most 
 - Verified live: seeded a real AD path (user → session → domain controller → AdminTo → Domain Admins),
   confirmed the graph renders with correct colors/edges, "Find a path" highlights the real path, and "Ask
   AI" returns a correct, ATT&CK-tagged explanation.
+
+## A navbar Emergency Stop button, and job-history clearing in Task Queue
+
+By request: Task Queue's own Emergency Stop needed navigating there first — not fast enough for "stop
+everything, right now." The new navbar button (visible whenever `engine:control` is held and the engine
+isn't already paused — EngineBadge already covers that state) calls the exact same `POST /engine/
+emergency-stop` as Task Queue's own form, with a fixed default reason, so it's a genuine one-click action:
+no typing, no confirmation dialog. While any job is actually `RUNNING`, it turns solid red and pulses
+(`dagi-pulse`, the same keyframe Agent Console's own "running" indicator uses) and shows the running
+count — impossible to miss the moment something is actually executing, quiet otherwise. No AI agent has
+any path to call this themselves; it's gated on a permission only a human operator holds.
+
+- Task Queue's Execution Engine panel gained a "Job history" row: **Clear finished history** deletes
+  terminal (Succeeded/Failed/Cancelled/Rejected) job rows, skipping any that a Security Finding still links
+  to (deleting those would silently delete the Finding too). When jobs are still active, two more buttons
+  appear — **Stop active jobs (keep)** and **Stop active jobs (delete)** — covering the case a job is stuck
+  at Running with no real process behind it (the backend having restarted since it was submitted).

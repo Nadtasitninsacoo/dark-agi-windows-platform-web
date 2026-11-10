@@ -391,6 +391,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/clear-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Delete terminal job rows (skipping any a Security Finding still links to); optionally cancel active jobs first, and choose whether to keep or delete those too (audited) */
+        post: operations["ExecutionController_clearHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{id}/approve": {
         parameters: {
             query?: never;
@@ -2531,6 +2548,26 @@ export interface components {
             finishedAt: string | null;
             durationMs: number | null;
         };
+        JobClearHistoryRequest: {
+            /**
+             * @description Also cancel every currently queued/awaiting-approval/running job first
+             * @default false
+             */
+            stopActive: boolean;
+            /**
+             * @description Delete the jobs stopActive just cancelled too, instead of only keeping them as CANCELLED history
+             * @default false
+             */
+            deleteStopped: boolean;
+        };
+        JobClearHistoryResult: {
+            /** @description Active jobs that were cancelled (0 if stopActive was false) */
+            stopped: number;
+            /** @description Terminal job rows permanently deleted */
+            deleted: number;
+            /** @description Terminal jobs left in place because Security Findings are still linked to them */
+            skippedWithFindings: number;
+        };
         JobDecisionRequest: {
             note?: string;
         };
@@ -3825,6 +3862,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    ExecutionController_clearHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobClearHistoryRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobClearHistoryResult"];
                 };
             };
         };
