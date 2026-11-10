@@ -12,6 +12,7 @@ import { formatDateTime } from '@/lib/format';
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
 const send = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const splitTargets = (text: string): string[] => text.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean);
+const TARGETS_PAGE_SIZE = 50;
 
 function CreateScope({ onCreated }: { onCreated: () => Promise<unknown> }) {
   const [name, setName] = useState('');
@@ -69,6 +70,10 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
   const [error, setError] = useState<unknown>(null);
   const [editing, setEditing] = useState(false);
   const [targets, setTargets] = useState(scope.targets.join('\n'));
+  const [targetsPage, setTargetsPage] = useState(1);
+  const targetsTotalPages = Math.max(1, Math.ceil(scope.targets.length / TARGETS_PAGE_SIZE));
+  const targetsPageSafe = Math.min(targetsPage, targetsTotalPages);
+  const targetsPageItems = scope.targets.slice((targetsPageSafe - 1) * TARGETS_PAGE_SIZE, targetsPageSafe * TARGETS_PAGE_SIZE);
 
   const [previewing, setPreviewing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -161,11 +166,26 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
               </div>
             </div>
           ) : (
-            <ul className="font-mono text-[11.5px] text-ink-2">
-              {scope.targets.map((t) => (
-                <li key={t}>{t}</li>
-              ))}
-            </ul>
+            <div>
+              <ul className="font-mono text-[11.5px] text-ink-2">
+                {targetsPageItems.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+              {scope.targets.length > TARGETS_PAGE_SIZE ? (
+                <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-3">
+                  <Button disabled={targetsPageSafe <= 1} onClick={() => setTargetsPage((p) => p - 1)}>
+                    Prev
+                  </Button>
+                  <span>
+                    Page {targetsPageSafe} of {targetsTotalPages} ({scope.targets.length.toLocaleString()} total)
+                  </span>
+                  <Button disabled={targetsPageSafe >= targetsTotalPages} onClick={() => setTargetsPage((p) => p + 1)}>
+                    Next
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           )}
         </td>
         <td className="py-2 pr-3 font-mono text-ink-2">{scope.addressCount.toLocaleString()}</td>

@@ -526,3 +526,12 @@ By request: the top-bar "Scopes" badge read as a plain "all ON"/"some OFF" with 
 reads `Scopes: {active}/{total} active` (e.g. "3/3 active"), matching the same wording Scope Management's
 own "Scopes" panel already uses. The toggle's own enable/disable behavior is unchanged — still flips every
 scope's `enabled` flag in one call — this is a display-only change. Verified live.
+
+## Scopes table: paginate a scope's own target list, 50 per page
+
+Surfaced by a scope that had grown to 6,013 targets (added via the new selective "Add selected" feature) —
+the TARGETS column rendered all of them as one unbroken `<li>` list, making the row thousands of pixels
+tall. Added the same Previous/Next pagination pattern Command Reference already uses: 50 targets per page,
+with "Page N of M (total) total" — only shown at all once a scope has more than 50 targets, so every normal,
+small scope renders exactly as before. Verified live: a 6,013-target scope now shows 50 at a time, "Page 2
+of 121 (6,013 total)" after clicking Next.
