@@ -8,6 +8,7 @@ import { useAuth } from '@/components/shell/auth';
 import { Button, ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
 import { apiRequest, type Scope, type ScopeCreateRequest, type ScopeList, type ScopePreviewSyncResult, type ScopeSyncConfig } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
+import { AssetAuthorization } from './asset-authorization';
 
 const inputClass = 'w-full rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink';
 const send = (method: string, body: unknown): RequestInit => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -69,6 +70,8 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [editing, setEditing] = useState(false);
+  // A scope mirrored from the authorized-asset feed: its targets are set by Authorize/Revoke, never edited or listed here.
+  const managed = /^authorized assets synced from /i.test(scope.description);
   const [targets, setTargets] = useState(scope.targets.join('\n'));
   const [targetsPage, setTargetsPage] = useState(1);
   const targetsTotalPages = Math.max(1, Math.ceil(scope.targets.length / TARGETS_PAGE_SIZE));
@@ -165,6 +168,10 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
                 <Button onClick={() => setEditing(false)}>Cancel</Button>
               </div>
             </div>
+          ) : managed ? (
+            <p className="max-w-md text-[12px] text-ink-3">
+              {scope.targets.length.toLocaleString()} authorized IP(s), managed automatically. Pick or revoke them in “Authorize targets” above (filter: Authorized).
+            </p>
           ) : (
             <div className="max-w-2xl">
               <div className="grid grid-cols-4 gap-1 font-mono text-[11.5px] text-ink-2">
@@ -200,10 +207,14 @@ function ScopeRow({ scope, canManage, onChanged, defaultSyncUrl }: { scope: Scop
         <td className="py-2 text-right">
           {canManage && !editing ? (
             <div className="flex flex-wrap justify-end gap-1.5">
-              <Button onClick={() => setPreviewing((v) => !v)}>
-                <Eye className="size-3.5" aria-hidden /> {previewing ? 'Hide preview' : 'Preview source'}
-              </Button>
-              <Button onClick={() => setEditing(true)}>Edit targets</Button>
+              {managed ? null : (
+                <>
+                  <Button onClick={() => setPreviewing((v) => !v)}>
+                    <Eye className="size-3.5" aria-hidden /> {previewing ? 'Hide preview' : 'Preview source'}
+                  </Button>
+                  <Button onClick={() => setEditing(true)}>Edit targets</Button>
+                </>
+              )}
               <Button busy={busy} onClick={() => void update({ enabled: !scope.enabled })}>
                 {scope.enabled ? 'Disable' : 'Enable'}
               </Button>
@@ -333,6 +344,7 @@ export function ScopesConsole() {
       />
       <div className="space-y-3 p-4">
         {scopes.error ? <ErrorNotice error={scopes.error} /> : null}
+        <AssetAuthorization canManage={canManage} onChanged={() => scopes.mutate()} />
         <Panel title="Scopes" subtitle={scopes.data ? `${scopes.data.items.filter((s) => s.active).length} active of ${scopes.data.items.length}` : undefined}>
           {!scopes.data && !scopes.error ? <Skeleton className="h-24 w-full" /> : null}
           {scopes.data?.items.length === 0 ? <p className="text-[12px] text-ink-3">No scopes yet. Network operations are refused until an approved scope covers their targets.</p> : null}
