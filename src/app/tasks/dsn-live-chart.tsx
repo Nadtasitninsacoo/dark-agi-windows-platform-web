@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { apiRequest, type Job } from '@/lib/api/client';
 
 /**
@@ -13,6 +13,12 @@ import { apiRequest, type Job } from '@/lib/api/client';
  * Encodings, one job each (dataviz skill): bar length = magnitude (distance, log scale, one hue — no
  * categorical colors, since these spacecraft are not being compared as a competing identity); the end-dot
  * = status (two states, both named in a legend row, never color-alone).
+ *
+ * Motion is gated by real state, never decorative-by-default (same rule src/app/globals.css documents for
+ * dagi-radar-sweep's blips): the end-dot's ring only loops while that spacecraft actually has an active
+ * link right now, and the travelling chase-light dots along the bar (dagi-chase — the exact technique
+ * agent-console.tsx's StatusBar uses) only run, and only appear at all, while a link is active — direction
+ * follows the real signal direction (uplink: Earth, left -> spacecraft, right; downlink: the reverse).
  */
 
 export interface DsnTrack {
@@ -50,11 +56,23 @@ function formatLightTime(sec: number): string {
   return `${sec.toFixed(1)} s`;
 }
 
+const CHASE_DOTS: number = 5;
+
+/** Positions for the travelling chase-light dots along one bar's filled width, in signal-travel order (index 0 = first to light up). */
+function chaseStyles(widthPct: number, direction: 'uplink' | 'downlink'): { style: CSSProperties; leftPct: number }[] {
+  return Array.from({ length: CHASE_DOTS }, (_, i) => {
+    const leftPct = CHASE_DOTS === 1 ? widthPct / 2 : (i / (CHASE_DOTS - 1)) * widthPct;
+    const order = direction === 'uplink' ? i : CHASE_DOTS - 1 - i; // uplink: Earth (left) -> spacecraft (right); downlink: the reverse
+    return { leftPct, style: { animation: 'dagi-chase 1.1s linear infinite', animationDelay: `${order * 0.12}s` } };
+  });
+}
+
 export function DsnLiveChart({ items: initial, toolId, operationId }: { items: readonly DsnTrack[]; toolId?: string; operationId?: string }) {
   const [items, setItems] = useState<readonly DsnTrack[]>(initial);
   const [live, setLive] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [justUpdated, setJustUpdated] = useState(false);
+  const [msUntilRefresh, setMsUntilRefresh] = useState(REFRESH_MS);
   const cancelledRef = useRef(false);
 
   const canLive = Boolean(toolId && operationId);
@@ -82,12 +100,19 @@ export function DsnLiveChart({ items: initial, toolId, operationId }: { items: r
       } catch {
         // A transient network hiccup during a background refresh — the next tick tries again; no need to interrupt the operator with an error for this.
       }
-      if (!cancelledRef.current) handle = setTimeout(() => void tick(), REFRESH_MS);
+      if (!cancelledRef.current) {
+        setMsUntilRefresh(REFRESH_MS);
+        handle = setTimeout(() => void tick(), REFRESH_MS);
+      }
     };
     let handle = setTimeout(() => void tick(), 0);
+    // A real (if coarse) countdown to the next refresh — not animated for its own sake, just ticking down
+    // the same REFRESH_MS the fetch above actually waits.
+    const countdown = setInterval(() => setMsUntilRefresh((ms) => Math.max(0, ms - 1000)), 1000);
     return () => {
       cancelledRef.current = true;
       clearTimeout(handle);
+      clearInterval(countdown);
     };
   }, [live, toolId, operationId]);
 
@@ -115,7 +140,7 @@ export function DsnLiveChart({ items: initial, toolId, operationId }: { items: r
             className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium transition-colors ${live ? 'border-accent-strong text-good' : 'border-edge-strong text-ink-2 hover:text-ink'}`}
           >
             <span className={`size-1.5 rounded-full ${live ? 'animate-pulse bg-good' : 'bg-ink-3'}`} aria-hidden />
-            {live ? 'Live — refreshing every 20s' : 'Live refresh: off'}
+            {live ? `Live — next refresh in ${Math.ceil(msUntilRefresh / 1000)}s` : 'Live refresh: off'}
           </button>
         ) : null}
       </div>
@@ -134,6 +159,7 @@ export function DsnLiveChart({ items: initial, toolId, operationId }: { items: r
           const pct = ((Math.log10(t.distanceKm) - logMin) / span) * 100;
           const width = Math.max(pct, 3); // the nearest object still gets a visible sliver, not literally 0 width
           const active = t.uplinkActive || t.downlinkActive;
+          const direction: 'uplink' | 'downlink' = t.downlinkActive ? 'downlink' : 'uplink';
           const label = t.spacecraftName ?? `Unidentified (${t.spacecraftCode})`;
           return (
             <div key={`${t.dish}-${t.spacecraftCode}`}>
@@ -146,10 +172,19 @@ export function DsnLiveChart({ items: initial, toolId, operationId }: { items: r
                 title={`${label} · ${formatDistance(t.distanceKm)} · round-trip light time ${formatLightTime(t.roundTripLightTimeSec)} · uplink ${t.uplinkActive ? 'active' : 'idle'}, downlink ${t.downlinkActive ? 'active' : 'idle'} · dish ${t.dish}`}
               >
                 <div className="h-full rounded-full bg-cyan" style={{ width: `${width}%` }} />
-                <span className={`absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full ring-2 ring-panel ${active ? 'bg-good' : 'bg-ink-3'}`} style={{ left: `calc(${width}% - 5px)` }} aria-hidden />
+                {active
+                  ? chaseStyles(width, direction).map(({ leftPct, style }, i) => (
+                      <span key={i} className="absolute top-1/2 size-1 -translate-y-1/2 rounded-full bg-good" style={{ left: `${leftPct}%`, ...style }} aria-hidden />
+                    ))
+                  : null}
+                <span
+                  className={`absolute top-1/2 size-2.5 -translate-y-1/2 rounded-full ring-2 ring-panel ${active ? 'bg-good' : 'bg-ink-3'}`}
+                  style={{ left: `calc(${width}% - 5px)`, animation: active ? 'dagi-ring-flash-good 1.6s ease-out infinite' : undefined }}
+                  aria-hidden
+                />
               </div>
               <p className="mt-1 text-[10px] text-ink-3">
-                {t.dish} · light time {formatLightTime(t.roundTripLightTimeSec)} round-trip
+                {t.dish} · light time {formatLightTime(t.roundTripLightTimeSec)} round-trip{active ? ` · ${direction === 'downlink' ? 'receiving' : 'sending'} now` : ''}
               </p>
             </div>
           );

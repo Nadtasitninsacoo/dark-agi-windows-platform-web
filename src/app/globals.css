@@ -125,3 +125,15 @@ body {
     box-shadow: 0 0 0 28px rgb(255 59 92 / 0);
   }
 }
+
+/* Same mechanism as dagi-ring-flash, but in the good/accent green — for an ONGOING active state (looped,
+   not a one-shot event flash), e.g. the "actively transmitting right now" dot in dsn-live-chart.tsx. A
+   smaller max radius than the defense radar's, since this rings a small inline dot, not a full scope. */
+@keyframes dagi-ring-flash-good {
+  0% {
+    box-shadow: 0 0 0 0 rgb(46 232 143 / 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(46 232 143 / 0);
+  }
+}
