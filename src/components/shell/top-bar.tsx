@@ -196,7 +196,7 @@ export function TopBar() {
         type="button"
         onClick={() => window.dispatchEvent(new Event(OPEN_TERMINAL_EVENT))}
         className="flex items-center gap-1.5 rounded border border-accent-strong/60 bg-accent-strong/10 px-2 py-1 text-[12px] text-ink hover:bg-accent-strong/20"
-        title="Open the DARK AGI terminal (floating window)"
+        title="Open a new DARK AGI terminal window (each click opens another, like launching another cmd.exe)"
       >
         <SquareTerminal className="size-3.5 text-accent" aria-hidden />
         <span className="hidden sm:inline">Terminal</span>

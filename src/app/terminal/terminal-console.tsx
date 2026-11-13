@@ -35,6 +35,53 @@ const post = (body?: unknown): RequestInit => ({ method: 'POST', headers: { 'Con
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 const FINAL = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED', 'REJECTED']);
 
+/**
+ * Per-session persistence: each terminal (the main page, or one floating window) has its own `sessionId`
+ * and its own localStorage slot, so refreshing the browser restores that session's command history and
+ * results exactly, and separate windows never see each other's scrollback. Entries are capped at
+ * `MAX_PERSISTED_ENTRIES` on write (oldest dropped first) so one long-running session can't grow without
+ * bound — this is terminal scrollback, not a record of what actually happened (that's the job audit log).
+ */
+const SESSION_STORAGE_PREFIX = 'dark-agi:terminal-session:';
+const MAX_PERSISTED_ENTRIES = 300;
+
+interface PersistedSession {
+  entries: Entry[];
+  history: string[];
+}
+
+function loadSession(sessionId: string | undefined): PersistedSession | null {
+  if (!sessionId || typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_STORAGE_PREFIX + sessionId);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedSession>;
+    return { entries: Array.isArray(parsed.entries) ? parsed.entries : [], history: Array.isArray(parsed.history) ? parsed.history : [] };
+  } catch {
+    return null; // Corrupt or inaccessible storage — start this session fresh rather than failing to render.
+  }
+}
+
+function saveSession(sessionId: string | undefined, session: PersistedSession): void {
+  if (!sessionId || typeof window === 'undefined') return;
+  try {
+    const trimmed = session.entries.length > MAX_PERSISTED_ENTRIES ? session.entries.slice(session.entries.length - MAX_PERSISTED_ENTRIES) : session.entries;
+    window.localStorage.setItem(SESSION_STORAGE_PREFIX + sessionId, JSON.stringify({ entries: trimmed, history: session.history.slice(-100) }));
+  } catch {
+    // Storage full or unavailable (private browsing, quota) — the session still works in-memory for this tab.
+  }
+}
+
+/** Removes a closed session's saved scrollback entirely — closing a window, unlike collapsing it, means "done with this". */
+export function clearPersistedSession(sessionId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(SESSION_STORAGE_PREFIX + sessionId);
+  } catch {
+    /* nothing to clean up if storage is unavailable */
+  }
+}
+
 type EntryData =
   | { kind: 'cmd'; text: string }
   | { kind: 'info'; text: string }
@@ -132,26 +179,34 @@ function HighlightedCommand({ text }: { text: string }) {
   );
 }
 
-export function TerminalConsole({ embedded = false, codeColor }: { embedded?: boolean; codeColor?: string } = {}) {
+export function TerminalConsole({ embedded = false, codeColor, sessionId }: { embedded?: boolean; codeColor?: string; sessionId?: string } = {}) {
   const { can } = useAuth();
   const codeStyle = codeColor ? { color: codeColor } : undefined;
   const canSubmit = can('jobs:submit');
   const operations = useSWR<OperationList>('/operations');
   const ops = useMemo<Operation[]>(() => operations.data?.items ?? [], [operations.data]);
 
-  const [entries, setEntries] = useState<Entry[]>([]);
+  // Lazy initializers run once, synchronously, before first paint — the restored session is what the user
+  // sees immediately, not an empty console that then "pops" full a moment later.
+  const [entries, setEntries] = useState<Entry[]>(() => loadSession(sessionId)?.entries ?? []);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [aiMode, setAiMode] = useState(false);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<string[]>(() => loadSession(sessionId)?.history ?? []);
   const [histIndex, setHistIndex] = useState<number | null>(null);
   const [suggestIndex, setSuggestIndex] = useState(0);
   const [suggestDismissed, setSuggestDismissed] = useState(false);
-  const idRef = useRef(0);
+  const idRef = useRef(Math.max(0, ...entries.map((e) => e.id + 1)));
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const add = (entry: EntryData) => setEntries((prev) => [...prev, { ...entry, id: idRef.current++ }]);
+
+  // Persist this session's own scrollback/history whenever either changes, so a refresh (or reopening a
+  // floating window closed only by navigation, not by its own × button) restores exactly where it was.
+  useEffect(() => {
+    saveSession(sessionId, { entries, history });
+  }, [sessionId, entries, history]);
 
   const suggestions = useMemo<readonly Suggestion[]>(() => (aiMode || input.trim() === '' ? [] : suggestCommand(input, ops)), [aiMode, input, ops]);
   const hint = useMemo(() => (aiMode || input.trim() === '' ? null : commandHint(input, ops)), [aiMode, input, ops]);

@@ -4,5 +4,5 @@ import { TerminalConsole } from './terminal-console';
 export const metadata: Metadata = { title: 'Terminal · DARK AGI' };
 
 export default function TerminalPage() {
-  return <TerminalConsole />;
+  return <TerminalConsole sessionId="main-page" />;
 }
