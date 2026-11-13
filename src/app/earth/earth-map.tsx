@@ -96,6 +96,10 @@ export function EarthMap() {
       style: { version: 8, sources: {}, layers: [] },
       center: [101.5, 13],
       zoom: 2,
+      minZoom: 1.5,
+      // One world, not repeated copies side by side when zoomed out -- the default (true) is what made a
+      // zoomed-out view look like several duplicate Earths tiled next to each other, which reads as broken.
+      renderWorldCopies: false,
       attributionControl: false,
     });
     map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
