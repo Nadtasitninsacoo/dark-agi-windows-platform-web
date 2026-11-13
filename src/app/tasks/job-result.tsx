@@ -12,7 +12,24 @@ const cell = (v: unknown): string => (v === null || v === undefined ? '—' : ty
  * a future External Intelligence source tomorrow) gets this for free, with no per-operation special-casing.
  */
 const IMAGE_URL = /^https?:\/\/\S+\.(?:jpe?g|png|gif|webp)(?:[?#]\S*)?$/i;
-const isImageUrl = (v: unknown): v is string => typeof v === 'string' && IMAGE_URL.test(v);
+
+/**
+ * A second, more general check for the same job as `IMAGE_URL`: some real image APIs (e.g. NASA's
+ * Worldview Snapshot endpoint) serve an image from a plain query-string URL with no file extension at
+ * all, declaring the format via a `format=image/jpeg`-style parameter instead. Parsed, not regexed, so
+ * param order/casing/extra params never matter.
+ */
+function hasImageFormatParam(v: string): boolean {
+  try {
+    const params = new URL(v).searchParams;
+    const fmt = (params.get('format') ?? params.get('FORMAT'))?.toLowerCase();
+    return fmt === 'image/jpeg' || fmt === 'image/jpg' || fmt === 'image/png' || fmt === 'image/gif' || fmt === 'image/webp';
+  } catch {
+    return false;
+  }
+}
+
+const isImageUrl = (v: unknown): v is string => typeof v === 'string' && (IMAGE_URL.test(v) || hasImageFormatParam(v));
 
 /**
  * Same idea as `isImageUrl`, for a playable embed: a job result pointing at an embeddable video URL

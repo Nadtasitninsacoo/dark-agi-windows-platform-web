@@ -141,6 +141,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   // Not NASA APIs — separate "sat:" namespace so it's honest about provenance (wheretheiss.at / YouTube).
   'iss-tracker:live-position': 'sat:iss',
   'iss-tracker:live-video-feed': 'sat:issvideo',
+  'earth-imagery:thailand-daily-view': 'sat:thailand',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.

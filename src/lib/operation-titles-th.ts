@@ -121,6 +121,7 @@ export const OPERATION_TITLE_TH: Record<string, string> = {
   'nasa-neows:close-approaches-today': 'ดาวเคราะห์น้อยใกล้โลกวันนี้ (NASA NeoWs)',
   'iss-tracker:live-position': 'ตำแหน่งสถานีอวกาศนานาชาติ (ISS) แบบเรียลไทม์',
   'iss-tracker:live-video-feed': 'วิดีโอถ่ายทอดสดจาก NASA (มุมมองโลกจาก ISS)',
+  'earth-imagery:thailand-daily-view': 'ภาพถ่ายดาวเทียมประเทศไทยรายวัน (เมื่อวาน)',
 };
 
 /** The operation's title in the requested language, falling back to English if untranslated. */
