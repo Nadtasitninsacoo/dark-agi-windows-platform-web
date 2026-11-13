@@ -141,7 +141,9 @@ export const COMMAND_ALIASES: Record<string, string> = {
   // Not NASA APIs — separate "sat:" namespace so it's honest about provenance (wheretheiss.at / YouTube).
   'iss-tracker:live-position': 'sat:iss',
   'iss-tracker:live-video-feed': 'sat:issvideo',
-  'earth-imagery:thailand-daily-view': 'sat:thailand',
+  // Worldwide now (lat=/lon= params, defaults to Thailand) — renamed from the old fixed-region command.
+  'earth-imagery:daily-view': 'sat:view',
+  'earth-imagery:high-res-view': 'sat:viewhd',
   // Not NASA (Caltech/MIT's GWOSC) — a new "space:" namespace for non-NASA cosmic/physics sources.
   'ligo-gwosc:recent-detections': 'space:gravwaves',
 

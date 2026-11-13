@@ -121,7 +121,8 @@ export const OPERATION_TITLE_TH: Record<string, string> = {
   'nasa-neows:close-approaches-today': 'ดาวเคราะห์น้อยใกล้โลกวันนี้ (NASA NeoWs)',
   'iss-tracker:live-position': 'ตำแหน่งสถานีอวกาศนานาชาติ (ISS) แบบเรียลไทม์',
   'iss-tracker:live-video-feed': 'วิดีโอถ่ายทอดสดจาก NASA (มุมมองโลกจาก ISS)',
-  'earth-imagery:thailand-daily-view': 'ภาพถ่ายดาวเทียมประเทศไทยรายวัน (เมื่อวาน)',
+  'earth-imagery:daily-view': 'ภาพถ่ายดาวเทียมรายวันทั่วโลก (ระบุพิกัดได้ ค่าเริ่มต้นคือไทย)',
+  'earth-imagery:high-res-view': 'ภาพถ่ายดาวเทียมความละเอียดสูงทั่วโลก (~10-30 เมตร/พิกเซล)',
   'ligo-gwosc:recent-detections': 'คลื่นความโน้มถ่วงที่ตรวจพบล่าสุด (การชนกันของหลุมดำ/ดาวนิวตรอนจริง)',
 };
 
