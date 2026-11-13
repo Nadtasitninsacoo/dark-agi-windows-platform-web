@@ -142,6 +142,8 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'iss-tracker:live-position': 'sat:iss',
   'iss-tracker:live-video-feed': 'sat:issvideo',
   'earth-imagery:thailand-daily-view': 'sat:thailand',
+  // Not NASA (Caltech/MIT's GWOSC) — a new "space:" namespace for non-NASA cosmic/physics sources.
+  'ligo-gwosc:recent-detections': 'space:gravwaves',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.

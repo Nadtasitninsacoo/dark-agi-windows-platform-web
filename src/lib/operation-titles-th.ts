@@ -122,6 +122,7 @@ export const OPERATION_TITLE_TH: Record<string, string> = {
   'iss-tracker:live-position': 'ตำแหน่งสถานีอวกาศนานาชาติ (ISS) แบบเรียลไทม์',
   'iss-tracker:live-video-feed': 'วิดีโอถ่ายทอดสดจาก NASA (มุมมองโลกจาก ISS)',
   'earth-imagery:thailand-daily-view': 'ภาพถ่ายดาวเทียมประเทศไทยรายวัน (เมื่อวาน)',
+  'ligo-gwosc:recent-detections': 'คลื่นความโน้มถ่วงที่ตรวจพบล่าสุด (การชนกันของหลุมดำ/ดาวนิวตรอนจริง)',
 };
 
 /** The operation's title in the requested language, falling back to English if untranslated. */
