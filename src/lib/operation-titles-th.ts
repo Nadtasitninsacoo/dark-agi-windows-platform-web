@@ -117,6 +117,7 @@ export const OPERATION_TITLE_TH: Record<string, string> = {
   'owasp-zap:baseline-scan': 'สแกนเว็บแบบเร็วด้วย OWASP ZAP',
   'nasa-epic:latest-earth-image': 'ภาพโลกล่าสุดจากกล้อง NASA EPIC',
   'nasa-image-library:random-deep-space-image': 'ภาพดาราศาสตร์สุ่มจากคลังภาพ NASA',
+  'nasa-dsn:live-status': 'สถานะการติดต่อยานอวกาศแบบสด (Deep Space Network)',
 };
 
 /** The operation's title in the requested language, falling back to English if untranslated. */

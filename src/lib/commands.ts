@@ -136,6 +136,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   // prefix that might later belong to a non-NASA external-intelligence source.
   'nasa-epic:latest-earth-image': 'nasa:earthimage',
   'nasa-image-library:random-deep-space-image': 'nasa:deepspace',
+  'nasa-dsn:live-status': 'nasa:dsn',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.
