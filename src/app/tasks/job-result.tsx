@@ -4,6 +4,47 @@ type Row = Record<string, unknown>;
 
 const cell = (v: unknown): string => (v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
+/**
+ * A result value is rendered as a picture, not text, when it is a string URL ending in a common image
+ * extension (query string allowed) — generic, so any operation that returns an image URL (NASA EPIC today,
+ * a future External Intelligence source tomorrow) gets this for free, with no per-operation special-casing.
+ */
+const IMAGE_URL = /^https?:\/\/\S+\.(?:jpe?g|png|gif|webp)(?:[?#]\S*)?$/i;
+const isImageUrl = (v: unknown): v is string => typeof v === 'string' && IMAGE_URL.test(v);
+
+/** Every distinct image URL found directly on `row` or inside its one level of nested objects (e.g. a Row inside `summary`). */
+function imageUrlsIn(row: Row): string[] {
+  const found = new Set<string>();
+  for (const v of Object.values(row)) {
+    if (isImageUrl(v)) found.add(v);
+    else if (v !== null && typeof v === 'object' && !Array.isArray(v)) for (const nested of Object.values(v as Row)) if (isImageUrl(nested)) found.add(nested);
+  }
+  return [...found];
+}
+
+function ImagePreviews({ urls }: { urls: readonly string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {urls.map((url) => (
+        <a key={url} href={url} target="_blank" rel="noreferrer" className="group block overflow-hidden rounded border border-edge" title={`Open full size: ${url}`}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- an arbitrary external URL from job output, not a local/optimizable asset Next's Image component can process */}
+          <img src={url} alt="" loading="lazy" className="h-40 w-auto object-cover transition group-hover:opacity-90" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function ImageCell({ url }: { url: string }) {
+  return (
+    <a href={url} target="_blank" rel="noreferrer" title={`Open full size: ${url}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- see ImagePreviews */}
+      <img src={url} alt="" loading="lazy" className="h-10 w-10 rounded object-cover" />
+    </a>
+  );
+}
+
 interface NmapHost {
   address: string;
   hostnames: string[];
@@ -108,11 +149,17 @@ function ItemTable({ items }: { items: Row[] }) {
           <tbody className="font-mono text-ink-2">
             {shown.map((row, i) => (
               <tr key={i} className="border-t border-edge/50">
-                {columns.map((c) => (
-                  <td key={c} className="max-w-[28rem] truncate px-2 py-0.5" title={cell(row[c])}>
-                    {cell(row[c])}
-                  </td>
-                ))}
+                {columns.map((c) =>
+                  isImageUrl(row[c]) ? (
+                    <td key={c} className="px-2 py-0.5">
+                      <ImageCell url={row[c]} />
+                    </td>
+                  ) : (
+                    <td key={c} className="max-w-[28rem] truncate px-2 py-0.5" title={cell(row[c])}>
+                      {cell(row[c])}
+                    </td>
+                  ),
+                )}
               </tr>
             ))}
           </tbody>
@@ -141,8 +188,10 @@ export function JobResult({ result }: { result: unknown }) {
     );
   }
   if (Array.isArray(r.items)) {
+    const previewUrls = [...new Set([...(r.summary ? imageUrlsIn(r.summary as Row) : []), ...(r.items as Row[]).slice(0, 10).flatMap(imageUrlsIn)])];
     return (
       <div className="space-y-2">
+        <ImagePreviews urls={previewUrls} />
         {r.summary ? <pre className="whitespace-pre-wrap font-mono text-[11px] text-ink-2">{JSON.stringify(r.summary)}</pre> : null}
         <ItemTable items={r.items as Row[]} />
       </div>
