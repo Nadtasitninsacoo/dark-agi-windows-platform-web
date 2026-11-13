@@ -142,6 +142,73 @@ const SKULL_BANNER = `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 const AI_BANNER_NOTE = `AI mode: type what you want in plain language (Thai or English), e.g. "ดูโปรเซสที่รันอยู่"
 The AI picks one reviewed operation and fills its input; the same scope and approval rules still apply before anything runs.`;
 
+/** A standard three-dot "working" indicator, gated by `busy` (never decorative-by-default) — bigger than a plain "…" and staggered per dot so they bounce in sequence. */
+function LoadingDots({ size = 9 }: { size?: number }) {
+  return (
+    <span className="inline-flex items-center gap-1.5" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="rounded-full bg-accent"
+          style={{ width: size, height: size, animation: 'dagi-loading-bounce 1.1s ease-in-out infinite', animationDelay: `${i * 0.15}s` }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Known job-status words -> their colour, consistent with the dedicated colours the `result`/`error`/`approval` entry kinds already use elsewhere in this file (green = succeeded, red = failed/stopped, amber = still pending). */
+const STATUS_COLOR: Record<string, string> = {
+  succeeded: 'text-good',
+  failed: 'text-critical',
+  error: 'text-critical',
+  rejected: 'text-critical',
+  cancelled: 'text-critical',
+  queued: 'text-warning',
+  running: 'text-warning',
+  awaiting_approval: 'text-warning',
+};
+
+/**
+ * Purely cosmetic colouring for a plain "info" line (job submission/status lines, mostly): the submission
+ * arrow in cyan, the job id in violet (a distinct "this is an identifier" colour, not reused for anything
+ * else), and any recognized status word in green/amber/red per `STATUS_COLOR` above. Everything else in the
+ * line is left in the caller's default muted colour — this never changes what the line says, only how it reads.
+ */
+function ColorizedInfo({ text }: { text: string }) {
+  const pattern = /(\bjob [0-9a-f]{6,8}\b|→|\b(?:succeeded|failed|error|rejected|cancelled|queued|running|awaiting_approval)\b)/gi;
+  const parts = text.split(pattern);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!part) return null;
+        if (part === '→') return (
+          <span key={i} className="font-semibold text-cyan">
+            {part}
+          </span>
+        );
+        const jobIdMatch = /^job ([0-9a-f]{6,8})$/i.exec(part);
+        if (jobIdMatch) {
+          return (
+            <span key={i}>
+              job <span className="font-semibold text-violet">{jobIdMatch[1]}</span>
+            </span>
+          );
+        }
+        const color = STATUS_COLOR[part.toLowerCase()];
+        if (color) {
+          return (
+            <span key={i} className={`font-semibold ${color}`}>
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 /** Purely cosmetic: colours a submitted line by token (verb, key=value, prefix/suffix). Parsing/validation is unchanged elsewhere. */
 function HighlightedCommand({ text }: { text: string }) {
   const tokens = tokenizeCommand(text);
@@ -460,7 +527,7 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
             }
             return (
               <p key={entry.id} className="whitespace-pre-wrap break-words text-ink-2">
-                {entry.text}
+                <ColorizedInfo text={entry.text} />
               </p>
             );
           })}
@@ -538,7 +605,9 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
             onChange={(e) => changeInput(e.target.value)}
           />
           {busy ? (
-            <span className="shrink-0 animate-pulse text-ink-3">running…</span>
+            <span className="flex shrink-0 items-center gap-2 text-[12px] font-medium text-ink-2">
+              running <LoadingDots size={10} />
+            </span>
           ) : (
             <button
               type="button"

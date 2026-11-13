@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Maximize2, Minimize2, Minus, SquareTerminal, X } from 'lucide-react';
+import { ChevronDown, Maximize2, Minimize2, Minus, Plus, SquareTerminal, X } from 'lucide-react';
 import { type MouseEvent as ReactMouseEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { clearPersistedSession, TerminalConsole } from '@/app/terminal/terminal-console';
 
@@ -73,18 +73,20 @@ export function FloatingTerminal() {
     saveWindows(windows);
   }, [windows]);
 
-  useEffect(() => {
-    const onOpen = () => {
-      setWindows((prev) => {
-        const last = prev[prev.length - 1];
-        const x = last ? last.x + CASCADE_PX : 140;
-        const y = last ? last.y + CASCADE_PX : 90;
-        return [...prev, { id: newId(), x, y, collapsed: false, maximized: false }];
-      });
-    };
-    window.addEventListener(OPEN_TERMINAL_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_TERMINAL_EVENT, onOpen);
+  /** Opens one more independent window, cascaded from the last. Called both by the top-bar button's event (which may be covered by a maximized window) and by each window's own "+" button, so there's always a reachable way to open another — no need to find/uncover the top bar. */
+  const openWindow = useCallback(() => {
+    setWindows((prev) => {
+      const last = prev[prev.length - 1];
+      const x = last ? last.x + CASCADE_PX : 140;
+      const y = last ? last.y + CASCADE_PX : 90;
+      return [...prev, { id: newId(), x, y, collapsed: false, maximized: false }];
+    });
   }, []);
+
+  useEffect(() => {
+    window.addEventListener(OPEN_TERMINAL_EVENT, openWindow);
+    return () => window.removeEventListener(OPEN_TERMINAL_EVENT, openWindow);
+  }, [openWindow]);
 
   useEffect(() => {
     const move = (e: MouseEvent) => {
@@ -156,6 +158,9 @@ export function FloatingTerminal() {
             <SquareTerminal className="size-3.5 text-accent" aria-hidden />
             <span className="text-[12px] font-medium text-ink">DARK AGI Terminal</span>
             <div className="ml-auto flex items-center gap-1.5" onMouseDown={(e) => e.stopPropagation()}>
+              <button type="button" onClick={openWindow} className="text-ink-3 hover:text-ink" aria-label="Open another terminal window" title="Open another terminal window">
+                <Plus className="size-4" aria-hidden />
+              </button>
               {PRESETS.map((c) => (
                 <button
                   key={c}
