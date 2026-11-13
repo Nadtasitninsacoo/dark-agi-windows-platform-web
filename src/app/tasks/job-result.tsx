@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { DsnLiveChart, isDsnTrackList } from './dsn-live-chart';
+import { IssLiveChart, isIssPositionList } from './iss-live-chart';
 
 type Row = Record<string, unknown>;
 
@@ -227,6 +228,7 @@ export function JobResult({ result, toolId, operationId }: { result: unknown; to
     return (
       <div className="space-y-2">
         {isDsnTrackList(items) ? <DsnLiveChart items={items} toolId={toolId} operationId={operationId} /> : null}
+        {isIssPositionList(items) ? <IssLiveChart items={items} toolId={toolId} operationId={operationId} /> : null}
         {video ? <VideoEmbed url={video.url} title={video.title} /> : null}
         <ImagePreviews urls={previewUrls} />
         {r.summary ? <pre className="whitespace-pre-wrap font-mono text-[11px] text-ink-2">{JSON.stringify(r.summary)}</pre> : null}
