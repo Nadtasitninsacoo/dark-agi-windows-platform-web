@@ -131,8 +131,11 @@ export const COMMAND_ALIASES: Record<string, string> = {
 
   // External Intelligence (added 2026-11-13, operator-approved, outside the original directive):
   // read-only lookups against fixed, public, unauthenticated external APIs — no operator-named target,
-  // so these never need a scope the way every "net:"/"web:" command above does.
-  'nasa-epic:latest-earth-image': 'osint:earthimage',
+  // so these never need a scope the way every "net:"/"web:" command above does. "nasa:" is its own
+  // namespace (operator's own choice) so further NASA sources slot in without crowding a generic "osint:"
+  // prefix that might later belong to a non-NASA external-intelligence source.
+  'nasa-epic:latest-earth-image': 'nasa:earthimage',
+  'nasa-image-library:random-deep-space-image': 'nasa:deepspace',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.
