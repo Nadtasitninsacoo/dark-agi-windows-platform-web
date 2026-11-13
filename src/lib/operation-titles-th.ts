@@ -115,6 +115,7 @@ export const OPERATION_TITLE_TH: Record<string, string> = {
   'gnupg:keyring-list': 'แสดงรายการ keyring ของ GnuPG',
   'powershell:certificate-store-inspector': 'ตรวจสอบ certificate store',
   'owasp-zap:baseline-scan': 'สแกนเว็บแบบเร็วด้วย OWASP ZAP',
+  'nasa-epic:latest-earth-image': 'ภาพโลกล่าสุดจากกล้อง NASA EPIC',
 };
 
 /** The operation's title in the requested language, falling back to English if untranslated. */

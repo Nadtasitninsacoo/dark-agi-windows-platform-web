@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield' | 'satellite';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -55,6 +55,9 @@ export const MODULES: readonly ConsoleModule[] = [
   { slug: 'threat-intel', href: '/threat-intel', title: 'Threat Intelligence', group: 'Security Domains', icon: 'radar', status: 'live', phase: 7, category: 'threat-intelligence',
     summary: 'The platform’s own indicator-of-compromise (IOC) registry — recorded by operators or agents, not a live external lookup.',
     planned: ['VirusTotal/MISP live lookups (needs an operator-supplied API key and a secret-injection path the operation-adapter architecture does not have yet)', 'Sigma / YARA rule library', 'ATT&CK technique mapping'] },
+  { slug: 'external-intel', href: '/external-intel', title: 'External Intelligence', group: 'Security Domains', icon: 'satellite', status: 'live', phase: 31, category: 'external-intelligence',
+    summary: 'Read-only lookups against fixed, public, unauthenticated external data sources — no operator-named target, so these never need a scope. Starts with NASA EPIC (latest full-disk Earth image).',
+    planned: ['Additional public data sources as they come up'] },
   { slug: 'malware', href: '/malware', title: 'Malware Analysis', group: 'Security Domains', icon: 'bug', status: 'live', phase: 7, category: 'malware-analysis',
     summary: 'Static analysis only — capa, FLOSS and ClamAV read a local file; none of them execute it. File metadata/hashing is on Digital Forensics; YARA and sandbox report ingestion are still planned.',
     planned: ['YARA rule matching', 'Sandbox report ingestion (no local sample execution)'] },
