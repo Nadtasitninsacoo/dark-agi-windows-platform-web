@@ -68,17 +68,23 @@ function LatitudeTrack({ history }: { history: readonly IssPosition[] }) {
   const last = history[history.length - 1]!;
   const lastX = history.length <= 1 ? w / 2 : w;
 
+  // Labels are plain HTML overlays, not SVG <text>: this chart stretches its viewBox non-uniformly to fill
+  // a wide, short box (preserveAspectRatio="none"), which would otherwise squash/smear SVG glyph outlines.
+  const pct = (y: number) => `${(y / h) * 100}%`;
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-20 w-full" role="img" aria-label={`Latitude track, currently ${last.latitude.toFixed(2)} degrees, within the ISS's real ${INCLINATION_DEG} degree orbital inclination`}>
-      <line x1={0} x2={w} y1={yFor(INCLINATION_DEG)} y2={yFor(INCLINATION_DEG)} stroke="var(--color-ink-3)" strokeWidth={1} strokeDasharray="2,3" />
-      <text x={2} y={yFor(INCLINATION_DEG) - 2} fontSize={7} fill="var(--color-ink-3)">+{INCLINATION_DEG}°</text>
-      <line x1={0} x2={w} y1={yFor(0)} y2={yFor(0)} stroke="var(--color-edge-strong)" strokeWidth={1} />
-      <text x={2} y={yFor(0) - 2} fontSize={7} fill="var(--color-ink-3)">equator</text>
-      <line x1={0} x2={w} y1={yFor(-INCLINATION_DEG)} y2={yFor(-INCLINATION_DEG)} stroke="var(--color-ink-3)" strokeWidth={1} strokeDasharray="2,3" />
-      <text x={2} y={yFor(-INCLINATION_DEG) + 8} fontSize={7} fill="var(--color-ink-3)">-{INCLINATION_DEG}°</text>
-      {points.length > 1 ? <polyline points={points.join(' ')} fill="none" stroke="var(--color-cyan)" strokeWidth={1.5} /> : null}
-      <circle cx={lastX} cy={yFor(last.latitude)} r={3} fill={last.visibility === 'daylight' ? 'var(--color-warning)' : 'var(--color-cyan)'} stroke="var(--color-panel)" strokeWidth={1.5} />
-    </svg>
+    <div className="relative">
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-20 w-full" role="img" aria-label={`Latitude track, currently ${last.latitude.toFixed(2)} degrees, within the ISS's real ${INCLINATION_DEG} degree orbital inclination`}>
+        <line x1={0} x2={w} y1={yFor(INCLINATION_DEG)} y2={yFor(INCLINATION_DEG)} stroke="var(--color-ink-3)" strokeWidth={1} strokeDasharray="2,3" />
+        <line x1={0} x2={w} y1={yFor(0)} y2={yFor(0)} stroke="var(--color-edge-strong)" strokeWidth={1} />
+        <line x1={0} x2={w} y1={yFor(-INCLINATION_DEG)} y2={yFor(-INCLINATION_DEG)} stroke="var(--color-ink-3)" strokeWidth={1} strokeDasharray="2,3" />
+        {points.length > 1 ? <polyline points={points.join(' ')} fill="none" stroke="var(--color-cyan)" strokeWidth={1.5} /> : null}
+        <circle cx={lastX} cy={yFor(last.latitude)} r={3} fill={last.visibility === 'daylight' ? 'var(--color-warning)' : 'var(--color-cyan)'} stroke="var(--color-panel)" strokeWidth={1.5} />
+      </svg>
+      <span className="pointer-events-none absolute left-1 text-[9px] text-ink-3" style={{ top: pct(yFor(INCLINATION_DEG)), transform: 'translateY(-100%)' }}>+{INCLINATION_DEG}°</span>
+      <span className="pointer-events-none absolute left-1 text-[9px] text-ink-3" style={{ top: pct(yFor(0)), transform: 'translateY(-100%)' }}>equator</span>
+      <span className="pointer-events-none absolute left-1 text-[9px] text-ink-3" style={{ top: pct(yFor(-INCLINATION_DEG)) }}>-{INCLINATION_DEG}°</span>
+    </div>
   );
 }
 
