@@ -137,6 +137,7 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'nasa-epic:latest-earth-image': 'nasa:earthimage',
   'nasa-image-library:random-deep-space-image': 'nasa:deepspace',
   'nasa-dsn:live-status': 'nasa:dsn',
+  'nasa-neows:close-approaches-today': 'nasa:asteroids',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.
