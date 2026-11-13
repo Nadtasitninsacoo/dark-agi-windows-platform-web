@@ -138,6 +138,9 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'nasa-image-library:random-deep-space-image': 'nasa:deepspace',
   'nasa-dsn:live-status': 'nasa:dsn',
   'nasa-neows:close-approaches-today': 'nasa:asteroids',
+  // Not NASA APIs — separate "sat:" namespace so it's honest about provenance (wheretheiss.at / YouTube).
+  'iss-tracker:live-position': 'sat:iss',
+  'iss-tracker:live-video-feed': 'sat:issvideo',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.

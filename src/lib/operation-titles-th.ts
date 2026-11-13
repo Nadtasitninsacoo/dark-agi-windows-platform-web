@@ -119,6 +119,8 @@ export const OPERATION_TITLE_TH: Record<string, string> = {
   'nasa-image-library:random-deep-space-image': 'ภาพดาราศาสตร์สุ่มจากคลังภาพ NASA',
   'nasa-dsn:live-status': 'สถานะการติดต่อยานอวกาศแบบสด (Deep Space Network)',
   'nasa-neows:close-approaches-today': 'ดาวเคราะห์น้อยใกล้โลกวันนี้ (NASA NeoWs)',
+  'iss-tracker:live-position': 'ตำแหน่งสถานีอวกาศนานาชาติ (ISS) แบบเรียลไทม์',
+  'iss-tracker:live-video-feed': 'วิดีโอถ่ายทอดสดจาก NASA (มุมมองโลกจาก ISS)',
 };
 
 /** The operation's title in the requested language, falling back to English if untranslated. */

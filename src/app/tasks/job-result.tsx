@@ -13,6 +13,38 @@ const cell = (v: unknown): string => (v === null || v === undefined ? '—' : ty
 const IMAGE_URL = /^https?:\/\/\S+\.(?:jpe?g|png|gif|webp)(?:[?#]\S*)?$/i;
 const isImageUrl = (v: unknown): v is string => typeof v === 'string' && IMAGE_URL.test(v);
 
+/**
+ * Same idea as `isImageUrl`, for a playable embed: a job result pointing at an embeddable video URL
+ * (currently just YouTube's `/embed/` form, which is all NASA's own live-stream page resolves to) is
+ * rendered as a live player, not a link — generic by URL shape so a future video source needs no
+ * per-operation special-casing either.
+ */
+const EMBED_VIDEO_URL = /^https:\/\/(?:www\.)?youtube\.com\/embed\/[\w-]+(?:[?#]\S*)?$/;
+const isEmbedVideoUrl = (v: unknown): v is string => typeof v === 'string' && EMBED_VIDEO_URL.test(v);
+
+/** The first embeddable video URL found directly on `row`, with its `title` sibling field if present. */
+function embedVideoIn(row: Row): { url: string; title: string | null } | null {
+  for (const v of Object.values(row)) {
+    if (isEmbedVideoUrl(v)) return { url: v, title: typeof row.title === 'string' ? row.title : null };
+  }
+  return null;
+}
+
+function VideoEmbed({ url, title }: { url: string; title: string | null }) {
+  return (
+    <div className="overflow-hidden rounded border border-edge">
+      <iframe
+        src={url}
+        title={title ?? 'Live video'}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        className="aspect-video w-full max-w-xl"
+      />
+      {title ? <p className="border-t border-edge bg-panel px-2 py-1 text-[11.5px] text-ink-2">{title}</p> : null}
+    </div>
+  );
+}
+
 /** Every distinct image URL found directly on `row` or inside its one level of nested objects (e.g. a Row inside `summary`). */
 function imageUrlsIn(row: Row): string[] {
   const found = new Set<string>();
@@ -191,9 +223,11 @@ export function JobResult({ result, toolId, operationId }: { result: unknown; to
   if (Array.isArray(r.items)) {
     const items = r.items as Row[];
     const previewUrls = [...new Set([...(r.summary ? imageUrlsIn(r.summary as Row) : []), ...items.slice(0, 10).flatMap(imageUrlsIn)])];
+    const video = embedVideoIn(items[0] ?? {}) ?? (r.summary ? embedVideoIn(r.summary as Row) : null);
     return (
       <div className="space-y-2">
         {isDsnTrackList(items) ? <DsnLiveChart items={items} toolId={toolId} operationId={operationId} /> : null}
+        {video ? <VideoEmbed url={video.url} title={video.title} /> : null}
         <ImagePreviews urls={previewUrls} />
         {r.summary ? <pre className="whitespace-pre-wrap font-mono text-[11px] text-ink-2">{JSON.stringify(r.summary)}</pre> : null}
         <ItemTable items={items} />
