@@ -71,6 +71,47 @@ function yesterdayUtc(): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Standard Web Mercator lon/lat -> tile x/y at a given zoom (the same math every XYZ/WMTS map client uses). */
+function lonLatToTile(lon: number, lat: number, z: number): { x: number; y: number } {
+  const n = 2 ** z;
+  const x = Math.floor(((lon + 180) / 360) * n);
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+  return { x, y };
+}
+
+const COVERAGE_PROBE_ZOOM = 10;
+const COVERAGE_MAX_DAYS_BACK = 20;
+/** A real High-res tile with imagery is ~150-900KB; NASA's own "no data for this date" response is a small 404 (~200 bytes) — confirmed live while building this. */
+const MIN_REAL_TILE_BYTES = 5000;
+
+/**
+ * Finds the most recent date (within the last 20 days) that the High-res layer actually has a real tile
+ * for, at the searched location — by really fetching each candidate date's tile and checking it, the same
+ * day-by-day technique `earth-imagery:high-res-view` (backend) already uses, not a guess. Stops at the
+ * first real hit. Returns null if none of the last 20 days had coverage for this exact spot.
+ */
+async function findRecentHighResDate(lon: number, lat: number): Promise<string | null> {
+  const { x, y } = lonLatToTile(lon, lat, COVERAGE_PROBE_ZOOM);
+  const l = LAYERS.highres;
+  for (let i = 1; i <= COVERAGE_MAX_DAYS_BACK; i++) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const url = `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${dateStr}/${l.tileMatrixSet}/${COVERAGE_PROBE_ZOOM}/${y}/${x}.${l.format}`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const len = Number(res.headers.get('content-length') ?? '0');
+        if (len === 0 || len >= MIN_REAL_TILE_BYTES) return dateStr;
+      }
+    } catch {
+      // A transient network hiccup on one day's probe -- just try the next day back.
+    }
+  }
+  return null;
+}
+
 const SOURCE_ID = 'dagi-satellite';
 const LAYER_ID = 'dagi-satellite-layer';
 
@@ -87,6 +128,8 @@ export function EarthMap() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [resolvedPlace, setResolvedPlace] = useState<string | null>(null);
+  const [checkingCoverage, setCheckingCoverage] = useState(false);
+  const [coverageNote, setCoverageNote] = useState<string | null>(null);
 
   // Create the map once on mount.
   useEffect(() => {
@@ -156,9 +199,27 @@ export function EarthMap() {
       const lat = Number(hit.lat);
       const lon = Number(hit.lon);
       setResolvedPlace(hit.display_name);
-      mapRef.current?.flyTo({ center: [lon, lat], zoom: 10 });
       markerRef.current?.remove();
       if (mapRef.current) markerRef.current = new Marker({ color: '#2ee88f' }).setLngLat([lon, lat]).addTo(mapRef.current);
+
+      // A search is exactly when the sharpest real imagery available matters most -- check for it for
+      // real (fetching candidate dates, not guessing) rather than landing on MODIS's much blurrier daily
+      // composite by default.
+      setCoverageNote(null);
+      setCheckingCoverage(true);
+      const coverageDate = await findRecentHighResDate(lon, lat);
+      setCheckingCoverage(false);
+      if (coverageDate) {
+        setLayer('highres');
+        setDate(coverageDate);
+        mapRef.current?.flyTo({ center: [lon, lat], zoom: LAYERS.highres.maxZoom });
+        setCoverageNote(`Showing real High-res imagery from ${coverageDate} — the most recent date with actual coverage here in the last ${COVERAGE_MAX_DAYS_BACK} days.`);
+      } else {
+        setLayer('daily');
+        setDate(yesterdayUtc());
+        mapRef.current?.flyTo({ center: [lon, lat], zoom: LAYERS.daily.maxZoom });
+        setCoverageNote(`No real High-res tile found here in the last ${COVERAGE_MAX_DAYS_BACK} days — showing the Daily (MODIS) layer instead.`);
+      }
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : 'Search failed');
       setResolvedPlace(null);
@@ -217,6 +278,8 @@ export function EarthMap() {
 
         {searchError ? <p className="mb-2 text-[11px] text-critical">{searchError}</p> : null}
         {resolvedPlace ? <p className="mb-2 text-[11px] text-ink-2">Found: <span className="text-violet">{resolvedPlace}</span></p> : null}
+        {checkingCoverage ? <p className="mb-2 text-[11px] text-ink-2">Checking the last {COVERAGE_MAX_DAYS_BACK} days for real High-res coverage here…</p> : null}
+        {coverageNote ? <p className="mb-2 text-[11px] text-good">{coverageNote}</p> : null}
 
         <div className="relative h-[70vh] min-h-96 overflow-hidden rounded-lg border border-edge-strong">
           <div ref={containerRef} className="h-full w-full" />
