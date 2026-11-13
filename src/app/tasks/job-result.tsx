@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { DsnLiveChart, isDsnTrackList } from './dsn-live-chart';
 
 type Row = Record<string, unknown>;
 
@@ -170,8 +171,8 @@ function ItemTable({ items }: { items: Row[] }) {
   );
 }
 
-/** Renders a job's structured result: Nmap host tables, inventory tables, or JSON. */
-export function JobResult({ result }: { result: unknown }) {
+/** Renders a job's structured result: Nmap host tables, inventory tables, the DSN live-distance chart, or JSON. */
+export function JobResult({ result, toolId, operationId }: { result: unknown; toolId?: string; operationId?: string }) {
   if (result === null || result === undefined) return null;
   const r = result as Row;
   if (Array.isArray(r.hosts)) {
@@ -188,12 +189,14 @@ export function JobResult({ result }: { result: unknown }) {
     );
   }
   if (Array.isArray(r.items)) {
-    const previewUrls = [...new Set([...(r.summary ? imageUrlsIn(r.summary as Row) : []), ...(r.items as Row[]).slice(0, 10).flatMap(imageUrlsIn)])];
+    const items = r.items as Row[];
+    const previewUrls = [...new Set([...(r.summary ? imageUrlsIn(r.summary as Row) : []), ...items.slice(0, 10).flatMap(imageUrlsIn)])];
     return (
       <div className="space-y-2">
+        {isDsnTrackList(items) ? <DsnLiveChart items={items} toolId={toolId} operationId={operationId} /> : null}
         <ImagePreviews urls={previewUrls} />
         {r.summary ? <pre className="whitespace-pre-wrap font-mono text-[11px] text-ink-2">{JSON.stringify(r.summary)}</pre> : null}
-        <ItemTable items={r.items as Row[]} />
+        <ItemTable items={items} />
       </div>
     );
   }

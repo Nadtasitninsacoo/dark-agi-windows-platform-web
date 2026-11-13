@@ -551,7 +551,7 @@ function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unkn
       {job.result !== null ? (
         <div>
           <p className="mb-1 text-[10.5px] uppercase tracking-wider text-ink-3">Result</p>
-          <JobResult result={job.result} />
+          <JobResult result={job.result} toolId={job.toolId} operationId={job.operationId} />
         </div>
       ) : null}
       {job.stderrExcerpt ? (

@@ -41,7 +41,7 @@ type EntryData =
   | { kind: 'banner'; text: string }
   | { kind: 'error'; text: string }
   | { kind: 'approval'; text: string }
-  | { kind: 'result'; title: string; result: unknown }
+  | { kind: 'result'; title: string; result: unknown; toolId: string; operationId: string }
   | { kind: 'suggestion'; job: Job };
 type Entry = EntryData & { id: number };
 
@@ -190,7 +190,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
 
   const render = (job: Job) => {
     if (job.status === 'SUCCEEDED') {
-      add({ kind: 'result', title: `${job.operationTitle} — succeeded`, result: job.result });
+      add({ kind: 'result', title: `${job.operationTitle} — succeeded`, result: job.result, toolId: job.toolId, operationId: job.operationId });
     } else if (job.status === 'AWAITING_APPROVAL') {
       add({ kind: 'approval', text: `${job.operationTitle} is queued and needs human approval before it runs.` });
     } else if (job.status === 'FAILED') {
@@ -391,7 +391,7 @@ export function TerminalConsole({ embedded = false, codeColor }: { embedded?: bo
                     {entry.title}
                   </p>
                   <div className="mt-1">
-                    <JobResult result={entry.result} />
+                    <JobResult result={entry.result} toolId={entry.toolId} operationId={entry.operationId} />
                   </div>
                 </div>
               );
