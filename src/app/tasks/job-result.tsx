@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { DsnLiveChart, isDsnTrackList } from './dsn-live-chart';
 import { GwLiveChart, isGwEventList } from './gw-live-chart';
 import { IssLiveChart, isIssPositionList } from './iss-live-chart';
@@ -6,6 +6,30 @@ import { IssLiveChart, isIssPositionList } from './iss-live-chart';
 type Row = Record<string, unknown>;
 
 const cell = (v: unknown): string => (v === null || v === undefined ? '—' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const PLAIN_URL = /^https?:\/\//i;
+
+/**
+ * Colors a raw result value by its TYPE, consistently across every table/summary in the app — never by
+ * column or by which entity it belongs to (that would be the dataviz skill's "color follows the entity"
+ * rule, which is about distinguishing competing series, not about this). Same idea as HighlightedCommand's
+ * token colors elsewhere in this app: syntax-highlighting for readability, not a status/semantic claim.
+ * null/missing (muted dash), boolean (green/red), number (cyan), ISO timestamp (violet), URL (cyan,
+ * underlined), plain string (default ink) — mirrors the new job-status palette (violet for an identifier-
+ * like value, cyan for a plain submission detail, green/red for a definite yes/no).
+ */
+function formatValue(v: unknown): ReactNode {
+  if (v === null || v === undefined) return <span className="text-ink-3">—</span>;
+  if (typeof v === 'boolean') return <span className={v ? 'text-good' : 'text-critical'}>{String(v)}</span>;
+  if (typeof v === 'number') return <span className="text-cyan">{v}</span>;
+  if (typeof v === 'string') {
+    if (PLAIN_URL.test(v)) return <span className="text-cyan underline decoration-cyan/40">{v}</span>;
+    if (ISO_DATETIME.test(v)) return <span className="text-violet">{v}</span>;
+    return <span className="text-ink">{v}</span>;
+  }
+  return <span className="text-ink-3">{JSON.stringify(v)}</span>;
+}
 
 /**
  * A result value is rendered as a picture, not text, when it is a string URL ending in a common image
@@ -170,6 +194,21 @@ function NmapHosts({ hosts }: { hosts: NmapHost[] }) {
   );
 }
 
+/** A job's `summary` object as colored "key value" badges instead of a raw JSON string — same `formatValue` type-coloring as the table, just for the handful of headline fields an operation chose to summarize. */
+function SummaryBadges({ summary }: { summary: Row }) {
+  const keys = Object.keys(summary);
+  if (keys.length === 0) return null;
+  return (
+    <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-mono text-[11px]">
+      {keys.map((k) => (
+        <span key={k}>
+          <span className="text-ink-3">{k}:</span> {formatValue(summary[k])}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function ItemTable({ items }: { items: Row[] }) {
   const [query, setQuery] = useState('');
   const columns = useMemo(() => [...new Set(items.slice(0, 50).flatMap((i) => Object.keys(i)))], [items]);
@@ -208,7 +247,7 @@ function ItemTable({ items }: { items: Row[] }) {
                     </td>
                   ) : (
                     <td key={c} className="max-w-[28rem] truncate px-2 py-0.5" title={cell(row[c])}>
-                      {cell(row[c])}
+                      {formatValue(row[c])}
                     </td>
                   ),
                 )}
@@ -250,7 +289,7 @@ export function JobResult({ result, toolId, operationId }: { result: unknown; to
         {isGwEventList(items) ? <GwLiveChart items={items} toolId={toolId} operationId={operationId} /> : null}
         {video ? <VideoEmbed url={video.url} title={video.title} /> : null}
         <ImagePreviews urls={previewUrls} />
-        {r.summary ? <pre className="whitespace-pre-wrap font-mono text-[11px] text-ink-2">{JSON.stringify(r.summary)}</pre> : null}
+        {r.summary ? <SummaryBadges summary={r.summary as Row} /> : null}
         <ItemTable items={items} />
       </div>
     );
