@@ -1,7 +1,9 @@
 'use client';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
+import '@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css';
 import { AttributionControl, Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl';
+import Compare from '@maplibre/maplibre-gl-compare';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { apiRequest, type Job } from '@/lib/api/client';
@@ -33,6 +35,12 @@ import { apiRequest, type Job } from '@/lib/api/client';
  * limit. Deliberately NOT styled as a dramatic "live global cyberattack" globe: this is a small, real,
  * independently-verifiable list (Emotet/QakBot-family C2 IPs specifically), and the popup for each marker
  * says so plainly rather than implying it's a comprehensive real-time threat map.
+ *
+ * Milestone 3 (historical comparison): a "Compare dates" mode swaps the single map for two real MapLibre
+ * maps wired together with the official `@maplibre/maplibre-gl-compare` plugin (camera-synced pan/zoom, a
+ * drag-to-swipe clip divider) — each side independently date-pickable, same layer, same location. Both
+ * sides fetch real tiles the same way the single map does; there is no synthetic "estimated change"
+ * rendering here, just two real images side by side.
  */
 
 interface LayerDef {
@@ -79,6 +87,18 @@ function yesterdayUtc(): string {
   return d.toISOString().slice(0, 10);
 }
 
+function daysBeforeTodayUtc(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** How many whole days back (UTC) a yyyy-mm-dd date string is from today — the inverse of daysBeforeTodayUtc. */
+function daysBackOf(dateStr: string): number {
+  const ms = Date.now() - new Date(dateStr + 'T00:00:00Z').getTime();
+  return Math.round(ms / 86_400_000);
+}
+
 /** Standard Web Mercator lon/lat -> tile x/y at a given zoom (the same math every XYZ/WMTS map client uses). */
 function lonLatToTile(lon: number, lat: number, z: number): { x: number; y: number } {
   const n = 2 ** z;
@@ -99,10 +119,10 @@ const MIN_REAL_TILE_BYTES = 5000;
  * day-by-day technique `earth-imagery:high-res-view` (backend) already uses, not a guess. Stops at the
  * first real hit. Returns null if none of the last 20 days had coverage for this exact spot.
  */
-async function findRecentHighResDate(lon: number, lat: number): Promise<string | null> {
+async function findRecentHighResDate(lon: number, lat: number, startDaysBack = 1): Promise<string | null> {
   const { x, y } = lonLatToTile(lon, lat, COVERAGE_PROBE_ZOOM);
   const l = LAYERS.highres;
-  for (let i = 1; i <= COVERAGE_MAX_DAYS_BACK; i++) {
+  for (let i = startDaysBack; i <= COVERAGE_MAX_DAYS_BACK; i++) {
     const d = new Date();
     d.setUTCDate(d.getUTCDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
@@ -122,6 +142,24 @@ async function findRecentHighResDate(lon: number, lat: number): Promise<string |
 
 const SOURCE_ID = 'dagi-satellite';
 const LAYER_ID = 'dagi-satellite-layer';
+
+/** Shared by the single map and both sides of the Compare view -- adds/replaces one map's satellite raster source+layer. */
+function applySatelliteLayer(map: MapLibreMap, layer: LayerKey, date: string, sourceId: string, layerId: string): void {
+  const run = () => {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+    if (map.getSource(sourceId)) map.removeSource(sourceId);
+    map.addSource(sourceId, {
+      type: 'raster',
+      tiles: [tileUrl(layer, date)],
+      tileSize: 256,
+      maxzoom: LAYERS[layer].maxZoom,
+      attribution: LAYERS[layer].source,
+    });
+    map.addLayer({ id: layerId, type: 'raster', source: sourceId });
+  };
+  if (map.isStyleLoaded()) run();
+  else map.once('load', run);
+}
 
 /** Mirrors the backend's TrackedC2Server shape (threat-feed.ts) without importing the backend package. */
 interface TrackedC2Server {
@@ -176,6 +214,18 @@ export function EarthMap() {
   const [threatsError, setThreatsError] = useState<string | null>(null);
   const [threats, setThreats] = useState<TrackedC2Server[] | null>(null);
 
+  // Milestone 3 — Compare dates (two real maps, synced pan/zoom, swipe divider).
+  const compareContainerRef = useRef<HTMLDivElement>(null);
+  const mapAContainerRef = useRef<HTMLDivElement>(null);
+  const mapBContainerRef = useRef<HTMLDivElement>(null);
+  const mapARef = useRef<MapLibreMap | null>(null);
+  const mapBRef = useRef<MapLibreMap | null>(null);
+  const compareRef = useRef<Compare | null>(null);
+  const [compareOn, setCompareOn] = useState(false);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [dateA, setDateA] = useState(yesterdayUtc());
+  const [dateB, setDateB] = useState(yesterdayUtc());
+
   // Create the map once on mount.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -209,20 +259,7 @@ export function EarthMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const apply = () => {
-      if (map.getLayer(LAYER_ID)) map.removeLayer(LAYER_ID);
-      if (map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
-      map.addSource(SOURCE_ID, {
-        type: 'raster',
-        tiles: [tileUrl(layer, date)],
-        tileSize: 256,
-        maxzoom: LAYERS[layer].maxZoom,
-        attribution: LAYERS[layer].source,
-      });
-      map.addLayer({ id: LAYER_ID, type: 'raster', source: SOURCE_ID });
-    };
-    if (map.isStyleLoaded()) apply();
-    else map.once('load', apply);
+    applySatelliteLayer(map, layer, date, SOURCE_ID, LAYER_ID);
   }, [layer, date]);
 
   // Plot (or clear) the real C2-server markers whenever the data or the toggle changes.
@@ -278,6 +315,79 @@ export function EarthMap() {
       setThreatsError(err instanceof Error ? err.message : 'Failed to load the threat feed');
     } finally {
       setThreatsLoading(false);
+    }
+  };
+
+  // Enter/exit Compare mode: create (or tear down) the two synced maps + swipe divider.
+  useEffect(() => {
+    if (!compareOn) {
+      compareRef.current?.remove();
+      compareRef.current = null;
+      mapARef.current?.remove();
+      mapARef.current = null;
+      mapBRef.current?.remove();
+      mapBRef.current = null;
+      return;
+    }
+    if (!mapAContainerRef.current || !mapBContainerRef.current || !compareContainerRef.current) return;
+    const base = mapRef.current;
+    const center = base ? base.getCenter() : { lng: 101.5, lat: 13 };
+    const startZoom = base ? base.getZoom() : 2;
+    const mapOptions = { center: [center.lng, center.lat] as [number, number], zoom: startZoom, minZoom: 1.5, renderWorldCopies: false, attributionControl: false as const, style: { version: 8 as const, sources: {}, layers: [] } };
+    const mapA = new MapLibreMap({ container: mapAContainerRef.current, ...mapOptions });
+    const mapB = new MapLibreMap({ container: mapBContainerRef.current, ...mapOptions });
+    mapA.addControl(new AttributionControl({ customAttribution: 'Imagery © NASA EOSDIS GIBS' }), 'bottom-left');
+    applySatelliteLayer(mapA, layer, dateA, 'dagi-compare-a', 'dagi-compare-a-layer');
+    applySatelliteLayer(mapB, layer, dateB, 'dagi-compare-b', 'dagi-compare-b-layer');
+    mapARef.current = mapA;
+    mapBRef.current = mapB;
+    compareRef.current = new Compare(mapA, mapB, compareContainerRef.current, {});
+    return () => {
+      compareRef.current?.remove();
+      compareRef.current = null;
+      mapA.remove();
+      mapB.remove();
+      mapARef.current = null;
+      mapBRef.current = null;
+    };
+    // Only (re)create on entering/leaving Compare mode -- layer/date changes update the existing maps in place (below), not recreate them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareOn]);
+
+  // Update each side's imagery in place when its date (or the shared layer) changes, without recreating the maps.
+  useEffect(() => {
+    if (!compareOn || !mapARef.current) return;
+    applySatelliteLayer(mapARef.current, layer, dateA, 'dagi-compare-a', 'dagi-compare-a-layer');
+  }, [compareOn, layer, dateA]);
+  useEffect(() => {
+    if (!compareOn || !mapBRef.current) return;
+    applySatelliteLayer(mapBRef.current, layer, dateB, 'dagi-compare-b', 'dagi-compare-b-layer');
+  }, [compareOn, layer, dateB]);
+
+  const toggleCompare = async () => {
+    if (compareOn) {
+      setCompareOn(false);
+      return;
+    }
+    setCompareOn(true);
+    if (layer === 'highres') {
+      const center = mapRef.current?.getCenter();
+      if (center) {
+        setCompareLoading(true);
+        try {
+          const newer = await findRecentHighResDate(center.lng, center.lat);
+          if (newer) {
+            setDateB(newer);
+            const older = await findRecentHighResDate(center.lng, center.lat, daysBackOf(newer) + 1);
+            setDateA(older ?? newer);
+          }
+        } finally {
+          setCompareLoading(false);
+        }
+      }
+    } else {
+      setDateB(yesterdayUtc());
+      setDateA(daysBeforeTodayUtc(30));
     }
   };
 
@@ -341,18 +451,20 @@ export function EarthMap() {
       />
       <div className="p-4">
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <form onSubmit={(e) => void handleSearch(e)} className="flex min-w-64 flex-1 items-center gap-1.5">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search any place (city, country, landmark)…"
-              aria-label="Search for a place"
-              className="w-full rounded border border-edge-strong bg-canvas px-2 py-1.5 text-[12px] text-ink placeholder:text-ink-3"
-            />
-            <button type="submit" disabled={searching || !query.trim()} className="shrink-0 rounded border border-accent-strong bg-accent-strong/90 px-3 py-1.5 text-[11px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">
-              {searching ? 'Searching…' : 'Search'}
-            </button>
-          </form>
+          {!compareOn ? (
+            <form onSubmit={(e) => void handleSearch(e)} className="flex min-w-64 flex-1 items-center gap-1.5">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search any place (city, country, landmark)…"
+                aria-label="Search for a place"
+                className="w-full rounded border border-edge-strong bg-canvas px-2 py-1.5 text-[12px] text-ink placeholder:text-ink-3"
+              />
+              <button type="submit" disabled={searching || !query.trim()} className="shrink-0 rounded border border-accent-strong bg-accent-strong/90 px-3 py-1.5 text-[11px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">
+                {searching ? 'Searching…' : 'Search'}
+              </button>
+            </form>
+          ) : null}
           <div className="flex items-center gap-1.5 text-[11px]">
             {(Object.keys(LAYERS) as LayerKey[]).map((k) => (
               <button
@@ -365,31 +477,54 @@ export function EarthMap() {
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
-            Date
-            <input
-              type="date"
-              value={date}
-              max={yesterdayUtc()}
-              onChange={(e) => setDate(e.target.value)}
-              className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink"
-            />
-          </label>
+          {!compareOn ? (
+            <>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                Date
+                <input
+                  type="date"
+                  value={date}
+                  max={yesterdayUtc()}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void toggleThreats()}
+                disabled={threatsLoading}
+                className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${threatsOn ? 'border-critical/60 bg-critical/15 text-critical' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+                title="Real, currently-tracked botnet C2 server IPs (abuse.ch Feodo Tracker) — a narrow real feed, not a comprehensive attack map"
+              >
+                <span className={`size-1.5 rounded-full ${threatsOn ? 'bg-critical' : 'bg-ink-3'}`} style={threatsOn ? { animation: 'dagi-ring-flash-critical 1.6s ease-out infinite' } : undefined} aria-hidden />
+                {threatsLoading ? 'Loading…' : threatsOn ? 'Cyber threats: on' : 'Cyber threats'}
+              </button>
+              {threatsOn && threats ? (
+                <button type="button" onClick={() => void refreshThreats()} disabled={threatsLoading} className="rounded border border-edge-strong px-2 py-1 text-[11px] text-ink-2 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60">
+                  Refresh
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                Left (older)
+                <input type="date" value={dateA} max={yesterdayUtc()} onChange={(e) => setDateA(e.target.value)} className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink" />
+              </label>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                Right (newer)
+                <input type="date" value={dateB} max={yesterdayUtc()} onChange={(e) => setDateB(e.target.value)} className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink" />
+              </label>
+            </>
+          )}
           <button
             type="button"
-            onClick={() => void toggleThreats()}
-            disabled={threatsLoading}
-            className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${threatsOn ? 'border-critical/60 bg-critical/15 text-critical' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
-            title="Real, currently-tracked botnet C2 server IPs (abuse.ch Feodo Tracker) — a narrow real feed, not a comprehensive attack map"
+            onClick={() => void toggleCompare()}
+            className={`ml-auto rounded border px-2 py-1 text-[11px] font-medium ${compareOn ? 'border-accent-strong bg-accent-strong/20 text-ink' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+            title="Compare the same place at two different real dates, side by side with a swipe divider"
           >
-            <span className={`size-1.5 rounded-full ${threatsOn ? 'bg-critical' : 'bg-ink-3'}`} style={threatsOn ? { animation: 'dagi-ring-flash-critical 1.6s ease-out infinite' } : undefined} aria-hidden />
-            {threatsLoading ? 'Loading…' : threatsOn ? 'Cyber threats: on' : 'Cyber threats'}
+            {compareOn ? 'Exit compare' : 'Compare dates'}
           </button>
-          {threatsOn && threats ? (
-            <button type="button" onClick={() => void refreshThreats()} disabled={threatsLoading} className="rounded border border-edge-strong px-2 py-1 text-[11px] text-ink-2 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60">
-              Refresh
-            </button>
-          ) : null}
         </div>
 
         {searchError ? <p className="mb-2 text-[11px] text-critical">{searchError}</p> : null}
@@ -403,23 +538,40 @@ export function EarthMap() {
             <span className="text-critical">●</span> online <span className="text-ink-3">●</span> offline
           </p>
         ) : null}
+        {compareOn && compareLoading ? <p className="mb-2 text-[11px] text-ink-2">Checking for two distinct real High-res dates at this location…</p> : null}
+        {compareOn && !compareLoading ? (
+          <p className="mb-2 text-[11px] text-ink-3">Drag the divider to compare — both sides are real {LAYERS[layer].label} imagery, independently dated, panned/zoomed together.</p>
+        ) : null}
 
         <div className="relative h-[70vh] min-h-96 overflow-hidden rounded-lg border border-edge-strong">
-          <div ref={containerRef} className="h-full w-full" />
-          <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1">
-            <span className="rounded bg-panel/90 px-2 py-1 text-[10.5px] text-ink-2">
-              {active.label} · native resolution {active.resolution} · native max zoom {active.maxZoom} · date {date}
-            </span>
-            {overZoomed ? (
-              <span className="rounded bg-warning/15 px-2 py-1 text-[10.5px] font-medium text-warning">
-                Zoomed past this layer&apos;s real resolution — the image is upscaled here, not sharper. Real detail stops at zoom {active.maxZoom}.
-              </span>
-            ) : null}
+          <div ref={containerRef} className={`h-full w-full ${compareOn ? 'hidden' : ''}`} />
+          <div ref={compareContainerRef} className={`relative h-full w-full ${compareOn ? '' : 'hidden'}`}>
+            <div ref={mapAContainerRef} className="absolute inset-0 h-full w-full" />
+            <div ref={mapBContainerRef} className="absolute inset-0 h-full w-full" />
           </div>
-          <div className="pointer-events-none absolute bottom-8 left-2 rounded bg-panel/90 px-2 py-1 text-[10.5px] text-ink-3">
-            zoom {zoom.toFixed(1)}
-            {cursor ? ` · ${cursor.lat.toFixed(4)}, ${cursor.lon.toFixed(4)}` : null}
-          </div>
+          {!compareOn ? (
+            <>
+              <div className="pointer-events-none absolute left-2 top-2 flex flex-col gap-1">
+                <span className="rounded bg-panel/90 px-2 py-1 text-[10.5px] text-ink-2">
+                  {active.label} · native resolution {active.resolution} · native max zoom {active.maxZoom} · date {date}
+                </span>
+                {overZoomed ? (
+                  <span className="rounded bg-warning/15 px-2 py-1 text-[10.5px] font-medium text-warning">
+                    Zoomed past this layer&apos;s real resolution — the image is upscaled here, not sharper. Real detail stops at zoom {active.maxZoom}.
+                  </span>
+                ) : null}
+              </div>
+              <div className="pointer-events-none absolute bottom-8 left-2 rounded bg-panel/90 px-2 py-1 text-[10.5px] text-ink-3">
+                zoom {zoom.toFixed(1)}
+                {cursor ? ` · ${cursor.lat.toFixed(4)}, ${cursor.lon.toFixed(4)}` : null}
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="pointer-events-none absolute left-2 top-2 rounded bg-panel/90 px-2 py-1 text-[10.5px] text-ink-2">Left: {dateA}</span>
+              <span className="pointer-events-none absolute right-2 top-2 rounded bg-panel/90 px-2 py-1 text-[10.5px] text-ink-2">Right: {dateB}</span>
+            </>
+          )}
         </div>
 
         <p className="mt-2 text-[10.5px] text-ink-3">
