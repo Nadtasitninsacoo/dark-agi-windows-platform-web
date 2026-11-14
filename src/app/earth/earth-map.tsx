@@ -41,9 +41,27 @@ import { apiRequest, type Job } from '@/lib/api/client';
  * drag-to-swipe clip divider) — each side independently date-pickable, same layer, same location. Both
  * sides fetch real tiles the same way the single map does; there is no synthetic "estimated change"
  * rendering here, just two real images side by side.
+ *
+ * Milestone 2 (a second provider): "Cloudless mosaic" (EOX's Sentinel-2 cloudless, s2maps.eu/cloudless.eox.at).
+ * Investigated Copernicus Data Space's own STAC catalogue first (the blueprint's named Provider B): its
+ * search API is free and public, and a real `sentinel-2-l2a` collection exists with real scenes — but the
+ * actual full-resolution imagery (`TCI_10m` etc.) requires an OIDC OAuth2 credential to download, which
+ * this platform has no secret-injection path for yet (the same gap already flagged for
+ * VirusTotal/MISP/a real NASA API key). Only a tiny 343x343 "quicklook" thumbnail per scene is public — not
+ * usable as map tiles. EOX's cloudless mosaic needed no such credential and gave real zoomable XYZ tiles,
+ * confirmed by fetching GIBS's... no, EOX's own GetCapabilities XML directly (not guessed): real max zoom
+ * 14 (tile size shrinks sharply past it — confirmed live, 200 OK at every zoom tested but the content
+ * clearly stops carrying new detail past z14, matching its ~10m/pixel native resolution). License is CC
+ * BY-NC-SA 4.0 (non-commercial) — attributed as such in the UI, per the mission brief's own "respect
+ * provider terms and licensing" rule. It is an ANNUAL cloud-free composite (one layer per year, 2017-2025
+ * confirmed live), not a specific acquisition date — so this layer swaps the day-date picker for a year
+ * picker, and in Compare mode defaults to comparing 2017 vs. 2025: real, 8-year land-cover change, not an
+ * estimate.
  */
 
-interface LayerDef {
+interface DailyLayerDef {
+  provider: 'gibs';
+  temporal: 'daily';
   label: string;
   gibsId: string;
   format: 'jpg' | 'png';
@@ -53,10 +71,29 @@ interface LayerDef {
   source: string;
 }
 
-type LayerKey = 'daily' | 'highres';
+interface AnnualLayerDef {
+  provider: 'eox';
+  temporal: 'annual';
+  label: string;
+  years: string[];
+  defaultYear: string;
+  maxZoom: number;
+  resolution: string;
+  source: string;
+  attribution: string;
+}
 
-const LAYERS: Record<LayerKey, LayerDef> = {
+type LayerDef = DailyLayerDef | AnnualLayerDef;
+type LayerKey = 'daily' | 'highres' | 'cloudless';
+
+const EOX_YEARS = ['2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025'];
+
+// `satisfies` instead of a `: Record<LayerKey, LayerDef>` annotation, so LAYERS.cloudless etc. keep their
+// own specific (AnnualLayerDef) type for indexed access below, while still being checked against the union.
+const LAYERS = {
   daily: {
+    provider: 'gibs',
+    temporal: 'daily',
     label: 'Daily (MODIS Terra, true color)',
     gibsId: 'MODIS_Terra_CorrectedReflectance_TrueColor',
     format: 'jpg',
@@ -66,6 +103,8 @@ const LAYERS: Record<LayerKey, LayerDef> = {
     source: 'NASA GIBS / MODIS Terra',
   },
   highres: {
+    provider: 'gibs',
+    temporal: 'daily',
     label: 'High-res (HLS: Sentinel-2 / Landsat)',
     gibsId: 'HLS_S30_Nadir_BRDF_Adjusted_Reflectance',
     format: 'png',
@@ -74,11 +113,24 @@ const LAYERS: Record<LayerKey, LayerDef> = {
     resolution: '~10-30m/pixel',
     source: 'NASA GIBS / Harmonized Landsat-Sentinel',
   },
-};
+  cloudless: {
+    provider: 'eox',
+    temporal: 'annual',
+    label: 'Cloudless mosaic (EOX Sentinel-2, by year)',
+    years: EOX_YEARS,
+    defaultYear: EOX_YEARS[EOX_YEARS.length - 1]!,
+    maxZoom: 14,
+    resolution: '~10m/pixel (annual composite, not a specific date)',
+    source: 'EOX IT Services GmbH / s2maps.eu — CC BY-NC-SA 4.0, non-commercial',
+    attribution: 'Sentinel-2 cloudless by EOX IT Services GmbH (s2maps.eu) — contains modified Copernicus Sentinel data — CC BY-NC-SA 4.0',
+  },
+} satisfies Record<LayerKey, LayerDef>;
 
-function tileUrl(layer: LayerKey, date: string): string {
+/** `dateOrYear` is a yyyy-mm-dd date for the two GIBS layers, or a bare yyyy year for the EOX annual mosaic. */
+function tileUrl(layer: LayerKey, dateOrYear: string): string {
   const l = LAYERS[layer];
-  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${date}/${l.tileMatrixSet}/{z}/{y}/{x}.${l.format}`;
+  if (l.provider === 'eox') return `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-${dateOrYear}_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg`;
+  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${l.gibsId}/default/${dateOrYear}/${l.tileMatrixSet}/{z}/{y}/{x}.${l.format}`;
 }
 
 function yesterdayUtc(): string {
@@ -144,16 +196,17 @@ const SOURCE_ID = 'dagi-satellite';
 const LAYER_ID = 'dagi-satellite-layer';
 
 /** Shared by the single map and both sides of the Compare view -- adds/replaces one map's satellite raster source+layer. */
-function applySatelliteLayer(map: MapLibreMap, layer: LayerKey, date: string, sourceId: string, layerId: string): void {
+function applySatelliteLayer(map: MapLibreMap, layer: LayerKey, dateOrYear: string, sourceId: string, layerId: string): void {
+  const l = LAYERS[layer];
   const run = () => {
     if (map.getLayer(layerId)) map.removeLayer(layerId);
     if (map.getSource(sourceId)) map.removeSource(sourceId);
     map.addSource(sourceId, {
       type: 'raster',
-      tiles: [tileUrl(layer, date)],
+      tiles: [tileUrl(layer, dateOrYear)],
       tileSize: 256,
-      maxzoom: LAYERS[layer].maxZoom,
-      attribution: LAYERS[layer].source,
+      maxzoom: l.maxZoom,
+      attribution: l.provider === 'eox' ? l.attribution : l.source,
     });
     map.addLayer({ id: layerId, type: 'raster', source: sourceId });
   };
@@ -370,7 +423,11 @@ export function EarthMap() {
       return;
     }
     setCompareOn(true);
-    if (layer === 'highres') {
+    if (layer === 'cloudless') {
+      // The most dramatic real comparison this layer can show: its oldest vs. its newest real annual mosaic.
+      setDateA(EOX_YEARS[0]!);
+      setDateB(LAYERS.cloudless.defaultYear);
+    } else if (layer === 'highres') {
       const center = mapRef.current?.getCenter();
       if (center) {
         setCompareLoading(true);
@@ -389,6 +446,24 @@ export function EarthMap() {
       setDateB(yesterdayUtc());
       setDateA(daysBeforeTodayUtc(30));
     }
+  };
+
+  /** Switches layers, resetting date/dateA/dateB to a sensible default only when crossing the daily<->annual boundary (a bare year isn't a valid date for the other two layers, and vice versa). */
+  const selectLayer = (k: LayerKey) => {
+    const wasAnnual = LAYERS[layer].temporal === 'annual';
+    const willAnnual = LAYERS[k].temporal === 'annual';
+    if (wasAnnual !== willAnnual) {
+      if (willAnnual) {
+        setDate(LAYERS.cloudless.defaultYear);
+        setDateA(EOX_YEARS[0]!);
+        setDateB(LAYERS.cloudless.defaultYear);
+      } else {
+        setDate(yesterdayUtc());
+        setDateA(daysBeforeTodayUtc(30));
+        setDateB(yesterdayUtc());
+      }
+    }
+    setLayer(k);
   };
 
   const handleSearch = async (e: FormEvent) => {
@@ -470,7 +545,7 @@ export function EarthMap() {
               <button
                 key={k}
                 type="button"
-                onClick={() => setLayer(k)}
+                onClick={() => selectLayer(k)}
                 className={`rounded border px-2 py-1 font-medium ${layer === k ? 'border-accent-strong bg-accent-strong/20 text-ink' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
               >
                 {LAYERS[k].label}
@@ -479,16 +554,29 @@ export function EarthMap() {
           </div>
           {!compareOn ? (
             <>
-              <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
-                Date
-                <input
-                  type="date"
-                  value={date}
-                  max={yesterdayUtc()}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink"
-                />
-              </label>
+              {LAYERS[layer].temporal === 'annual' ? (
+                <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                  Year
+                  <select value={date} onChange={(e) => setDate(e.target.value)} className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink">
+                    {EOX_YEARS.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                  Date
+                  <input
+                    type="date"
+                    value={date}
+                    max={yesterdayUtc()}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink"
+                  />
+                </label>
+              )}
               <button
                 type="button"
                 onClick={() => void toggleThreats()}
@@ -504,6 +592,29 @@ export function EarthMap() {
                   Refresh
                 </button>
               ) : null}
+            </>
+          ) : LAYERS[layer].temporal === 'annual' ? (
+            <>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                Left (older)
+                <select value={dateA} onChange={(e) => setDateA(e.target.value)} className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink">
+                  {EOX_YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                Right (newer)
+                <select value={dateB} onChange={(e) => setDateB(e.target.value)} className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink">
+                  {EOX_YEARS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </>
           ) : (
             <>
@@ -575,7 +686,7 @@ export function EarthMap() {
         </div>
 
         <p className="mt-2 text-[10.5px] text-ink-3">
-          A calendar date doesn&apos;t guarantee an image exists for every tile at every zoom — NASA&apos;s satellites don&apos;t re-image the whole planet instantly, and some tiles (especially High-res, which isn&apos;t daily) may render blank for a given date/location. That is a real, honest &quot;no imagery available,&quot; not a loading bug.
+          A calendar date doesn&apos;t guarantee an image exists for every tile at every zoom — NASA&apos;s satellites don&apos;t re-image the whole planet instantly, and some tiles (especially High-res, which isn&apos;t daily) may render blank for a given date/location. That is a real, honest &quot;no imagery available,&quot; not a loading bug. The Cloudless mosaic layer is a different kind of real: one real composite per year (not a specific acquisition date), from EOX IT Services (s2maps.eu), licensed CC BY-NC-SA 4.0 — non-commercial use only.
         </p>
       </div>
     </div>
