@@ -1,9 +1,10 @@
 'use client';
 
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { AttributionControl, Map as MapLibreMap, Marker, NavigationControl, ScaleControl } from 'maplibre-gl';
+import { AttributionControl, Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { apiRequest, type Job } from '@/lib/api/client';
 
 /**
  * Milestone 1 of the "Global Earth Observation Engine" (docs/agi-research/mission-07): a real, pannable,
@@ -25,6 +26,13 @@ import { PageHeader } from '@/components/page-header';
  * Search is forward-geocoding via OpenStreetMap's free Nominatim (no API key), called directly from the
  * browser — the same public service embedded in many map demos' search boxes. `resolvedPlace` shows
  * Nominatim's own matched name, not just the text the user typed.
+ *
+ * Optional "Cyber threats" overlay: real, currently-tracked botnet C2 server locations from the backend's
+ * `threat-feed:active-c2-servers` operation (abuse.ch Feodo Tracker + IP geolocation) — a toggle, not
+ * auto-refreshing, since the underlying feed changes slowly and geolocation has its own free-tier rate
+ * limit. Deliberately NOT styled as a dramatic "live global cyberattack" globe: this is a small, real,
+ * independently-verifiable list (Emotet/QakBot-family C2 IPs specifically), and the popup for each marker
+ * says so plainly rather than implying it's a comprehensive real-time threat map.
  */
 
 interface LayerDef {
@@ -115,10 +123,43 @@ async function findRecentHighResDate(lon: number, lat: number): Promise<string |
 const SOURCE_ID = 'dagi-satellite';
 const LAYER_ID = 'dagi-satellite-layer';
 
+/** Mirrors the backend's TrackedC2Server shape (threat-feed.ts) without importing the backend package. */
+interface TrackedC2Server {
+  ip: string;
+  port: number;
+  malwareFamily: string;
+  status: 'online' | 'offline' | string;
+  firstSeen: string;
+  lastOnline: string;
+  country: string;
+  asName: string;
+  lat: number | null;
+  lon: number | null;
+  city: string | null;
+}
+
+const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+const FINAL = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED', 'REJECTED']);
+
+/** Submits threat-feed:active-c2-servers and polls it to completion, the same pattern every other live view in this app uses. */
+async function fetchThreatFeed(): Promise<TrackedC2Server[]> {
+  const job = await apiRequest<Job>('/jobs', post({ toolId: 'threat-feed', operationId: 'active-c2-servers', input: {} }));
+  let current = job;
+  for (let i = 0; i < 30 && !FINAL.has(current.status) && current.status !== 'AWAITING_APPROVAL'; i++) {
+    await sleep(1000);
+    current = await apiRequest<Job>(`/jobs/${job.id}`);
+  }
+  if (current.status !== 'SUCCEEDED') throw new Error(current.status === 'FAILED' ? (current.error ?? 'threat-feed job failed') : `threat-feed job did not complete (${current.status.toLowerCase()})`);
+  const items = (current.result as { items?: unknown[] } | null)?.items;
+  return Array.isArray(items) ? (items as TrackedC2Server[]) : [];
+}
+
 export function EarthMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
+  const threatMarkersRef = useRef<Marker[]>([]);
 
   const [layer, setLayer] = useState<LayerKey>('daily');
   const [date, setDate] = useState(yesterdayUtc());
@@ -130,6 +171,10 @@ export function EarthMap() {
   const [resolvedPlace, setResolvedPlace] = useState<string | null>(null);
   const [checkingCoverage, setCheckingCoverage] = useState(false);
   const [coverageNote, setCoverageNote] = useState<string | null>(null);
+  const [threatsOn, setThreatsOn] = useState(false);
+  const [threatsLoading, setThreatsLoading] = useState(false);
+  const [threatsError, setThreatsError] = useState<string | null>(null);
+  const [threats, setThreats] = useState<TrackedC2Server[] | null>(null);
 
   // Create the map once on mount.
   useEffect(() => {
@@ -179,6 +224,62 @@ export function EarthMap() {
     if (map.isStyleLoaded()) apply();
     else map.once('load', apply);
   }, [layer, date]);
+
+  // Plot (or clear) the real C2-server markers whenever the data or the toggle changes.
+  useEffect(() => {
+    for (const m of threatMarkersRef.current) m.remove();
+    threatMarkersRef.current = [];
+    const map = mapRef.current;
+    if (!map || !threatsOn || !threats) return;
+    for (const t of threats) {
+      if (t.lat === null || t.lon === null) continue;
+      const el = document.createElement('div');
+      el.className = 'size-2.5 rounded-full border border-canvas';
+      el.style.backgroundColor = t.status === 'online' ? '#ff3b5c' : '#6b7577';
+      if (t.status === 'online') el.style.animation = 'dagi-ring-flash-critical 1.6s ease-out infinite';
+      const popup = new Popup({ offset: 10, closeButton: true }).setHTML(
+        `<div style="font-family: var(--font-mono, monospace); font-size: 11px; line-height: 1.5;">
+           <strong>${t.ip}</strong> (${t.status})<br/>
+           Malware: ${t.malwareFamily} · port ${t.port}<br/>
+           ${t.city ? t.city + ', ' : ''}${t.country}${t.asName ? ' · ' + t.asName : ''}<br/>
+           First seen ${t.firstSeen} · last online ${t.lastOnline}<br/>
+           <span style="opacity:0.7">Source: abuse.ch Feodo Tracker — a real, narrow feed (specific malware families), not a comprehensive attack map.</span>
+         </div>`,
+      );
+      threatMarkersRef.current.push(new Marker({ element: el }).setLngLat([t.lon, t.lat]).setPopup(popup).addTo(map));
+    }
+  }, [threats, threatsOn]);
+
+  const toggleThreats = async () => {
+    if (threatsOn) {
+      setThreatsOn(false);
+      return;
+    }
+    setThreatsOn(true);
+    if (threats) return; // Already loaded this session -- the feed doesn't change fast enough to need refetching just for re-showing it.
+    setThreatsLoading(true);
+    setThreatsError(null);
+    try {
+      setThreats(await fetchThreatFeed());
+    } catch (err) {
+      setThreatsError(err instanceof Error ? err.message : 'Failed to load the threat feed');
+      setThreatsOn(false);
+    } finally {
+      setThreatsLoading(false);
+    }
+  };
+
+  const refreshThreats = async () => {
+    setThreatsLoading(true);
+    setThreatsError(null);
+    try {
+      setThreats(await fetchThreatFeed());
+    } catch (err) {
+      setThreatsError(err instanceof Error ? err.message : 'Failed to load the threat feed');
+    } finally {
+      setThreatsLoading(false);
+    }
+  };
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
@@ -274,12 +375,34 @@ export function EarthMap() {
               className="rounded border border-edge-strong bg-canvas px-1.5 py-1 text-[12px] text-ink"
             />
           </label>
+          <button
+            type="button"
+            onClick={() => void toggleThreats()}
+            disabled={threatsLoading}
+            className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${threatsOn ? 'border-critical/60 bg-critical/15 text-critical' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+            title="Real, currently-tracked botnet C2 server IPs (abuse.ch Feodo Tracker) — a narrow real feed, not a comprehensive attack map"
+          >
+            <span className={`size-1.5 rounded-full ${threatsOn ? 'bg-critical' : 'bg-ink-3'}`} style={threatsOn ? { animation: 'dagi-ring-flash-critical 1.6s ease-out infinite' } : undefined} aria-hidden />
+            {threatsLoading ? 'Loading…' : threatsOn ? 'Cyber threats: on' : 'Cyber threats'}
+          </button>
+          {threatsOn && threats ? (
+            <button type="button" onClick={() => void refreshThreats()} disabled={threatsLoading} className="rounded border border-edge-strong px-2 py-1 text-[11px] text-ink-2 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60">
+              Refresh
+            </button>
+          ) : null}
         </div>
 
         {searchError ? <p className="mb-2 text-[11px] text-critical">{searchError}</p> : null}
         {resolvedPlace ? <p className="mb-2 text-[11px] text-ink-2">Found: <span className="text-violet">{resolvedPlace}</span></p> : null}
         {checkingCoverage ? <p className="mb-2 text-[11px] text-ink-2">Checking the last {COVERAGE_MAX_DAYS_BACK} days for real High-res coverage here…</p> : null}
         {coverageNote ? <p className="mb-2 text-[11px] text-good">{coverageNote}</p> : null}
+        {threatsError ? <p className="mb-2 text-[11px] text-critical">{threatsError}</p> : null}
+        {threatsOn && threats ? (
+          <p className="mb-2 text-[11px] text-ink-3">
+            {threats.length} real tracked C2 {threats.length === 1 ? 'server' : 'servers'} (abuse.ch Feodo Tracker — Emotet/QakBot-family only, not a comprehensive attack map) ·{' '}
+            <span className="text-critical">●</span> online <span className="text-ink-3">●</span> offline
+          </p>
+        ) : null}
 
         <div className="relative h-[70vh] min-h-96 overflow-hidden rounded-lg border border-edge-strong">
           <div ref={containerRef} className="h-full w-full" />

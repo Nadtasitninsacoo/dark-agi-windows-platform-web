@@ -139,6 +139,18 @@ body {
   }
 }
 
+/* Same mechanism again, in critical/red — for an ONGOING bad state (looped), e.g. a real currently-online
+   malicious host marker on the Earth Observatory map (earth-map.tsx). Not the one-shot dagi-ring-flash
+   above, which is for a single alert event, not a continuing state. */
+@keyframes dagi-ring-flash-critical {
+  0% {
+    box-shadow: 0 0 0 0 rgb(255 59 92 / 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(255 59 92 / 0);
+  }
+}
+
 /* The terminal's "a job is running" indicator (terminal-console.tsx's LoadingDots) — a standard three-dot
    typing/thinking indicator, staggered per dot via animation-delay so they bounce in sequence, not together. */
 @keyframes dagi-loading-bounce {
