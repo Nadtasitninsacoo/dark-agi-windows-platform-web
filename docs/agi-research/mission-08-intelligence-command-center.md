@@ -2,7 +2,7 @@
 
 Pasted verbatim from the user on 2026-11-15, alongside 3 reference screenshots (an "AI Research Hub" dashboard, an "Orchestra" multi-agent pipeline view, and a GPU-cluster/flywheel ops dashboard) as visual inspiration only — not existing DARK AGI UI. Explicitly structured by the user as 10 phases, one at a time, each reviewed before the next starts ("STOP and wait for my review. Do not automatically begin Phase 2.").
 
-Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phase 5 (Hypothesis & Research, honest placeholder) is DONE — see "Phase 5 output" below. Phase 6 (Experiment & Discovery, honest placeholder) is DONE — see "Phase 6 output" below. Phases 7-10 and the rest of Phases 2/3 NOT STARTED.
+Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phase 5 (Hypothesis & Research, honest placeholder) is DONE — see "Phase 5 output" below. Phase 6 (Experiment & Discovery, honest placeholder) is DONE — see "Phase 6 output" below. Phase 7 (Multi-Agent Intelligence, first slice) is DONE — see "Phase 7 output" below. Phases 8-10 and the rest of Phases 2/3 NOT STARTED.
 
 ---
 
@@ -122,3 +122,11 @@ Same reasoning and same mechanism as Phase 5, for the same reason: Experiment En
 - Scientific Discovery's summary is more specific than "nothing exists": the four Mission 03 physics items (pendulum, Biot-Savart, heat diffusion, relativity — each independently cross-checked) are real work that happened, it's just developer documentation in this repository today, not data the running application can read. Worth stating plainly rather than letting the placeholder imply no research occurred at all.
 - Verified live: both new routes return 200 (first hit needed a longer timeout for Next's on-demand dev-mode compilation — not an error). tsc/eslint clean.
 - Not done: anything that would let this app actually read/display the existing physics reports or track real experiments — both still need Mission 09-scale backend work.
+
+## Phase 7 output (2026-11-15, Claude) — Multi-Agent Intelligence, first slice
+
+Graded **A** for the delegation data itself in Phase 1, **C** for "collaboration" as the reference screenshots framed it (this is sequential task delegation, never concurrent agent-to-agent chat). A per-run delegation tree already existed before this phase (`HistoryPanel` → `RunView`, built on `buildRunTree` over one run's real `descendants`) — but only for one already-selected agent's one already-selected run, no cross-agent view of the delegation graph itself.
+
+- `src/app/agents/agent-console.tsx`: new `CollaborationPanel`, combining two real sources with zero new backend work: `Agent.delegatesTo` (already returned by `/agents` — the static, permitted delegation graph) and a new `/agents/runs?limit=100` poll reduced client-side into real `delegate`-type request counts per (agent → target) pair, split by decision (`EXECUTED`/`DENIED`/`REJECTED`). Shows, for every agent with delegation capability, who it's allowed to hand work to and what's actually happened in the last 100 runs — "0 delegations in the last 100 runs" is shown plainly where that's the truth, never hidden or implied otherwise.
+- No new backend endpoints, no new permissions. tsc/eslint clean; `/agents` verified live (200).
+- Not done: a visual graph/diagram (this slice is a list, not a node-link rendering) and any notion of concurrent multi-agent collaboration, since the platform genuinely has none to show.
