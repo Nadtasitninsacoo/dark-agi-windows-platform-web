@@ -1482,6 +1482,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operation-proposals/{id}/write-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate a real .ts file for an approved proposal into its own workspace, with a genuine tsc --noEmit compile check — never wired into the live operations registry */
+        post: operations["OperationProposalsController_writeCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp": {
         parameters: {
             query?: never;
@@ -3097,6 +3114,7 @@ export interface components {
             requiresApproval: true;
             /** @enum {string|null} */
             codegenMode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL" | null;
+            generatedCode: string | null;
             generatedCodePath: string | null;
             compileCheck: {
                 passed: boolean;
@@ -3176,6 +3194,7 @@ export interface components {
                 requiresApproval: true;
                 /** @enum {string|null} */
                 codegenMode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL" | null;
+                generatedCode: string | null;
                 generatedCodePath: string | null;
                 compileCheck: {
                     passed: boolean;
@@ -3240,6 +3259,7 @@ export interface components {
                 requiresApproval: true;
                 /** @enum {string|null} */
                 codegenMode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL" | null;
+                generatedCode: string | null;
                 generatedCodePath: string | null;
                 compileCheck: {
                     passed: boolean;
@@ -3258,6 +3278,15 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
             }[];
+        };
+        OperationProposalWriteCodeRequest: {
+            /**
+             * @default HUMAN_FINISHES
+             * @enum {string}
+             */
+            mode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL";
+            /** @description Override the default AI model for the AI_DRAFTS_FULL implementation call (same registry ids as /ai/chat) */
+            model?: string;
         };
         ProviderCredential: {
             providerId: string;
@@ -6172,6 +6201,31 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OperationProposalDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationProposal"];
+                };
+            };
+        };
+    };
+    OperationProposalsController_writeCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperationProposalWriteCodeRequest"];
             };
         };
         responses: {
