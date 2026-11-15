@@ -8,7 +8,7 @@ import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { Button, ConfirmDialog, ErrorNotice, Panel, Skeleton, StatusBadge, TerminalBox, type StatusTone } from '@/components/ui';
-import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList } from '@/lib/api/client';
+import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList, type ScopeList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { RemoteHostField } from '@/app/remote-hosts/remote-host-field';
 import { JobResult } from './job-result';
@@ -240,11 +240,32 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
   const [key, setKey] = useState(initial ?? '');
   const [filter, setFilter] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
+  const [manualTarget, setManualTarget] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const op = operations.find((o) => `${o.toolId}:${o.operationId}` === key) ?? operations.find((o) => o.available);
   const filterLower = filter.trim().toLowerCase();
   const filteredOperations = filterLower === '' ? operations : operations.filter((o) => o === op || `${o.toolId}:${o.operationId} ${o.title}`.toLowerCase().includes(filterLower));
+
+  // Auto-fill + lock the target field from the one active scope, same rule the backend's own
+  // autoResolveTargets() uses: this only applies to a network operation's "targets" field, or its
+  // single "host"/"domain" field when that one active scope covers exactly one address. The point is
+  // to stop the user retyping (and mistyping) targets they already scoped — see Submit Job form request.
+  const scopes = useSWR<ScopeList>(op && op.targetKind === 'network' ? '/scopes' : null);
+  const activeScopes = scopes.data?.items.filter((s) => s.active) ?? [];
+  const soleScope = activeScopes.length === 1 ? activeScopes[0]! : null;
+  const autoFillFor = (f: Operation['fields'][number]): string | null => {
+    if (!op || op.targetKind !== 'network' || !soleScope) return null;
+    if (f.name === 'targets') return soleScope.targets.join(', ');
+    if ((f.name === 'host' || f.name === 'domain') && soleScope.targets.length === 1) return soleScope.targets[0]!;
+    return null;
+  };
+  const isLocked = (f: Operation['fields'][number]) => autoFillFor(f) !== null && !manualTarget[f.name] && (values[f.name] ?? '').trim() === '';
+  const fieldValue = (f: Operation['fields'][number]) => {
+    const auto = autoFillFor(f);
+    if (auto !== null && !manualTarget[f.name] && (values[f.name] ?? '').trim() === '') return auto;
+    return values[f.name] ?? '';
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -254,12 +275,13 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
     try {
       const input: Record<string, unknown> = {};
       for (const f of op.fields) {
-        const raw = (values[f.name] ?? '').trim();
+        const raw = fieldValue(f).trim();
         if (raw === '') continue;
         input[f.name] = f.type === 'targets' || f.type === 'list' ? raw.split(/[\s,]+/).filter(Boolean) : f.type === 'integer' ? Number(raw) : raw;
       }
       const job = await apiRequest<Job>('/jobs', post({ toolId: op.toolId, operationId: op.operationId, input }));
       setValues({});
+      setManualTarget({});
       await onSubmitted(job);
     } catch (err) {
       setError(err);
@@ -280,6 +302,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
         onChange={(e) => {
           setKey(e.target.value);
           setValues({});
+          setManualTarget({});
         }}
       >
         {filteredOperations.map((o) => (
@@ -296,46 +319,60 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
         {op.requiresApproval ? <StatusBadge tone="warning" label="Needs approval" /> : null}
         {op.targetKind === 'network' ? <span>Targets must be inside one active scope (max {op.maxAddresses} addresses).</span> : <span>Runs on this machine only.</span>}
       </div>
-      {op.fields.map((f) => (
-        <label key={f.name} className="block text-[11.5px] text-ink-2">
-          {f.label}
-          {f.required ? ' *' : ''}
-          {f.type === 'targets' || f.type === 'list' ? (
-            <textarea
-              className={`${inputClass} mt-1 h-16 font-mono`}
-              value={values[f.name] ?? ''}
-              placeholder={f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
-              onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
-            />
-          ) : f.type === 'remoteHost' ? (
-            <div className="mt-1">
-              <RemoteHostField value={values[f.name] ?? ''} onChange={(id) => setValues({ ...values, [f.name]: id })} />
-            </div>
-          ) : f.options ? (
-            <select className={`${inputClass} mt-1`} value={values[f.name] ?? ''} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}>
-              <option value="" disabled>
-                Pick one…
-              </option>
-              {f.options.map((o) => (
-                <option key={o} value={o}>
-                  {o}
+      {op.fields.map((f) => {
+        const locked = isLocked(f);
+        const lockNotice = locked ? (
+          <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-good">
+            Auto-filled from scope &ldquo;{soleScope!.name}&rdquo; — locked to avoid retyping it (and typos).
+            <button type="button" className="underline hover:text-ink" onClick={() => setManualTarget({ ...manualTarget, [f.name]: true })}>
+              Type a different target instead
+            </button>
+          </span>
+        ) : null;
+        return (
+          <label key={f.name} className="block text-[11.5px] text-ink-2">
+            {f.label}
+            {f.required ? ' *' : ''}
+            {f.type === 'targets' || f.type === 'list' ? (
+              <textarea
+                className={`${inputClass} mt-1 h-16 font-mono ${locked ? 'opacity-70' : ''}`}
+                value={fieldValue(f)}
+                readOnly={locked}
+                placeholder={f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
+                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+              />
+            ) : f.type === 'remoteHost' ? (
+              <div className="mt-1">
+                <RemoteHostField value={values[f.name] ?? ''} onChange={(id) => setValues({ ...values, [f.name]: id })} />
+              </div>
+            ) : f.options ? (
+              <select className={`${inputClass} mt-1`} value={values[f.name] ?? ''} onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}>
+                <option value="" disabled>
+                  Pick one…
                 </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              className={`${inputClass} mt-1 ${f.type === 'integer' ? 'w-40' : ''}`}
-              type={f.type === 'integer' ? 'number' : 'text'}
-              min={f.min ?? undefined}
-              max={f.max ?? undefined}
-              placeholder={f.default !== null ? String(f.default) : ''}
-              value={values[f.name] ?? ''}
-              onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
-            />
-          )}
-          <span className="block text-[11px] text-ink-3">{f.help}</span>
-        </label>
-      ))}
+                {f.options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className={`${inputClass} mt-1 ${f.type === 'integer' ? 'w-40' : ''} ${locked ? 'opacity-70' : ''}`}
+                type={f.type === 'integer' ? 'number' : 'text'}
+                min={f.min ?? undefined}
+                max={f.max ?? undefined}
+                placeholder={f.default !== null ? String(f.default) : ''}
+                readOnly={locked}
+                value={fieldValue(f)}
+                onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
+              />
+            )}
+            {lockNotice}
+            <span className="block text-[11px] text-ink-3">{f.help}</span>
+          </label>
+        );
+      })}
       <Button type="submit" variant="primary" busy={busy} disabled={!op.available}>
         <Send className="size-3.5" aria-hidden /> Submit job
       </Button>
