@@ -146,6 +146,10 @@ export const COMMAND_ALIASES: Record<string, string> = {
   'earth-imagery:high-res-view': 'sat:viewhd',
   // Not NASA (Caltech/MIT's GWOSC) — a new "space:" namespace for non-NASA cosmic/physics sources.
   'ligo-gwosc:recent-detections': 'space:gravwaves',
+  // SpaceX-specific sources (Launch Library 2, CelesTrak) — neither "sat:" (trackers) nor "space:"
+  // (cosmic/physics) fits, so its own "spacex:" namespace.
+  'spacex:starship-launches': 'spacex:launches',
+  'spacex:starlink-elements': 'spacex:starlink',
 
   // Remote-execution siblings (remote-execution.ts's remoteVariant()) — same local verb, under a
   // dedicated "remote:" category so it's unmistakable at a glance that this runs on another machine.

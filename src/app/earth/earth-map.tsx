@@ -2,11 +2,12 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css';
-import { AttributionControl, Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl';
+import { AttributionControl, type GeoJSONSource, Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl';
 import Compare from '@maplibre/maplibre-gl-compare';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { apiRequest, type Job } from '@/lib/api/client';
+import { buildSatrecs, computePositions, fetchStarlinkElements, fetchStarshipLaunches, type StarlinkSatEntry, type StarshipLaunch } from './starlink';
 
 /**
  * Milestone 1 of the "Global Earth Observation Engine" (docs/agi-research/mission-07): a real, pannable,
@@ -41,6 +42,16 @@ import { apiRequest, type Job } from '@/lib/api/client';
  * drag-to-swipe clip divider) — each side independently date-pickable, same layer, same location. Both
  * sides fetch real tiles the same way the single map does; there is no synthetic "estimated change"
  * rendering here, just two real images side by side.
+ *
+ * Optional "Starlink" overlay: real, current satellite positions for the whole Starlink constellation
+ * (~11,000 satellites), from the backend's `spacex:starlink-elements` operation (CelesTrak orbital
+ * elements) propagated with real SGP4 (satellite.js) client-side every 5 seconds so the dots visibly drift
+ * — not a static snapshot. Rendered as a single GeoJSON circle layer (not one Marker per satellite, which
+ * would be ~11,000 DOM nodes re-laid-out on every tick) updated in place via `setData`. Respects CelesTrak's
+ * published "don't re-fetch more than once per ~2 hours" policy as a real, enforced cache window, not just
+ * a comment. "Starship launches" panel: real upcoming SpaceX Starship launches from the backend's
+ * `spacex:starship-launches` operation (Launch Library 2) — manual refresh only (that API's free tier is
+ * 15 requests/hour/IP), with a marker at each launch pad's real coordinates.
  *
  * Milestone 2 (a second provider): "Cloudless mosaic" (EOX's Sentinel-2 cloudless, s2maps.eu/cloudless.eox.at).
  * Investigated Copernicus Data Space's own STAC catalogue first (the blueprint's named Provider B): its
@@ -214,6 +225,61 @@ function applySatelliteLayer(map: MapLibreMap, layer: LayerKey, dateOrYear: stri
   else map.once('load', run);
 }
 
+const STARLINK_SOURCE_ID = 'dagi-starlink';
+const STARLINK_LAYER_ID = 'dagi-starlink-layer';
+const STARLINK_CACHE_MS = 2 * 60 * 60 * 1000;
+
+interface StarlinkPositionLike {
+  name: string;
+  noradCatId: number;
+  lat: number;
+  lon: number;
+  altKm: number;
+}
+
+function starlinkGeoJson(positions: readonly StarlinkPositionLike[]): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: positions.map((p) => ({
+      type: 'Feature',
+      properties: { name: p.name, noradCatId: p.noradCatId, lat: p.lat, lon: p.lon, altKm: p.altKm },
+      geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
+    })),
+  };
+}
+
+/** Adds the Starlink circle layer (and its click/hover popup) once per map instance — a no-op on later calls. A `circle` layer, not one Marker per satellite, since ~11,000 real-time-updated DOM nodes would be a real performance problem a handful of threat/launch markers never hits. */
+function ensureStarlinkLayer(map: MapLibreMap): void {
+  const run = () => {
+    if (map.getSource(STARLINK_SOURCE_ID)) return;
+    map.addSource(STARLINK_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: STARLINK_LAYER_ID, type: 'circle', source: STARLINK_SOURCE_ID, paint: { 'circle-radius': 2, 'circle-color': '#5ad1ff', 'circle-opacity': 0.85 } });
+    map.on('mouseenter', STARLINK_LAYER_ID, () => {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', STARLINK_LAYER_ID, () => {
+      map.getCanvas().style.cursor = '';
+    });
+    map.on('click', STARLINK_LAYER_ID, (e) => {
+      const f = e.features?.[0];
+      if (!f?.properties) return;
+      const p = f.properties as { name: string; noradCatId: number; lat: number; lon: number; altKm: number };
+      new Popup({ offset: 6, closeButton: true })
+        .setLngLat([p.lon, p.lat])
+        .setHTML(
+          `<div style="font-family: var(--font-mono, monospace); font-size: 11px; line-height: 1.5;">
+             <strong>${p.name}</strong> (NORAD ${p.noradCatId})<br/>
+             ${p.lat.toFixed(2)}, ${p.lon.toFixed(2)} · alt ${p.altKm.toFixed(0)} km<br/>
+             <span style="opacity:0.7">Source: CelesTrak orbital elements, position computed in your browser via real SGP4 — refreshed from CelesTrak at most once every 2 hours, per their own usage policy.</span>
+           </div>`,
+        )
+        .addTo(map);
+    });
+  };
+  if (map.isStyleLoaded()) run();
+  else map.once('load', run);
+}
+
 /** Mirrors the backend's TrackedC2Server shape (threat-feed.ts) without importing the backend package. */
 interface TrackedC2Server {
   ip: string;
@@ -251,6 +317,7 @@ export function EarthMap() {
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
   const threatMarkersRef = useRef<Marker[]>([]);
+  const starshipMarkersRef = useRef<Marker[]>([]);
 
   const [layer, setLayer] = useState<LayerKey>('daily');
   const [date, setDate] = useState(yesterdayUtc());
@@ -266,6 +333,16 @@ export function EarthMap() {
   const [threatsLoading, setThreatsLoading] = useState(false);
   const [threatsError, setThreatsError] = useState<string | null>(null);
   const [threats, setThreats] = useState<TrackedC2Server[] | null>(null);
+  const [starlinkOn, setStarlinkOn] = useState(false);
+  const [starlinkLoading, setStarlinkLoading] = useState(false);
+  const [starlinkError, setStarlinkError] = useState<string | null>(null);
+  const [starlinkEntries, setStarlinkEntries] = useState<StarlinkSatEntry[] | null>(null);
+  const [starlinkSkipped, setStarlinkSkipped] = useState(0);
+  const [starlinkFetchedAt, setStarlinkFetchedAt] = useState<number | null>(null);
+  const [starshipOn, setStarshipOn] = useState(false);
+  const [starshipLoading, setStarshipLoading] = useState(false);
+  const [starshipError, setStarshipError] = useState<string | null>(null);
+  const [starshipLaunches, setStarshipLaunches] = useState<StarshipLaunch[] | null>(null);
 
   // Milestone 3 — Compare dates (two real maps, synced pan/zoom, swipe divider).
   const compareContainerRef = useRef<HTMLDivElement>(null);
@@ -368,6 +445,127 @@ export function EarthMap() {
       setThreatsError(err instanceof Error ? err.message : 'Failed to load the threat feed');
     } finally {
       setThreatsLoading(false);
+    }
+  };
+
+  // Recompute every Starlink satellite's real position via SGP4 every 5s, writing straight into the map's
+  // GeoJSON source -- not React state, since re-rendering ~11,000 items through React on a timer would be
+  // far slower than letting MapLibre's own GeoJSON source update handle it.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!starlinkOn || !starlinkEntries) {
+      const src = map.getSource(STARLINK_SOURCE_ID) as GeoJSONSource | undefined;
+      src?.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+    const update = () => {
+      const { positions } = computePositions(starlinkEntries, new Date());
+      ensureStarlinkLayer(map);
+      const src = map.getSource(STARLINK_SOURCE_ID) as GeoJSONSource | undefined;
+      src?.setData(starlinkGeoJson(positions));
+    };
+    update();
+    const id = setInterval(update, 5000);
+    return () => clearInterval(id);
+  }, [starlinkOn, starlinkEntries]);
+
+  const toggleStarlink = async () => {
+    if (starlinkOn) {
+      setStarlinkOn(false);
+      return;
+    }
+    setStarlinkOn(true);
+    if (starlinkEntries) return; // Already loaded this session -- CelesTrak itself asks not to re-fetch more than once per ~2 hours.
+    setStarlinkLoading(true);
+    setStarlinkError(null);
+    try {
+      const { items } = await fetchStarlinkElements();
+      const { entries, skipped } = buildSatrecs(items);
+      setStarlinkEntries(entries);
+      setStarlinkSkipped(skipped);
+      setStarlinkFetchedAt(Date.now());
+    } catch (err) {
+      setStarlinkError(err instanceof Error ? err.message : 'Failed to load Starlink orbital elements');
+      setStarlinkOn(false);
+    } finally {
+      setStarlinkLoading(false);
+    }
+  };
+
+  const refreshStarlink = async () => {
+    if (starlinkFetchedAt !== null && Date.now() - starlinkFetchedAt < STARLINK_CACHE_MS) {
+      const minsLeft = Math.ceil((STARLINK_CACHE_MS - (Date.now() - starlinkFetchedAt)) / 60_000);
+      setStarlinkError(`CelesTrak publishes new elements at most once every ~2 hours — try again in about ${minsLeft} min.`);
+      return;
+    }
+    setStarlinkLoading(true);
+    setStarlinkError(null);
+    try {
+      const { items } = await fetchStarlinkElements();
+      const { entries, skipped } = buildSatrecs(items);
+      setStarlinkEntries(entries);
+      setStarlinkSkipped(skipped);
+      setStarlinkFetchedAt(Date.now());
+    } catch (err) {
+      setStarlinkError(err instanceof Error ? err.message : 'Failed to load Starlink orbital elements');
+    } finally {
+      setStarlinkLoading(false);
+    }
+  };
+
+  // Plot (or clear) real Starship launch-pad markers whenever the data or the panel toggle changes.
+  useEffect(() => {
+    for (const m of starshipMarkersRef.current) m.remove();
+    starshipMarkersRef.current = [];
+    const map = mapRef.current;
+    if (!map || !starshipOn || !starshipLaunches) return;
+    for (const l of starshipLaunches) {
+      if (l.lat === null || l.lon === null) continue;
+      const el = document.createElement('div');
+      el.className = 'size-3 rounded-full border border-canvas';
+      el.style.backgroundColor = '#ffb020';
+      const popup = new Popup({ offset: 10, closeButton: true }).setHTML(
+        `<div style="font-family: var(--font-mono, monospace); font-size: 11px; line-height: 1.5;">
+           <strong>${l.name}</strong><br/>
+           NET ${l.net} · ${l.status}<br/>
+           ${l.provider} · ${l.rocket}<br/>
+           ${l.padName}, ${l.locationName}<br/>
+           ${l.webcastLive ? '<span style="opacity:0.85">Webcast is live now</span>' : ''}
+         </div>`,
+      );
+      starshipMarkersRef.current.push(new Marker({ element: el }).setLngLat([l.lon, l.lat]).setPopup(popup).addTo(map));
+    }
+  }, [starshipLaunches, starshipOn]);
+
+  const toggleStarship = async () => {
+    if (starshipOn) {
+      setStarshipOn(false);
+      return;
+    }
+    setStarshipOn(true);
+    if (starshipLaunches) return;
+    setStarshipLoading(true);
+    setStarshipError(null);
+    try {
+      setStarshipLaunches(await fetchStarshipLaunches());
+    } catch (err) {
+      setStarshipError(err instanceof Error ? err.message : 'Failed to load Starship launches');
+      setStarshipOn(false);
+    } finally {
+      setStarshipLoading(false);
+    }
+  };
+
+  const refreshStarship = async () => {
+    setStarshipLoading(true);
+    setStarshipError(null);
+    try {
+      setStarshipLaunches(await fetchStarshipLaunches());
+    } catch (err) {
+      setStarshipError(err instanceof Error ? err.message : 'Failed to load Starship launches');
+    } finally {
+      setStarshipLoading(false);
     }
   };
 
@@ -592,6 +790,34 @@ export function EarthMap() {
                   Refresh
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={() => void toggleStarlink()}
+                disabled={starlinkLoading}
+                className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${starlinkOn ? 'border-accent-strong bg-accent-strong/15 text-ink' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+                title="Real, current Starlink satellite positions (CelesTrak orbital elements, propagated via real SGP4 in your browser)"
+              >
+                {starlinkLoading ? 'Loading…' : starlinkOn ? 'Starlink: on' : 'Starlink'}
+              </button>
+              {starlinkOn && starlinkEntries ? (
+                <button type="button" onClick={() => void refreshStarlink()} disabled={starlinkLoading} className="rounded border border-edge-strong px-2 py-1 text-[11px] text-ink-2 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60">
+                  Refresh
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void toggleStarship()}
+                disabled={starshipLoading}
+                className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-60 ${starshipOn ? 'border-warning/60 bg-warning/15 text-warning' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+                title="Real upcoming SpaceX Starship launches (Launch Library 2) — 15 requests/hour, manual refresh only"
+              >
+                {starshipLoading ? 'Loading…' : starshipOn ? 'Starship launches: on' : 'Starship launches'}
+              </button>
+              {starshipOn && starshipLaunches ? (
+                <button type="button" onClick={() => void refreshStarship()} disabled={starshipLoading} className="rounded border border-edge-strong px-2 py-1 text-[11px] text-ink-2 hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60">
+                  Refresh
+                </button>
+              ) : null}
             </>
           ) : LAYERS[layer].temporal === 'annual' ? (
             <>
@@ -648,6 +874,29 @@ export function EarthMap() {
             {threats.length} real tracked C2 {threats.length === 1 ? 'server' : 'servers'} (abuse.ch Feodo Tracker — Emotet/QakBot-family only, not a comprehensive attack map) ·{' '}
             <span className="text-critical">●</span> online <span className="text-ink-3">●</span> offline
           </p>
+        ) : null}
+        {starlinkError ? <p className="mb-2 text-[11px] text-critical">{starlinkError}</p> : null}
+        {starlinkOn && starlinkEntries ? (
+          <p className="mb-2 text-[11px] text-ink-3">
+            {starlinkEntries.length} real Starlink satellites, positions live via SGP4 (CelesTrak) — drifting every 5s
+            {starlinkSkipped > 0 ? `, ${starlinkSkipped} skipped (invalid element set)` : ''}.
+          </p>
+        ) : null}
+        {starshipError ? <p className="mb-2 text-[11px] text-critical">{starshipError}</p> : null}
+        {starshipOn && starshipLaunches ? (
+          <div className="mb-2 max-h-40 overflow-y-auto rounded border border-edge-strong bg-panel/60 p-2">
+            <p className="mb-1 text-[11px] text-ink-3">
+              {starshipLaunches.length} real upcoming Starship {starshipLaunches.length === 1 ? 'launch' : 'launches'} (Launch Library 2) — 15 requests/hour limit, refresh manually only.
+            </p>
+            <ul className="space-y-1">
+              {starshipLaunches.map((l) => (
+                <li key={`${l.name}-${l.net}`} className="text-[11px] text-ink-2">
+                  <span className="text-ink">{l.name}</span> — NET {l.net} · {l.status} · {l.padName}, {l.locationName}
+                  {l.webcastLive ? <span className="ml-1 text-good">● webcast live</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         {compareOn && compareLoading ? <p className="mb-2 text-[11px] text-ink-2">Checking for two distinct real High-res dates at this location…</p> : null}
         {compareOn && !compareLoading ? (
