@@ -345,6 +345,77 @@ function MemoryOverviewPanel({ agents }: { agents: Agent[] }) {
   );
 }
 
+interface DelegationStats {
+  total: number;
+  executed: number;
+  denied: number;
+}
+
+/**
+ * Cross-agent "Multi-Agent Intelligence" view (Phase 7 of the Intelligence Command Center directive).
+ * Two real, already-returned data sources, combined: `Agent.delegatesTo` (the static, permitted delegation
+ * graph — who is ALLOWED to hand work to whom) and real `delegate`-type entries in recent runs' `requests[]`
+ * (what has ACTUALLY happened, and whether it was executed or denied). This is sequential task delegation,
+ * not concurrent agent-to-agent chat — shown as such, never framed as "agents talking to each other."
+ */
+function CollaborationPanel({ agents, names }: { agents: Agent[]; names: Record<string, string> }) {
+  const sample = useSWR<AgentRunPage>('/agents/runs?limit=100', { refreshInterval: 15_000 });
+
+  const activity = useMemo(() => {
+    const byPair = new Map<string, DelegationStats>();
+    for (const run of sample.data?.items ?? []) {
+      for (const req of run.requests) {
+        if (req.type !== 'delegate' || !req.agent) continue;
+        const key = `${run.agentId}→${req.agent}`;
+        const stats = byPair.get(key) ?? { total: 0, executed: 0, denied: 0 };
+        stats.total += 1;
+        if (req.decision === 'EXECUTED') stats.executed += 1;
+        else if (req.decision === 'DENIED' || req.decision === 'REJECTED') stats.denied += 1;
+        byPair.set(key, stats);
+      }
+    }
+    return byPair;
+  }, [sample.data]);
+
+  const withCapability = agents.filter((a) => a.delegatesTo.length > 0);
+
+  return (
+    <Panel title="Agent Collaboration" subtitle="The permitted delegation graph, and what's actually happened in the last 100 runs">
+      {sample.error ? <ErrorNotice error={sample.error} /> : null}
+      {withCapability.length === 0 ? (
+        <p className="text-[12px] text-ink-3">No agent is configured to delegate to another.</p>
+      ) : (
+        <ul className="space-y-2">
+          {withCapability.map((a) => (
+            <li key={a.id} className="rounded border border-edge bg-canvas/40 p-2 text-[12px]">
+              <span className="font-semibold text-ink">{a.name}</span>
+              <ul className="mt-1 space-y-0.5">
+                {a.delegatesTo.map((targetId) => {
+                  const stats = activity.get(`${a.id}→${targetId}`);
+                  return (
+                    <li key={targetId} className="flex items-center justify-between gap-2 text-ink-3">
+                      <span>
+                        → <span className="font-mono text-ink-2">{names[targetId] ?? targetId}</span>
+                      </span>
+                      {stats ? (
+                        <span className="shrink-0">
+                          {stats.total} attempted · {stats.executed} executed{stats.denied > 0 ? ` · ${stats.denied} denied` : ''}
+                        </span>
+                      ) : (
+                        <span className="shrink-0">no delegations in the last 100 runs</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
 function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAll, busyId, autoAllBusy, runningByAgent }: {
   agents: Agent[];
   providerStatusById: ReadonlyMap<string, string>;
@@ -759,6 +830,7 @@ export function AgentConsole() {
           />
         ) : null}
         {agents.data ? <MemoryOverviewPanel agents={items} /> : null}
+        {agents.data ? <CollaborationPanel agents={items} names={names} /> : null}
         {agent && agents.data ? (
           <div className="grid gap-3 lg:grid-cols-[15rem_1fr]">
             <div className="space-y-3">
