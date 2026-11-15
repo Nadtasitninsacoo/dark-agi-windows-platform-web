@@ -542,10 +542,13 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
               );
             }
             if (entry.kind === 'banner') {
+              // Fixed-width ASCII art: wrapping (the normal pre-wrap/break-words used everywhere else in
+              // this console) destroys its pixel-perfect alignment the moment a line is wider than the
+              // terminal window. This one needs `pre` (never wrap) and its own horizontal scrollbar instead.
               return (
-                <p key={entry.id} className="whitespace-pre-wrap break-words text-accent" style={{ textShadow: '0 0 6px rgb(46 232 143 / 0.35)' }}>
+                <pre key={entry.id} className="m-0 overflow-x-auto whitespace-pre font-mono text-accent" style={{ textShadow: '0 0 6px rgb(46 232 143 / 0.35)' }}>
                   {entry.text}
-                </p>
+                </pre>
               );
             }
             if (entry.kind === 'error') {
