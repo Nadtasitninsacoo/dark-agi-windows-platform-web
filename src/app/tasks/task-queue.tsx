@@ -8,7 +8,7 @@ import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { Button, ConfirmDialog, ErrorNotice, Panel, Skeleton, StatusBadge, TerminalBox, type StatusTone } from '@/components/ui';
-import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList, type Scope, type ScopeList } from '@/lib/api/client';
+import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList, type ScopeList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { RemoteHostField } from '@/app/remote-hosts/remote-host-field';
 import { ScopeTargetPicker, type ScopePickResolution } from '@/components/scope-target-picker';
@@ -243,7 +243,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
   const [values, setValues] = useState<Record<string, string>>({});
   const [manualTarget, setManualTarget] = useState<Record<string, boolean>>({});
   const [pickedScopeNote, setPickedScopeNote] = useState<Record<string, string>>({});
-  const [sequencePlan, setSequencePlan] = useState<{ fieldName: string; perScope: readonly { scope: Scope; targets: string[] }[] } | null>(null);
+  const [sequencePlan, setSequencePlan] = useState<{ fieldName: string; steps: readonly { label: string; targets: string[] }[] } | null>(null);
   const [sequenceResult, setSequenceResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -286,7 +286,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
       setPickedScopeNote({ ...pickedScopeNote, [f.name]: result.targets.length > 1 ? `${result.targets.length} targets merged from your scope selection` : 'your scope selection' });
       setSequencePlan(null);
     } else {
-      setSequencePlan({ fieldName: f.name, perScope: result.perScope });
+      setSequencePlan({ fieldName: f.name, steps: result.steps });
     }
   };
 
@@ -298,7 +298,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
     setSequenceResult(null);
     try {
       if (sequencePlan) {
-        const steps = sequencePlan.perScope.map(({ targets }) => {
+        const steps = sequencePlan.steps.map(({ targets }) => {
           const input: Record<string, unknown> = {};
           for (const f of op.fields) {
             if (f.name === sequencePlan.fieldName) {
@@ -389,7 +389,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
           </span>
         ) : sequenced ? (
           <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-good">
-            {sequencePlan!.perScope.length}-step sequence planned — each step uses a different scope&apos;s targets.
+            {sequencePlan!.steps.length}-step sequence planned — each step uses a different target.
             <button type="button" className="underline hover:text-ink" onClick={() => setSequencePlan(null)}>
               Cancel sequence
             </button>
@@ -404,7 +404,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
                 className={`${inputClass} mt-1 h-16 font-mono ${locked ? 'opacity-70' : ''}`}
                 value={sequenced ? '' : fieldValue(f)}
                 readOnly={locked}
-                placeholder={sequenced ? `${sequencePlan!.perScope.length} steps — see below` : f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
+                placeholder={sequenced ? `${sequencePlan!.steps.length} steps — see below` : f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
                 onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
               />
             ) : f.type === 'remoteHost' ? (
@@ -446,7 +446,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
       })}
       {sequenceResult ? <p className="text-[12px] text-good">{sequenceResult}</p> : null}
       <Button type="submit" variant="primary" busy={busy} disabled={!op.available}>
-        <Send className="size-3.5" aria-hidden /> {sequencePlan ? `Create sequence (${sequencePlan.perScope.length} steps)` : 'Submit job'}
+        <Send className="size-3.5" aria-hidden /> {sequencePlan ? `Create sequence (${sequencePlan.steps.length} steps)` : 'Submit job'}
       </Button>
     </form>
   );

@@ -427,7 +427,7 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
         const value = entry.fieldType === 'targets' ? result.targets : result.targets[0];
         await submitJobCommand({ ...entry.command, input: { ...entry.command.input, [entry.fieldName]: value } });
       } else {
-        const steps = result.perScope.map(({ targets }) => ({
+        const steps = result.steps.map(({ targets }) => ({
           toolId: entry.command.toolId,
           operationId: entry.command.operationId,
           input: { ...entry.command.input, [entry.fieldName]: entry.fieldType === 'targets' ? targets : targets[0] },
