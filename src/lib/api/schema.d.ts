@@ -1430,6 +1430,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operation-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List AI-proposed operations awaiting (or already given) review */
+        get: operations["OperationProposalsController_list"];
+        put?: never;
+        /** Ask the AI to analyze a capability gap and, if real, design a new operation to close it (inert data — never executable on its own) */
+        post: operations["OperationProposalsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operation-proposals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One proposed operation, including its full gap analysis and validation checklist */
+        get: operations["OperationProposalsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operation-proposals/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a proposal (approval is blocked while its validation checklist fails) */
+        post: operations["OperationProposalsController_decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp": {
         parameters: {
             query?: never;
@@ -2238,7 +2290,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -3006,6 +3058,207 @@ export interface components {
                 };
             }[];
         };
+        OperationProposal: {
+            id: string;
+            /** @enum {string} */
+            status: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+            /** @enum {string} */
+            kind: "NEW_OPERATION" | "NEW_TOOL_AND_OPERATION";
+            goal: string;
+            sourceJobId: string | null;
+            gapAnalysis: {
+                hypotheses: {
+                    summary: string;
+                    /** @enum {string} */
+                    kind: "use-existing" | "build-planned" | "new-operation" | "new-tool";
+                    existingToolId: string | null;
+                    existingOperationId: string | null;
+                    rationale: string;
+                }[];
+                chosenIndex: number;
+            };
+            draftSpec: {
+                [key: string]: unknown;
+            };
+            draftToolCatalog: {
+                [key: string]: unknown;
+            } | null;
+            validation: {
+                passed: boolean;
+                checks: {
+                    rule: string;
+                    passed: boolean;
+                    detail: string | null;
+                }[];
+            };
+            /** @enum {string} */
+            risk: "high";
+            /** @enum {boolean} */
+            requiresApproval: true;
+            /** @enum {string|null} */
+            codegenMode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL" | null;
+            generatedCodePath: string | null;
+            compileCheck: {
+                passed: boolean;
+                output: string;
+            } | null;
+            model: string;
+            /** @enum {string} */
+            requestedByType: "SYSTEM" | "USER" | "AGENT";
+            requestedBy: string;
+            decidedBy: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        OperationProposalCreateRequest: {
+            goal: string;
+            /** Format: uuid */
+            sourceJobId?: string;
+            /** @description Override the default AI model for this call (same registry ids as /ai/chat) */
+            model?: string;
+        };
+        OperationProposalCreateResult: {
+            /** @enum {boolean} */
+            gapConfirmed: false;
+            hypotheses: {
+                summary: string;
+                /** @enum {string} */
+                kind: "use-existing" | "build-planned" | "new-operation" | "new-tool";
+                existingToolId: string | null;
+                existingOperationId: string | null;
+                rationale: string;
+            }[];
+            reason: string;
+        } | {
+            /** @enum {boolean} */
+            gapConfirmed: true;
+            proposal: {
+                id: string;
+                /** @enum {string} */
+                status: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+                /** @enum {string} */
+                kind: "NEW_OPERATION" | "NEW_TOOL_AND_OPERATION";
+                goal: string;
+                sourceJobId: string | null;
+                gapAnalysis: {
+                    hypotheses: {
+                        summary: string;
+                        /** @enum {string} */
+                        kind: "use-existing" | "build-planned" | "new-operation" | "new-tool";
+                        existingToolId: string | null;
+                        existingOperationId: string | null;
+                        rationale: string;
+                    }[];
+                    chosenIndex: number;
+                };
+                draftSpec: {
+                    [key: string]: unknown;
+                };
+                draftToolCatalog: {
+                    [key: string]: unknown;
+                } | null;
+                validation: {
+                    passed: boolean;
+                    checks: {
+                        rule: string;
+                        passed: boolean;
+                        detail: string | null;
+                    }[];
+                };
+                /** @enum {string} */
+                risk: "high";
+                /** @enum {boolean} */
+                requiresApproval: true;
+                /** @enum {string|null} */
+                codegenMode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL" | null;
+                generatedCodePath: string | null;
+                compileCheck: {
+                    passed: boolean;
+                    output: string;
+                } | null;
+                model: string;
+                /** @enum {string} */
+                requestedByType: "SYSTEM" | "USER" | "AGENT";
+                requestedBy: string;
+                decidedBy: string | null;
+                /** Format: date-time */
+                decidedAt: string | null;
+                decisionNote: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            };
+        };
+        OperationProposalDecisionRequest: {
+            /** @enum {string} */
+            decision: "APPROVED" | "REJECTED";
+            note?: string;
+        };
+        OperationProposalList: {
+            items: {
+                id: string;
+                /** @enum {string} */
+                status: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+                /** @enum {string} */
+                kind: "NEW_OPERATION" | "NEW_TOOL_AND_OPERATION";
+                goal: string;
+                sourceJobId: string | null;
+                gapAnalysis: {
+                    hypotheses: {
+                        summary: string;
+                        /** @enum {string} */
+                        kind: "use-existing" | "build-planned" | "new-operation" | "new-tool";
+                        existingToolId: string | null;
+                        existingOperationId: string | null;
+                        rationale: string;
+                    }[];
+                    chosenIndex: number;
+                };
+                draftSpec: {
+                    [key: string]: unknown;
+                };
+                draftToolCatalog: {
+                    [key: string]: unknown;
+                } | null;
+                validation: {
+                    passed: boolean;
+                    checks: {
+                        rule: string;
+                        passed: boolean;
+                        detail: string | null;
+                    }[];
+                };
+                /** @enum {string} */
+                risk: "high";
+                /** @enum {boolean} */
+                requiresApproval: true;
+                /** @enum {string|null} */
+                codegenMode: "HUMAN_FINISHES" | "AI_DRAFTS_FULL" | null;
+                generatedCodePath: string | null;
+                compileCheck: {
+                    passed: boolean;
+                    output: string;
+                } | null;
+                model: string;
+                /** @enum {string} */
+                requestedByType: "SYSTEM" | "USER" | "AGENT";
+                requestedBy: string;
+                decidedBy: string | null;
+                /** Format: date-time */
+                decidedAt: string | null;
+                decisionNote: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+        };
         ProviderCredential: {
             providerId: string;
             label: string | null;
@@ -3643,7 +3896,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review")[];
             }[];
         };
         UserUpdateRequest: {
@@ -5839,6 +6092,96 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    OperationProposalsController_list: {
+        parameters: {
+            query: {
+                status: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationProposalList"];
+                };
+            };
+        };
+    };
+    OperationProposalsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperationProposalCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationProposalCreateResult"];
+                };
+            };
+        };
+    };
+    OperationProposalsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationProposal"];
+                };
+            };
+        };
+    };
+    OperationProposalsController_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperationProposalDecisionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationProposal"];
+                };
             };
         };
     };
