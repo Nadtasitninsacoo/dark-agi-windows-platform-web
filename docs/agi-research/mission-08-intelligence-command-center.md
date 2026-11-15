@@ -2,7 +2,7 @@
 
 Pasted verbatim from the user on 2026-11-15, alongside 3 reference screenshots (an "AI Research Hub" dashboard, an "Orchestra" multi-agent pipeline view, and a GPU-cluster/flywheel ops dashboard) as visual inspiration only — not existing DARK AGI UI. Explicitly structured by the user as 10 phases, one at a time, each reviewed before the next starts ("STOP and wait for my review. Do not automatically begin Phase 2.").
 
-Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation) is DONE — see "Phase 2 output" below. Phases 3-10 NOT STARTED.
+Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phases 4-10 and the rest of Phases 2/3 NOT STARTED.
 
 ---
 
@@ -82,4 +82,13 @@ User said "เริ่ม Phase 2 เลย" after reviewing the Phase 1 report
 - `src/app/command-center.tsx`: added an **Approvals Pending** tile (reuses the `engine` SWR call already on the page — `engine.counts.AWAITING_APPROVAL`, no new endpoint — `warning` tone when > 0, links to `/tasks` where the real approve/reject actions already exist) and an **audit chain integrity badge** on the "Recent audit activity" panel (`GET /audit/verify`, `AuditVerification.valid`, names the first bad sequence number on failure; polled at 60s rather than the page's usual 10-15s since `AuditService.verify()` recomputes the whole hash chain server-side on every call).
 - No new backend endpoints, no new permissions, no new Prisma models — both tiles consume types already generated from the existing OpenAPI contract (`EngineStatus`, `AuditVerification`).
 - Verified: `tsc --noEmit` and `eslint` clean on the changed file. Not verified: actual rendered appearance in a browser — no browser-automation tool exists in this environment (confirmed again this session: a `playwright-core` install attempt was correctly stopped by the user mid-command rather than completed), so this is a disclosed gap, not a hidden one, consistent with every other frontend change in this research program.
-- Not started: Phase 2's second half (Multi-Agent delegation-tree page) and Phases 3-10.
+- Not started: Phase 2's second half (Multi-Agent delegation-tree page).
+
+## Phase 3 output (2026-11-15, Claude) — AGI Core & Operations, first slice
+
+User said "ต่อ phase 3" directly (skipping the rest of Phase 2). The original Phase 3 title combines two of the 10 sections — AGI Core Status (graded **D** in Phase 1: no backend capability for "reasoning/cognitive state" exists at all) and Autonomous Operations (graded **A**: real and queryable today). Rather than invent a fake "cognitive state" visualization for the D-graded half, scoped this to exactly what's real: connecting the *existing* per-agent "N running now" status (`Agent.stats.running`, already shown on `/agents` since before this mission) to *what that running agent is actually doing* — its real task text and the real tool/delegation/claim requests it has made, each linked to the actual job it produced.
+
+- `src/app/agents/agent-console.tsx`: added one new poll (`GET /agents/runs?limit=30`, 4s interval) grouped client-side into `runningByAgent: Map<agentId, AgentRun[]>` (status `RUNNING` only — `AgentRun.requests[]` already carries `{type, decision, tool, operation, jobId, ...}` per entry, so no new backend field or endpoint was needed). A new `ActiveTask` component renders, under any agent card currently running: the task text, and each request with its real decision (`EXECUTED`/`QUEUED`/`DENIED`/`VERIFIED`/... — a `DECISION_TONE` map, never color-alone, every badge keeps its text label) plus a `/tasks?job=<id>` deep link into the already-existing job detail view where a request produced one.
+- A fetch failure on the new poll shows its own `ErrorNotice` — deliberately not left to silently collapse into "nothing is running", which would otherwise look identical to a real empty state.
+- No new backend endpoints, no new Prisma fields, no new permissions. tsc/eslint clean. Not verified: rendered appearance in a browser (same disclosed gap as Phase 2 — no browser-automation tool in this environment).
+- Deliberately NOT done in this slice: a dedicated "AGI Core Status" page/section for agents that are currently idle (nothing to show honestly beyond what `/agents`'s existing overview cards already display); Autonomous Operations' own deeper view (job-count trends over time) would need new backend time-series support, flagged in Phase 1's "missing backend capabilities" list, not built here.
