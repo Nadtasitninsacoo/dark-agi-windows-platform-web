@@ -237,7 +237,7 @@ const FINAL = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED', 'REJECTED']);
 async function fetchThreatFeed(): Promise<TrackedC2Server[]> {
   const job = await apiRequest<Job>('/jobs', post({ toolId: 'threat-feed', operationId: 'active-c2-servers', input: {} }));
   let current = job;
-  for (let i = 0; i < 30 && !FINAL.has(current.status) && current.status !== 'AWAITING_APPROVAL'; i++) {
+  for (let i = 0; i < 75 && !FINAL.has(current.status) && current.status !== 'AWAITING_APPROVAL'; i++) {
     await sleep(1000);
     current = await apiRequest<Job>(`/jobs/${job.id}`);
   }
