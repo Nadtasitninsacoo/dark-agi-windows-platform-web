@@ -280,6 +280,71 @@ function AgentOverviewCard({
   );
 }
 
+/**
+ * Cross-agent "Learning & Memory" view (Phase 4 of the Intelligence Command Center directive). Every note
+ * here is written by a human operator through the Memory panel below (per-agent) — the backend has no
+ * mechanism for an agent to write its own memory, and no knowledge graph linking notes together. Shown
+ * honestly as "operator-curated", not "AI learned", per the directive's own rule against implying cognition
+ * that doesn't exist. No bulk-memory endpoint exists, so this does one request per agent (there are few
+ * agents) rather than adding backend work for a one-off aggregate view.
+ */
+type AgentMemoryWithAgent = AgentMemory & { agentName: string };
+
+async function fetchAllMemories(agents: readonly Agent[]): Promise<AgentMemoryWithAgent[]> {
+  const lists = await Promise.all(agents.map((a) => apiRequest<AgentMemoryList>(`/agents/${a.id}/memories`)));
+  const flat = lists.flatMap((list, i) => list.items.map((m) => ({ ...m, agentName: agents[i]!.name })));
+  flat.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return flat;
+}
+
+function MemoryOverviewPanel({ agents }: { agents: Agent[] }) {
+  const ids = agents.map((a) => a.id).join(',');
+  const all = useSWR<AgentMemoryWithAgent[], unknown, readonly [string, string] | null>(
+    agents.length > 0 ? (['agent-memories-all', ids] as const) : null,
+    () => fetchAllMemories(agents),
+  );
+
+  const byAgent = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of all.data ?? []) counts.set(m.agentName, (counts.get(m.agentName) ?? 0) + 1);
+    return counts;
+  }, [all.data]);
+
+  return (
+    <Panel
+      title="Memory & Knowledge"
+      subtitle={all.data ? `${all.data.length} operator-curated notes across ${byAgent.size} agent${byAgent.size === 1 ? '' : 's'}` : 'Loading…'}
+      actions={
+        <Button onClick={() => void all.mutate()} busy={all.isValidating}>
+          Refresh
+        </Button>
+      }
+    >
+      <p className="mb-2 rounded border border-edge bg-canvas/40 p-2 text-[11px] text-ink-3">
+        These notes are written by a human operator and attached to every run of that agent — no agent writes
+        its own memory, and there is no knowledge graph linking notes together yet. This is real, persisted
+        context, not something an agent learned or inferred on its own.
+      </p>
+      {all.error ? <ErrorNotice error={all.error} /> : null}
+      {!all.data && !all.error ? <Skeleton className="h-24 w-full" /> : null}
+      {all.data && all.data.length === 0 ? <p className="text-[12px] text-ink-3">No memory notes recorded yet.</p> : null}
+      {all.data && all.data.length > 0 ? (
+        <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+          {all.data.slice(0, 50).map((m) => (
+            <li key={m.id} className="rounded border border-edge bg-panel p-2 text-[12px]">
+              <div className="mb-0.5 flex items-center justify-between gap-2 text-[10.5px] text-ink-3">
+                <span className="font-mono text-ink-2">{m.agentName}</span>
+                <span>{formatRelativeTime(m.createdAt)}</span>
+              </div>
+              <p className="text-ink-2">{m.content}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Panel>
+  );
+}
+
 function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAll, busyId, autoAllBusy, runningByAgent }: {
   agents: Agent[];
   providerStatusById: ReadonlyMap<string, string>;
@@ -693,6 +758,7 @@ export function AgentConsole() {
             runningByAgent={runningByAgent}
           />
         ) : null}
+        {agents.data ? <MemoryOverviewPanel agents={items} /> : null}
         {agent && agents.data ? (
           <div className="grid gap-3 lg:grid-cols-[15rem_1fr]">
             <div className="space-y-3">
