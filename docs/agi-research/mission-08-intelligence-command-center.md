@@ -2,7 +2,7 @@
 
 Pasted verbatim from the user on 2026-11-15, alongside 3 reference screenshots (an "AI Research Hub" dashboard, an "Orchestra" multi-agent pipeline view, and a GPU-cluster/flywheel ops dashboard) as visual inspiration only — not existing DARK AGI UI. Explicitly structured by the user as 10 phases, one at a time, each reviewed before the next starts ("STOP and wait for my review. Do not automatically begin Phase 2.").
 
-Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phases 5-10 and the rest of Phases 2/3 NOT STARTED.
+Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phase 5 (Hypothesis & Research, honest placeholder) is DONE — see "Phase 5 output" below. Phases 6-10 and the rest of Phases 2/3 NOT STARTED.
 
 ---
 
@@ -103,3 +103,12 @@ Learning & Memory was graded **C** in Phase 1: `AgentMemory` is real and persist
 - Implementation note: a first pass using manual `useState`/`useEffect` tripped this repo's `set-state-in-effect` lint rule (it flags any function called from an effect that eventually calls `setState`, even after an `await`); rewritten on `useSWR` instead, consistent with every other data fetch in this codebase, which both satisfies the lint rule and gets `mutate()`-based refresh for free.
 - No new backend endpoints, no new permissions, no new Prisma fields. tsc/eslint clean. Not verified: rendered appearance in a browser (same disclosed gap as Phases 2-3).
 - Deliberately NOT done: any form of automatic knowledge acquisition or a real knowledge graph — both would be new backend capability (flagged as such in Phase 1's "missing backend capabilities" list), not something a frontend slice can honestly simulate.
+
+## Phase 5 output (2026-11-15, Claude) — Hypothesis & Research, honest placeholder
+
+Hypothesis Engine and Research Lab were graded **B**/**B+D** in Phase 1: real, tested backend logic exists (`src/hypotheses/dhl.ts`'s Heuer's-ACH ranking; `src/research/cycle.ts`'s 6-of-10-stage prototype), but neither has database persistence or an API — there is no real, reachable data a live dashboard could show. Building one anyway would mean fabricating activity, which this mission's own Step 4 explicitly prohibits. Mission 09 (logged the same day) is the separate, larger initiative that would eventually make this real; Phase 5 here does not wait for it.
+
+- `src/lib/modules.ts`: added `hypothesis-engine` (phase 33) and `research-lab` (phase 34) as the **first-ever** uses of the existing `status: 'planned'` mechanism in this codebase (every other module had been `live` since the file was created). No new components were needed — `src/app/[module]/page.tsx` already renders an honest "not operational yet" placeholder for any `planned` module, and `sidebar.tsx` already shows a phase badge for one; this slice just supplied the data.
+- Each module's summary states plainly what's real today (a tested ranking engine / a 6-of-10-stage prototype) and the `planned` list names exactly what's missing (persistence, an API, the remaining 4 stages) rather than leaving the gap implicit.
+- Verified live: both new routes (`/hypothesis-engine`, `/research-lab`) return 200 and render the placeholder. tsc/eslint clean.
+- Not done, deliberately: anything resembling a live hypothesis/research tracker — that depends on Mission 09's own Milestone 1/5 work landing first.
