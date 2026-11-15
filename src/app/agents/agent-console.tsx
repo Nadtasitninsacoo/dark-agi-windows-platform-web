@@ -22,13 +22,14 @@ import Link from 'next/link';
 import { type CSSProperties, useMemo, useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { PageHeader } from '@/components/page-header';
-import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, Toggle } from '@/components/ui';
+import { Button, ErrorNotice, Panel, Skeleton, StatusBadge, type StatusTone, Toggle } from '@/components/ui';
 import {
   type Agent,
   type AgentAutoAllResult,
   type AgentList,
   type AgentMemory,
   type AgentMemoryList,
+  type AgentRun,
   type AgentRunDetail,
   type AgentRunPage,
   type AgentRunRequest,
@@ -70,6 +71,54 @@ const AGENT_ICONS: Record<string, LucideIcon> = {
 function AgentIcon({ name, className }: { name: string; className: string }) {
   const Icon = AGENT_ICONS[name] ?? Zap;
   return <Icon className={className} aria-hidden />;
+}
+
+/** Every real decision an agent's tool/delegation/claim request can land on (see AgentRequestDecisionSchema,
+ * backend agents.contract.ts) — never color-alone, every badge below still carries the decision's own label. */
+const DECISION_TONE: Record<string, StatusTone> = {
+  EXECUTED: 'good',
+  QUEUED: 'pending',
+  DENIED: 'critical',
+  REJECTED: 'critical',
+  VERIFIED: 'good',
+  CITED_UNCHECKED: 'warning',
+  UNSUPPORTED: 'critical',
+  MISSING_ARTIFACT: 'critical',
+  ARTIFACT_NOT_SUCCESSFUL: 'warning',
+  OUT_OF_SCOPE: 'critical',
+  UNCITED: 'warning',
+};
+
+/** What a currently-RUNNING agent is actually doing right now — the real task text plus every tool/delegation/
+ * claim request it has made so far in this run, each linked to the real job it produced where one exists. This
+ * is the one place "AGI core status" (an agent is active) and "autonomous operations" (the job it's running)
+ * are shown connected, using only fields the backend already returns — nothing here is inferred or simulated. */
+function ActiveTask({ run }: { run: AgentRun }) {
+  return (
+    <div className="mt-1.5 rounded border border-cyan/30 bg-cyan/5 p-1.5 text-[11px]">
+      <p className="truncate text-ink-2">
+        <span className="text-ink-3">Task:</span> {run.task}
+      </p>
+      {run.requests.length > 0 ? (
+        <ul className="mt-1 space-y-0.5">
+          {run.requests.map((req, i) => (
+            <li key={i} className="flex items-center gap-1.5 text-ink-3">
+              <span className="truncate">
+                {req.type}
+                {req.tool ? ` · ${req.tool}${req.operation ? `:${req.operation}` : ''}` : req.agent ? ` · ${req.agent}` : ''}
+              </span>
+              <StatusBadge tone={DECISION_TONE[req.decision] ?? 'neutral'} label={req.decision.toLowerCase()} />
+              {req.jobId ? (
+                <Link href={`/tasks?job=${req.jobId}`} className="shrink-0 text-accent hover:underline">
+                  job
+                </Link>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 function AgentListPanel({ agents, providerStatusById, selected, onSelect }: { agents: Agent[]; providerStatusById: ReadonlyMap<string, string>; selected: string; onSelect: (id: string) => void }) {
@@ -179,7 +228,19 @@ function downReason(agent: Agent, providerStatusById: ReadonlyMap<string, string
   return null;
 }
 
-function AgentOverviewCard({ agent, providerStatusById, onToggleAuto, busy }: { agent: Agent; providerStatusById: ReadonlyMap<string, string>; onToggleAuto: (enabled: boolean) => void; busy: boolean }) {
+function AgentOverviewCard({
+  agent,
+  providerStatusById,
+  onToggleAuto,
+  busy,
+  activeRuns,
+}: {
+  agent: Agent;
+  providerStatusById: ReadonlyMap<string, string>;
+  onToggleAuto: (enabled: boolean) => void;
+  busy: boolean;
+  activeRuns: readonly AgentRun[];
+}) {
   const running = agent.stats.running > 0;
   const down = !running && downReason(agent, providerStatusById) !== null;
   return (
@@ -214,17 +275,19 @@ function AgentOverviewCard({ agent, providerStatusById, onToggleAuto, busy }: { 
         <span>{agent.autoRunEnabled ? `auto: ${formatRelativeTime(agent.lastAutoRunAt)}` : 'auto off'}</span>
       </div>
       {down ? <p className="mt-1 text-[10.5px] text-critical">{downReason(agent, providerStatusById)}</p> : null}
+      {running ? activeRuns.map((r) => <ActiveTask key={r.id} run={r} />) : null}
     </div>
   );
 }
 
-function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAll, busyId, autoAllBusy }: {
+function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAll, busyId, autoAllBusy, runningByAgent }: {
   agents: Agent[];
   providerStatusById: ReadonlyMap<string, string>;
   onToggleAuto: (id: string, enabled: boolean) => void;
   onAutoAll: (enabled: boolean) => void;
   busyId: string | null;
   autoAllBusy: boolean;
+  runningByAgent: ReadonlyMap<string, AgentRun[]>;
 }) {
   const runningNow = agents.filter((a) => a.stats.running > 0).length;
   const autoOn = agents.filter((a) => a.autoRunEnabled).length;
@@ -246,7 +309,14 @@ function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAl
     >
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {agents.map((a) => (
-          <AgentOverviewCard key={a.id} agent={a} providerStatusById={providerStatusById} busy={busyId === a.id} onToggleAuto={(enabled) => onToggleAuto(a.id, enabled)} />
+          <AgentOverviewCard
+            key={a.id}
+            agent={a}
+            providerStatusById={providerStatusById}
+            busy={busyId === a.id}
+            onToggleAuto={(enabled) => onToggleAuto(a.id, enabled)}
+            activeRuns={runningByAgent.get(a.id) ?? []}
+          />
         ))}
       </div>
     </Panel>
@@ -548,6 +618,20 @@ export function AgentConsole() {
   const models = useSWR<AiModelList>('/ai/models?status=AVAILABLE');
   const providers = useSWR<AiProviderList>('/ai/providers', { refreshInterval: 10_000 });
   const providerStatusById = useMemo(() => new Map((providers.data?.providers ?? []).map((p) => [p.id, p.status])), [providers.data]);
+  // Cross-agent live activity: which agents are actually RUNNING right now and what they're doing, not just
+  // the per-agent `stats.running` count already in `/agents` — this is the connection between "AGI core
+  // status" and "autonomous operations" Phase 3 asked for, built entirely from real, already-returned fields.
+  const activeRuns = useSWR<AgentRunPage>('/agents/runs?limit=30', { refreshInterval: 4_000 });
+  const runningByAgent = useMemo(() => {
+    const map = new Map<string, AgentRun[]>();
+    for (const r of activeRuns.data?.items ?? []) {
+      if (r.status !== 'RUNNING') continue;
+      const list = map.get(r.agentId) ?? [];
+      list.push(r);
+      map.set(r.agentId, list);
+    }
+    return map;
+  }, [activeRuns.data]);
   const [selected, setSelected] = useState('oracle');
   const [autoBusyId, setAutoBusyId] = useState<string | null>(null);
   const [autoAllBusy, setAutoAllBusy] = useState(false);
@@ -595,6 +679,7 @@ export function AgentConsole() {
       />
       <div className="space-y-3 p-4">
         {agents.error ? <ErrorNotice error={agents.error} /> : null}
+        {activeRuns.error ? <ErrorNotice error={activeRuns.error} /> : null}
         {autoError ? <ErrorNotice error={autoError} /> : null}
         {!agents.data && !agents.error ? <Skeleton className="h-64 w-full" /> : null}
         {agents.data ? (
@@ -605,6 +690,7 @@ export function AgentConsole() {
             onAutoAll={(enabled) => void autoAll(enabled)}
             busyId={autoBusyId}
             autoAllBusy={autoAllBusy}
+            runningByAgent={runningByAgent}
           />
         ) : null}
         {agent && agents.data ? (
