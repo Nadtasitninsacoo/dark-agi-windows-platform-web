@@ -27,27 +27,16 @@ const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Cont
 
 function Card({ title, subtitle, children }: { title: string; subtitle: ReactNode; children: ReactNode }) {
   return (
-    <div className="relative flex min-h-full items-center justify-center overflow-hidden bg-canvas p-6">
-      {/* Decorative background only — never a stand-in for real system activity. */}
+    <div className="relative flex min-h-full items-center justify-center overflow-hidden bg-[#050a08] p-6">
+      {/* The operator-supplied scene (hooded operative + Earth + station) — decorative only, never a
+       * stand-in for real system activity. A dark vignette keeps the sign-in card readable over it. */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <Image src="/login-background.png" alt="" fill priority sizes="100vw" className="object-cover" />
         <div
-          className="absolute inset-0 opacity-60"
-          style={{
-            backgroundImage:
-              'linear-gradient(to right, rgb(46 232 143 / 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgb(46 232 143 / 0.05) 1px, transparent 1px)',
-            backgroundSize: '42px 42px',
-          }}
+          className="absolute inset-0"
+          style={{ background: 'radial-gradient(ellipse 60% 55% at 50% 55%, rgb(2 6 5 / 0.82) 0%, rgb(2 6 5 / 0.45) 45%, rgb(2 6 5 / 0.15) 75%)' }}
         />
-        <div
-          className="absolute top-1/2 left-1/2 size-[44rem] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(circle, rgb(46 232 143 / 0.16), transparent 65%)', animation: 'dagi-pulse 6s ease-in-out infinite' }}
-        />
-        <div
-          className="absolute top-1/2 left-1/2 w-[160vh] -translate-x-1/2 -translate-y-1/2 -rotate-[32deg] text-center font-mono text-[9rem] leading-none font-black tracking-[0.08em] whitespace-nowrap select-none"
-          style={{ color: 'rgb(148 163 184 / 0.07)' }}
-        >
-          DARK AGI WINDOWS
-        </div>
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgb(2 6 5 / 0.55), transparent 35%)' }} />
       </div>
 
       <div className="relative flex w-full max-w-sm flex-col items-center">
