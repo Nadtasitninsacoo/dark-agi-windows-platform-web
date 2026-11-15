@@ -87,7 +87,7 @@ type EntryData =
   | { kind: 'info'; text: string }
   | { kind: 'banner'; text: string }
   | { kind: 'error'; text: string }
-  | { kind: 'approval'; text: string }
+  | { kind: 'approval'; text: string; jobId: string }
   | { kind: 'result'; title: string; result: unknown; toolId: string; operationId: string }
   | { kind: 'suggestion'; job: Job };
 type Entry = EntryData & { id: number };
@@ -314,7 +314,7 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
     if (job.status === 'SUCCEEDED') {
       add({ kind: 'result', title: `${job.operationTitle} — succeeded`, result: job.result, toolId: job.toolId, operationId: job.operationId });
     } else if (job.status === 'AWAITING_APPROVAL') {
-      add({ kind: 'approval', text: `${job.operationTitle} is queued and needs human approval before it runs.` });
+      add({ kind: 'approval', text: `${job.operationTitle} is queued and needs human approval before it runs.`, jobId: job.id });
     } else if (job.status === 'FAILED') {
       add({ kind: 'error', text: `Failed: ${job.error ?? 'unknown error'}` });
     } else {
@@ -500,7 +500,7 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
               return (
                 <p key={entry.id} className="whitespace-pre-wrap break-words text-warning">
                   {entry.text}{' '}
-                  <Link href="/tasks" className="underline hover:text-ink">
+                  <Link href={`/tasks?job=${entry.jobId}`} className="underline hover:text-ink">
                     open Task Queue
                   </Link>
                 </p>
