@@ -1,6 +1,7 @@
 'use client';
 
 import { Languages, Loader2, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { ErrorNotice, Toggle } from '@/components/ui';
@@ -43,6 +44,7 @@ const fetchSuggestions = ([, jobId, language]: Key): Promise<AgentSuggestNextRes
  * this switch, and it stays off across reloads until explicitly turned on.
  */
 export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: (job: Job) => void }) {
+  const router = useRouter();
   const [language, setLanguage] = useState<'en' | 'th'>('en');
   const [submittedFor, setSubmittedFor] = useState<Set<number>>(new Set());
   const [autopilot, setAutopilot] = useState(() => readAutopilot());
@@ -72,7 +74,10 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
   // Autopilot: once suggestions arrive, submit the top pick automatically through the exact same path
   // "Run this" uses. Guarded by a ref (not state) so it fires at most once for this job regardless of
   // re-renders or re-fetches, and every state update happens inside the promise callback, never
-  // synchronously in the effect body.
+  // synchronously in the effect body. If that pick itself needs a human (most do, by design -- see
+  // ExecutionService.submit), autopilot carries the operator to it instead of stalling silently: it jumps
+  // to the Task Queue and opens that job's row, the same deep link every other approval notice uses, but
+  // never clicks Approve itself -- that click stays a human's, on purpose.
   useEffect(() => {
     if (!autopilot || !data || data.suggestions.length === 0 || autopilotFired.current) return;
     autopilotFired.current = true;
@@ -81,12 +86,13 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
       (submitted) => {
         setSubmittedFor((prev) => new Set(prev).add(0));
         onSubmitted?.(submitted);
+        if (submitted.status === 'AWAITING_APPROVAL') router.push(`/tasks?job=${submitted.id}`);
       },
       () => {
         /* autopilot submission failed silently here; the operator can still click "Run this" by hand */
       },
     );
-  }, [autopilot, data, onSubmitted]);
+  }, [autopilot, data, onSubmitted, router]);
 
   if (!terminal) return null;
 
