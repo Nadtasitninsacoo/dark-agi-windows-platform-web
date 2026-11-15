@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, Bot, HardDrive, ListChecks, MemoryStick, Server, Sparkles, Wrench } from 'lucide-react';
+import { Activity, Bot, HardDrive, ListChecks, MemoryStick, Server, ShieldCheck, Sparkles, Wrench } from 'lucide-react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import useSWR from 'swr';
@@ -9,7 +9,7 @@ import { InventoryTable } from '@/components/inventory-table';
 import { PageHeader } from '@/components/page-header';
 import { Sparkline } from '@/components/sparkline';
 import { ErrorNotice, KeyValue, Panel, Skeleton, StatusBadge, type StatusTone } from '@/components/ui';
-import type { AgentList, AgentRunPage, AiProviderList, AuditPage, EngineStatus, EnvironmentInventory, HealthReport, ToolList } from '@/lib/api/client';
+import type { AgentList, AgentRunPage, AiProviderList, AuditPage, AuditVerification, EngineStatus, EnvironmentInventory, HealthReport, ToolList } from '@/lib/api/client';
 import { formatBytes, formatDateTime, formatDuration, formatPercent, utilisationLevel } from '@/lib/format';
 import { MODULES } from '@/lib/modules';
 import { useTelemetry } from '@/lib/use-telemetry';
@@ -63,6 +63,9 @@ export function CommandCenter() {
   const health = useSWR<HealthReport>('/health', { refreshInterval: 10_000 });
   const inventory = useSWR<EnvironmentInventory>('/system/inventory');
   const audit = useSWR<AuditPage>('/audit/events?limit=8', { refreshInterval: 15_000 });
+  // Recomputes the full hash chain server-side (see AuditService.verify) — real but relatively expensive on a
+  // long audit log, so this polls far less often than the other tiles rather than on every short interval.
+  const auditVerify = useSWR<AuditVerification>('/audit/verify', { refreshInterval: 60_000 });
   const engine = useSWR<EngineStatus>('/engine', { refreshInterval: 10_000 });
   const agents = useSWR<AgentList>('/agents');
   const providers = useSWR<AiProviderList>('/ai/providers');
@@ -166,6 +169,14 @@ export function CommandCenter() {
           value={engine.data ? String(engine.data.counts.AWAITING_APPROVAL + engine.data.counts.QUEUED + engine.data.counts.RUNNING) : '—'}
           sub={engine.error ? 'Unreachable' : engine.data ? (engine.data.paused ? 'EMERGENCY STOP' : 'active jobs') : 'Checking'}
         />
+        <StatusTile
+          icon={<ShieldCheck className="size-3.5" aria-hidden />}
+          label="Approvals Pending"
+          href="/tasks"
+          tone={!engine.data ? 'pending' : engine.data.counts.AWAITING_APPROVAL > 0 ? 'warning' : 'good'}
+          value={engine.data ? String(engine.data.counts.AWAITING_APPROVAL) : '—'}
+          sub={engine.error ? 'Unreachable' : engine.data ? (engine.data.counts.AWAITING_APPROVAL > 0 ? 'waiting for a human' : 'none waiting') : 'Checking'}
+        />
 
         <Panel title="CPU utilisation" subtitle="Last ~5 minutes, measured from OS tick deltas" className="lg:col-span-2">
           <Sparkline points={cpuPoints} label="CPU utilisation" />
@@ -191,7 +202,24 @@ export function CommandCenter() {
         </Panel>
 
         <div className="flex flex-col gap-3 lg:col-span-2">
-          <Panel title="Recent audit activity" actions={<Link href="/logs" className="text-[11px] text-accent hover:underline">All events</Link>}>
+          <Panel
+            title="Recent audit activity"
+            actions={
+              <div className="flex items-center gap-2">
+                {auditVerify.error ? (
+                  <StatusBadge tone="neutral" label="Chain check unavailable" />
+                ) : auditVerify.data ? (
+                  <StatusBadge
+                    tone={auditVerify.data.valid ? 'good' : 'critical'}
+                    label={auditVerify.data.valid ? `Chain intact · ${auditVerify.data.checkedEvents} events` : `Chain broken at seq ${auditVerify.data.firstInvalidSeq}`}
+                  />
+                ) : (
+                  <StatusBadge tone="pending" label="Verifying chain" />
+                )}
+                <Link href="/logs" className="text-[11px] text-accent hover:underline">All events</Link>
+              </div>
+            }
+          >
             {audit.error ? <ErrorNotice error={audit.error} /> : audit.data ? <AuditList events={audit.data.items} /> : <Skeleton className="h-24 w-full" />}
           </Panel>
           <Panel title="Recent agent activity" actions={<Link href="/agents" className="text-[11px] text-accent hover:underline">All agents</Link>}>
