@@ -105,6 +105,69 @@ function ValidationChecklist({ validation }: { validation: OperationProposal['va
   );
 }
 
+type CodegenMode = 'HUMAN_FINISHES' | 'AI_DRAFTS_FULL';
+
+/** Phase C: turns an approved proposal into a real .ts file in its own workspace, with a genuine compile
+ * check — never something that gets wired into the live system by this page. */
+function CodegenPanel({ proposal, canReview, onChanged }: { proposal: OperationProposal; canReview: boolean; onChanged: () => Promise<unknown> }) {
+  const [mode, setMode] = useState<CodegenMode>('HUMAN_FINISHES');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const generate = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiRequest(`/operation-proposals/${proposal.id}/write-code`, post({ mode }));
+      await onChanged();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (proposal.status !== 'APPROVED') return null;
+
+  return (
+    <div className="space-y-2 rounded border border-edge px-2 py-2">
+      <p className="text-[10.5px] uppercase tracking-wider text-ink-3">Code generation</p>
+      {canReview ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <select className="rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink" value={mode} onChange={(e) => setMode(e.target.value as CodegenMode)}>
+            <option value="HUMAN_FINISHES">Human finishes the implementation</option>
+            <option value="AI_DRAFTS_FULL">AI drafts the full implementation</option>
+          </select>
+          <Button busy={busy} onClick={() => void generate()}>
+            {proposal.generatedCode ? 'Regenerate file' : 'Generate file'}
+          </Button>
+        </div>
+      ) : null}
+      {error ? <ErrorNotice error={error} /> : null}
+      {proposal.generatedCode ? (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-3">
+            <StatusBadge tone={proposal.compileCheck?.passed ? 'good' : 'critical'} label={proposal.compileCheck?.passed ? 'tsc: compiles' : 'tsc: compile error'} />
+            <span className="font-mono">{proposal.generatedCodePath}</span>
+            <span>· mode: {proposal.codegenMode}</span>
+          </div>
+          {proposal.compileCheck && !proposal.compileCheck.passed ? (
+            <div>
+              <p className="mb-1 text-[10.5px] uppercase tracking-wider text-ink-3">Compiler output</p>
+              <TerminalBox maxHeight="8rem" className="text-critical">{proposal.compileCheck.output}</TerminalBox>
+            </div>
+          ) : null}
+          <div>
+            <p className="mb-1 text-[10.5px] uppercase tracking-wider text-ink-3">Generated file</p>
+            <TerminalBox maxHeight="12rem">{proposal.generatedCode}</TerminalBox>
+          </div>
+          <p className="text-[11px] text-ink-3">This file only exists in its own workspace, outside the live system. A human still has to finish/review it, move it out, wire it into the operations registry, run the full test suite, and commit — none of that happens automatically.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ProposalDetail({ proposal, canReview, onChanged }: { proposal: OperationProposal; canReview: boolean; onChanged: () => Promise<unknown> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -212,6 +275,7 @@ function ProposalDetail({ proposal, canReview, onChanged }: { proposal: Operatio
             {proposal.decisionNote ? ` — "${proposal.decisionNote}"` : ''}
           </p>
         ) : null}
+        <CodegenPanel proposal={proposal} canReview={canReview} onChanged={onChanged} />
       </div>
       <ConfirmDialog
         open={confirming !== null}
