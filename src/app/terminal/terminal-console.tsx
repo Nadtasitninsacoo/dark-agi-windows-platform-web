@@ -7,8 +7,9 @@ import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { RISK } from '@/components/operation-card';
 import { useAuth } from '@/components/shell/auth';
-import { apiRequest, type Job, type Operation, type OperationList } from '@/lib/api/client';
+import { apiRequest, type Job, type Operation, type OperationList, type Scope, type ScopeList } from '@/lib/api/client';
 import { StatusBadge } from '@/components/ui';
+import { ScopeTargetPicker, type ScopePickResolution } from '@/components/scope-target-picker';
 import {
   aliasFor,
   CommandError,
@@ -89,7 +90,9 @@ type EntryData =
   | { kind: 'error'; text: string }
   | { kind: 'approval'; text: string; jobId: string }
   | { kind: 'result'; title: string; result: unknown; toolId: string; operationId: string }
-  | { kind: 'suggestion'; job: Job };
+  | { kind: 'suggestion'; job: Job }
+  | { kind: 'scope-pick'; command: { toolId: string; operationId: string; input: Record<string, unknown> }; fieldName: string; fieldType: 'targets' | 'single'; scopes: Scope[]; resolved: boolean }
+  | { kind: 'sequence-created'; stepCount: number };
 type Entry = EntryData & { id: number };
 
 const BANNER = `DARK AGI terminal — the platform's own command language.
@@ -268,6 +271,7 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
   const inputRef = useRef<HTMLInputElement>(null);
 
   const add = (entry: EntryData) => setEntries((prev) => [...prev, { ...entry, id: idRef.current++ }]);
+  const markEntryResolved = (id: number) => setEntries((prev) => prev.map((e) => (e.id === id && e.kind === 'scope-pick' ? { ...e, resolved: true } : e)));
 
   // Persist this session's own scrollback/history whenever either changes, so a refresh (or reopening a
   // floating window closed only by navigation, not by its own × button) restores exactly where it was.
@@ -373,9 +377,64 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
 
     setBusy(true);
     try {
-      const job = await apiRequest<Job>('/jobs', post(body));
-      add({ kind: 'info', text: `→ job ${job.id.slice(0, 8)} · ${job.status.toLowerCase()}…` });
-      render(await poll(job.id, job));
+      await submitJobCommand(body);
+    } catch (e) {
+      // ExecutionService.autoResolveTargets refuses to guess when several scopes are active at once (the
+      // exact substring below is always included) -- offer a picker instead of a dead-end error message.
+      const message = e instanceof Error ? e.message : 'Submission failed';
+      const picker = message.includes('scope(s) are active') ? targetFieldFor(body.toolId, body.operationId) : null;
+      if (picker) {
+        try {
+          const scopeList = await apiRequest<ScopeList>('/scopes');
+          const activeScopes = scopeList.items.filter((s) => s.active);
+          // The same error text also covers "0 scopes active" (nothing to pick from) -- only worth a
+          // picker when there's an actual ambiguity to resolve by clicking.
+          if (activeScopes.length >= 2) add({ kind: 'scope-pick', command: body, fieldName: picker.fieldName, fieldType: picker.fieldType, scopes: activeScopes, resolved: false });
+          else add({ kind: 'error', text: message });
+        } catch {
+          add({ kind: 'error', text: message });
+        }
+      } else {
+        add({ kind: 'error', text: message });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Which field (if any) an operation's command resolves a target into, same name convention
+   * autoResolveTargets() and the Submit Job form both use: a "targets" array field, or a single
+   * "host"/"domain" field. */
+  const targetFieldFor = (toolId: string, operationId: string): { fieldName: string; fieldType: 'targets' | 'single' } | null => {
+    const op = ops.find((o) => o.toolId === toolId && o.operationId === operationId);
+    if (!op) return null;
+    if (op.fields.some((f) => f.name === 'targets')) return { fieldName: 'targets', fieldType: 'targets' };
+    const single = op.fields.find((f) => f.name === 'host' || f.name === 'domain');
+    return single ? { fieldName: single.name, fieldType: 'single' } : null;
+  };
+
+  const submitJobCommand = async (body: { toolId: string; operationId: string; input: Record<string, unknown> }) => {
+    const job = await apiRequest<Job>('/jobs', post(body));
+    add({ kind: 'info', text: `→ job ${job.id.slice(0, 8)} · ${job.status.toLowerCase()}…` });
+    render(await poll(job.id, job));
+  };
+
+  const resolveScopePick = async (entryId: number, entry: Extract<EntryData, { kind: 'scope-pick' }>, result: ScopePickResolution) => {
+    markEntryResolved(entryId);
+    setBusy(true);
+    try {
+      if (result.mode === 'single') {
+        const value = entry.fieldType === 'targets' ? result.targets : result.targets[0];
+        await submitJobCommand({ ...entry.command, input: { ...entry.command.input, [entry.fieldName]: value } });
+      } else {
+        const steps = result.perScope.map(({ targets }) => ({
+          toolId: entry.command.toolId,
+          operationId: entry.command.operationId,
+          input: { ...entry.command.input, [entry.fieldName]: entry.fieldType === 'targets' ? targets : targets[0] },
+        }));
+        await apiRequest('/sequences', post({ steps }));
+        add({ kind: 'sequence-created', stepCount: steps.length });
+      }
     } catch (e) {
       add({ kind: 'error', text: e instanceof Error ? e.message : 'Submission failed' });
     } finally {
@@ -523,6 +582,31 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
                 <div key={entry.id} className="my-1">
                   <NextSuggestions job={entry.job} onSubmitted={(j) => void onSuggestionSubmitted(j)} />
                 </div>
+              );
+            }
+            if (entry.kind === 'scope-pick') {
+              return (
+                <div key={entry.id} className="my-1">
+                  <p className="text-warning">
+                    {entry.command.toolId}:{entry.command.operationId} needs a target. {entry.scopes.length} scope(s) are active, so it cannot be resolved automatically — pick one below.
+                  </p>
+                  {entry.resolved ? null : (
+                    <div className="mt-1">
+                      <ScopeTargetPicker scopes={entry.scopes} fieldType={entry.fieldType} onResolve={(result) => void resolveScopePick(entry.id, entry, result)} />
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            if (entry.kind === 'sequence-created') {
+              return (
+                <p key={entry.id} className="whitespace-pre-wrap break-words text-good">
+                  Created a {entry.stepCount}-step sequence —{' '}
+                  <Link href="/tasks" className="underline hover:text-ink">
+                    see Job Sequences on the Task Queue page
+                  </Link>
+                  .
+                </p>
               );
             }
             return (

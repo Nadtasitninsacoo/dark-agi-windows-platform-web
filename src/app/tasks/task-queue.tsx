@@ -8,9 +8,10 @@ import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
 import { Button, ConfirmDialog, ErrorNotice, Panel, Skeleton, StatusBadge, TerminalBox, type StatusTone } from '@/components/ui';
-import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList, type ScopeList } from '@/lib/api/client';
+import { apiRequest, type EngineStatus, type Job, type JobClearHistoryResult, type JobPage, type Operation, type OperationList, type Scope, type ScopeList } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { RemoteHostField } from '@/app/remote-hosts/remote-host-field';
+import { ScopeTargetPicker, type ScopePickResolution } from '@/components/scope-target-picker';
 import { JobResult } from './job-result';
 import { NextSuggestions } from './next-suggestions';
 import { SequencePanel } from './sequence-panel';
@@ -241,6 +242,9 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
   const [filter, setFilter] = useState('');
   const [values, setValues] = useState<Record<string, string>>({});
   const [manualTarget, setManualTarget] = useState<Record<string, boolean>>({});
+  const [pickedScopeNote, setPickedScopeNote] = useState<Record<string, string>>({});
+  const [sequencePlan, setSequencePlan] = useState<{ fieldName: string; perScope: readonly { scope: Scope; targets: string[] }[] } | null>(null);
+  const [sequenceResult, setSequenceResult] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const op = operations.find((o) => `${o.toolId}:${o.operationId}` === key) ?? operations.find((o) => o.available);
@@ -261,10 +265,29 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
     return null;
   };
   const isLocked = (f: Operation['fields'][number]) => autoFillFor(f) !== null && !manualTarget[f.name] && (values[f.name] ?? '').trim() === '';
+  const isPicked = (f: Operation['fields'][number]) => Boolean(pickedScopeNote[f.name]) && !manualTarget[f.name];
   const fieldValue = (f: Operation['fields'][number]) => {
     const auto = autoFillFor(f);
     if (auto !== null && !manualTarget[f.name] && (values[f.name] ?? '').trim() === '') return auto;
     return values[f.name] ?? '';
+  };
+  // Several scopes active at once: auto-resolution can't guess (same rule as above), but the operator can
+  // still pick which to use instead of retyping -- see ScopeTargetPicker. Only offered for a still-empty
+  // target field, same as the single-scope case above.
+  const multiScopeFieldType = (f: Operation['fields'][number]): 'targets' | 'single' | null => {
+    if (!op || op.targetKind !== 'network' || activeScopes.length < 2 || isLocked(f) || isPicked(f) || (values[f.name] ?? '').trim() !== '') return null;
+    if (f.name === 'targets') return 'targets';
+    if (f.name === 'host' || f.name === 'domain') return 'single';
+    return null;
+  };
+  const resolveWithScopes = (f: Operation['fields'][number], result: ScopePickResolution) => {
+    if (result.mode === 'single') {
+      setValues({ ...values, [f.name]: f.name === 'targets' ? result.targets.join(', ') : result.targets[0]! });
+      setPickedScopeNote({ ...pickedScopeNote, [f.name]: result.targets.length > 1 ? `${result.targets.length} targets merged from your scope selection` : 'your scope selection' });
+      setSequencePlan(null);
+    } else {
+      setSequencePlan({ fieldName: f.name, perScope: result.perScope });
+    }
   };
 
   const submit = async (e: FormEvent) => {
@@ -272,7 +295,30 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
     if (!op) return;
     setBusy(true);
     setError(null);
+    setSequenceResult(null);
     try {
+      if (sequencePlan) {
+        const steps = sequencePlan.perScope.map(({ targets }) => {
+          const input: Record<string, unknown> = {};
+          for (const f of op.fields) {
+            if (f.name === sequencePlan.fieldName) {
+              input[f.name] = f.type === 'targets' || f.type === 'list' ? targets : targets[0];
+              continue;
+            }
+            const raw = fieldValue(f).trim();
+            if (raw === '') continue;
+            input[f.name] = f.type === 'targets' || f.type === 'list' ? raw.split(/[\s,]+/).filter(Boolean) : f.type === 'integer' ? Number(raw) : raw;
+          }
+          return { toolId: op.toolId, operationId: op.operationId, input };
+        });
+        await apiRequest('/sequences', post({ steps }));
+        setSequenceResult(`Created a ${steps.length}-step sequence — see Job Sequences below.`);
+        setSequencePlan(null);
+        setValues({});
+        setManualTarget({});
+        setPickedScopeNote({});
+        return;
+      }
       const input: Record<string, unknown> = {};
       for (const f of op.fields) {
         const raw = fieldValue(f).trim();
@@ -282,6 +328,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
       const job = await apiRequest<Job>('/jobs', post({ toolId: op.toolId, operationId: op.operationId, input }));
       setValues({});
       setManualTarget({});
+      setPickedScopeNote({});
       await onSubmitted(job);
     } catch (err) {
       setError(err);
@@ -303,6 +350,9 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
           setKey(e.target.value);
           setValues({});
           setManualTarget({});
+          setPickedScopeNote({});
+          setSequencePlan(null);
+          setSequenceResult(null);
         }}
       >
         {filteredOperations.map((o) => (
@@ -320,12 +370,28 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
         {op.targetKind === 'network' ? <span>Targets must be inside one active scope (max {op.maxAddresses} addresses).</span> : <span>Runs on this machine only.</span>}
       </div>
       {op.fields.map((f) => {
-        const locked = isLocked(f);
-        const lockNotice = locked ? (
+        const sequenced = sequencePlan?.fieldName === f.name;
+        const locked = isLocked(f) || isPicked(f) || sequenced;
+        const pickerType = multiScopeFieldType(f);
+        const lockNotice = isLocked(f) ? (
           <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-good">
             Auto-filled from scope &ldquo;{soleScope!.name}&rdquo; — locked to avoid retyping it (and typos).
             <button type="button" className="underline hover:text-ink" onClick={() => setManualTarget({ ...manualTarget, [f.name]: true })}>
               Type a different target instead
+            </button>
+          </span>
+        ) : isPicked(f) ? (
+          <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-good">
+            {pickedScopeNote[f.name]} — locked to avoid retyping it (and typos).
+            <button type="button" className="underline hover:text-ink" onClick={() => setManualTarget({ ...manualTarget, [f.name]: true })}>
+              Type a different target instead
+            </button>
+          </span>
+        ) : sequenced ? (
+          <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-good">
+            {sequencePlan!.perScope.length}-step sequence planned — each step uses a different scope&apos;s targets.
+            <button type="button" className="underline hover:text-ink" onClick={() => setSequencePlan(null)}>
+              Cancel sequence
             </button>
           </span>
         ) : null;
@@ -336,9 +402,9 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
             {f.type === 'targets' || f.type === 'list' ? (
               <textarea
                 className={`${inputClass} mt-1 h-16 font-mono ${locked ? 'opacity-70' : ''}`}
-                value={fieldValue(f)}
+                value={sequenced ? '' : fieldValue(f)}
                 readOnly={locked}
-                placeholder={f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
+                placeholder={sequenced ? `${sequencePlan!.perScope.length} steps — see below` : f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
                 onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
               />
             ) : f.type === 'remoteHost' ? (
@@ -364,17 +430,23 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
                 max={f.max ?? undefined}
                 placeholder={f.default !== null ? String(f.default) : ''}
                 readOnly={locked}
-                value={fieldValue(f)}
+                value={sequenced ? '' : fieldValue(f)}
                 onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
               />
             )}
             {lockNotice}
+            {pickerType && !sequenced ? (
+              <div className="mt-1">
+                <ScopeTargetPicker scopes={activeScopes} fieldType={pickerType} onResolve={(result) => resolveWithScopes(f, result)} />
+              </div>
+            ) : null}
             <span className="block text-[11px] text-ink-3">{f.help}</span>
           </label>
         );
       })}
+      {sequenceResult ? <p className="text-[12px] text-good">{sequenceResult}</p> : null}
       <Button type="submit" variant="primary" busy={busy} disabled={!op.available}>
-        <Send className="size-3.5" aria-hidden /> Submit job
+        <Send className="size-3.5" aria-hidden /> {sequencePlan ? `Create sequence (${sequencePlan.perScope.length} steps)` : 'Submit job'}
       </Button>
     </form>
   );
