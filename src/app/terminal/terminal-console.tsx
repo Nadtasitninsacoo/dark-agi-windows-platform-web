@@ -502,7 +502,13 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
 
   const box = (
     <div
-      onClick={() => inputRef.current?.focus()}
+      // A click-drag to select/copy scrollback text ends with a click event too -- refocusing the hidden
+      // command input right then collapses that selection in Chromium (focus moving to a form control
+      // right after mouseup does this). Skip the refocus whenever the click actually left text selected.
+      onClick={() => {
+        if ((window.getSelection()?.toString().length ?? 0) > 0) return;
+        inputRef.current?.focus();
+      }}
       className={`flex w-full cursor-text flex-col border-edge-strong bg-canvas p-3 text-left font-mono text-[12px] leading-relaxed text-ink ${
         embedded ? 'h-full' : 'rounded-lg border shadow-inner'
       }`}
