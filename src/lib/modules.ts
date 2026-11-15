@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield' | 'satellite';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield' | 'satellite' | 'chart';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -49,6 +49,8 @@ export const MODULES: readonly ConsoleModule[] = [
   { slug: 'scientific-discovery', href: '/scientific-discovery', title: 'Scientific Discovery', group: 'AI', icon: 'scroll', status: 'planned', phase: 36,
     summary: 'Physics, mathematics and algorithm findings with independent verification. Real work exists — four physics items (large-angle pendulum, Biot-Savart loop field, heat diffusion, relativistic motion), each cross-checked by an independent method — but only as developer documentation in the repository, not as data this running application can read or display.',
     planned: ['A real findings model this application can query', 'Publishing the existing physics reports through it instead of only as markdown files', 'Confidence/verification status per finding'] },
+  { slug: 'analytics', href: '/analytics', title: 'Intelligence Analytics', group: 'AI', icon: 'chart', status: 'live', phase: 37,
+    summary: 'Cross-platform snapshots — job status breakdown, agent run volume, model latency, audit chain health — aggregated from the engine, agent roster, model registry and audit log. Current state only: no time-series storage for job/engine counts exists yet, so nothing here shows a trend over time.' },
   { slug: 'network', href: '/network', title: 'Network Intelligence', group: 'Security Domains', icon: 'network', status: 'live', phase: 5, category: 'network-intelligence',
     summary: 'Authorised host discovery, port and service inventory, DNS inspection — scope-enforced and rate-limited.',
     planned: ['Masscan & ARP discovery adapters', 'Packet-capture analysis (TShark)', 'Scan history and comparison'] },
