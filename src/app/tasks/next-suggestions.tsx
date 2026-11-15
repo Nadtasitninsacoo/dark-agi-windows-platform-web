@@ -46,10 +46,21 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
   const [language, setLanguage] = useState<'en' | 'th'>('en');
   const [submittedFor, setSubmittedFor] = useState<Set<number>>(new Set());
   const [autopilot, setAutopilot] = useState(() => readAutopilot());
-  const autopilotRanFor = useRef<AgentSuggestNextResult | null>(null);
+  // This component is permanently tied to one (already-terminal) job, so "has autopilot already acted
+  // for this job" is a single boolean, not a batch identity -- robust even if something upstream ever
+  // hands this a re-created (but equivalent) suggestions object.
+  const autopilotFired = useRef(false);
 
   const terminal = job.status === 'SUCCEEDED' || job.status === 'FAILED';
-  const { data, error, isLoading } = useSWR<AgentSuggestNextResult, unknown, Key | null>(terminal && autopilot ? (['suggest-next', job.id, language] as const) : null, fetchSuggestions);
+  // A finished job's suggestions never change, so this never needs to revalidate -- critical for
+  // autopilot: SWR's default revalidate-on-focus would otherwise hand the effect below a new `data`
+  // object (same content, different reference) every time the window regains focus, and the ref-identity
+  // guard would treat that as a fresh batch and submit the same top pick a second time for real.
+  const { data, error, isLoading } = useSWR<AgentSuggestNextResult, unknown, Key | null>(terminal && autopilot ? (['suggest-next', job.id, language] as const) : null, fetchSuggestions, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+  });
   const suggestions = data?.suggestions ?? null;
 
   const run = async (pick: Suggestion, index: number) => {
@@ -58,13 +69,13 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
     onSubmitted?.(submitted);
   };
 
-  // Autopilot: once a fresh suggestions batch arrives, submit the top pick automatically through the exact
-  // same path "Run this" uses. Guarded by a ref (not state) keyed on the batch itself, so it fires exactly
-  // once per batch regardless of re-renders, and every state update happens inside the promise callback,
-  // never synchronously in the effect body.
+  // Autopilot: once suggestions arrive, submit the top pick automatically through the exact same path
+  // "Run this" uses. Guarded by a ref (not state) so it fires at most once for this job regardless of
+  // re-renders or re-fetches, and every state update happens inside the promise callback, never
+  // synchronously in the effect body.
   useEffect(() => {
-    if (!autopilot || !data || data.suggestions.length === 0 || autopilotRanFor.current === data) return;
-    autopilotRanFor.current = data;
+    if (!autopilot || !data || data.suggestions.length === 0 || autopilotFired.current) return;
+    autopilotFired.current = true;
     const top = data.suggestions[0]!;
     apiRequest<Job>('/jobs', post({ toolId: top.toolId, operationId: top.operationId, input: top.input ?? {} })).then(
       (submitted) => {
