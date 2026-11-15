@@ -17,11 +17,20 @@ const DECISION: Record<AgentRun['requests'][number]['decision'], StatusTone> = {
   QUEUED: 'neutral',
   DENIED: 'warning',
   REJECTED: 'neutral',
+  // Claim verdicts (type:"claim" entries only — see src/claims/claims.ts, backend).
+  VERIFIED: 'good',
+  CITED_UNCHECKED: 'warning',
+  UNSUPPORTED: 'critical',
+  MISSING_ARTIFACT: 'critical',
+  ARTIFACT_NOT_SUCCESSFUL: 'warning',
+  OUT_OF_SCOPE: 'critical',
+  UNCITED: 'warning',
 };
 
 function describeRequest(r: AgentRun['requests'][number]): string {
   if (r.type === 'delegate') return `delegate → ${r.agent ?? '?'}`;
   if (r.type === 'tool') return `tool ${r.tool ?? '?'} · ${r.operation ?? '?'}${r.target ? ` · ${r.target}` : ''}`;
+  if (r.type === 'claim') return `claim: ${r.excerpt ?? '?'}`;
   return `invalid request${r.excerpt ? `: ${r.excerpt}` : ''}`;
 }
 

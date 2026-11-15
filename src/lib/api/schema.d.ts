@@ -275,6 +275,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/scopes/assets/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Countries and open ports present in the asset vault, with IP counts — options for the search filters */
+        get: operations["ScopesController_assetFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scopes/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Browse the asset vault (IP, country, open ports) with each IP's authorized state, to choose what to authorize */
+        get: operations["ScopesController_assets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scopes/assets/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authorize chosen vault IPs: never expires until revoked, scannable immediately (audited) */
+        post: operations["ScopesController_authorizeAssets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scopes/assets/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke authorization for chosen IPs so they can no longer be scanned (audited) */
+        post: operations["ScopesController_revokeAssets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/scopes/preview-sync": {
         parameters: {
             query?: never;
@@ -792,6 +860,41 @@ export interface paths {
         /** Streaming chat completion (text/event-stream) */
         post: operations["AiGatewayController_chatStream"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which external-provider credentials are configured (metadata only — secret values are never returned) */
+        get: operations["CredentialsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credentials/{providerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set or rotate a provider credential (audited; the secret itself is never echoed back) */
+        post: operations["CredentialsController_set"];
+        /** Remove a stored provider credential */
+        delete: operations["CredentialsController_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1477,12 +1580,12 @@ export interface components {
             }[];
             requests: {
                 /** @enum {string} */
-                type: "delegate" | "tool" | "invalid";
+                type: "delegate" | "tool" | "invalid" | "claim";
                 /**
-                 * @description QUEUED: a job awaiting human approval was created
+                 * @description QUEUED: a job awaiting human approval was created. The claim verdicts apply only to type:"claim" entries.
                  * @enum {string}
                  */
-                decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED";
+                decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED" | "VERIFIED" | "CITED_UNCHECKED" | "UNSUPPORTED" | "MISSING_ARTIFACT" | "ARTIFACT_NOT_SUCCESSFUL" | "OUT_OF_SCOPE" | "UNCITED";
                 reason: string | null;
                 agent: string | null;
                 task: string | null;
@@ -1523,12 +1626,12 @@ export interface components {
                 }[];
                 requests: {
                     /** @enum {string} */
-                    type: "delegate" | "tool" | "invalid";
+                    type: "delegate" | "tool" | "invalid" | "claim";
                     /**
-                     * @description QUEUED: a job awaiting human approval was created
+                     * @description QUEUED: a job awaiting human approval was created. The claim verdicts apply only to type:"claim" entries.
                      * @enum {string}
                      */
-                    decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED";
+                    decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED" | "VERIFIED" | "CITED_UNCHECKED" | "UNSUPPORTED" | "MISSING_ARTIFACT" | "ARTIFACT_NOT_SUCCESSFUL" | "OUT_OF_SCOPE" | "UNCITED";
                     reason: string | null;
                     agent: string | null;
                     task: string | null;
@@ -1569,12 +1672,12 @@ export interface components {
                 }[];
                 requests: {
                     /** @enum {string} */
-                    type: "delegate" | "tool" | "invalid";
+                    type: "delegate" | "tool" | "invalid" | "claim";
                     /**
-                     * @description QUEUED: a job awaiting human approval was created
+                     * @description QUEUED: a job awaiting human approval was created. The claim verdicts apply only to type:"claim" entries.
                      * @enum {string}
                      */
-                    decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED";
+                    decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED" | "VERIFIED" | "CITED_UNCHECKED" | "UNSUPPORTED" | "MISSING_ARTIFACT" | "ARTIFACT_NOT_SUCCESSFUL" | "OUT_OF_SCOPE" | "UNCITED";
                     reason: string | null;
                     agent: string | null;
                     task: string | null;
@@ -1616,12 +1719,12 @@ export interface components {
                 }[];
                 requests: {
                     /** @enum {string} */
-                    type: "delegate" | "tool" | "invalid";
+                    type: "delegate" | "tool" | "invalid" | "claim";
                     /**
-                     * @description QUEUED: a job awaiting human approval was created
+                     * @description QUEUED: a job awaiting human approval was created. The claim verdicts apply only to type:"claim" entries.
                      * @enum {string}
                      */
-                    decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED";
+                    decision: "EXECUTED" | "QUEUED" | "DENIED" | "REJECTED" | "VERIFIED" | "CITED_UNCHECKED" | "UNSUPPORTED" | "MISSING_ARTIFACT" | "ARTIFACT_NOT_SUCCESSFUL" | "OUT_OF_SCOPE" | "UNCITED";
                     reason: string | null;
                     agent: string | null;
                     task: string | null;
@@ -1653,6 +1756,11 @@ export interface components {
              * @default false
              */
             allowDelegation: boolean;
+            /**
+             * @description Opt-in (off by default — adds a protocol addendum to the system prompt, so only pay that token cost when wanted): deterministically checks any dark-agi-claims block the model emits against the platform records it cites (Evidence-Bound Claim Ledger). Verdicts are appended to `requests` as type:"claim".
+             * @default false
+             */
+            verifyClaims: boolean;
         };
         AgentSuggestNextRequest: {
             /**
@@ -2130,7 +2238,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -2898,6 +3006,34 @@ export interface components {
                 };
             }[];
         };
+        ProviderCredential: {
+            providerId: string;
+            label: string | null;
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            rotatedAt: string | null;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+        };
+        ProviderCredentialList: {
+            items: {
+                providerId: string;
+                label: string | null;
+                createdBy: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                rotatedAt: string | null;
+                /** Format: date-time */
+                lastUsedAt: string | null;
+            }[];
+        };
+        ProviderCredentialSetRequest: {
+            secret: string;
+            label?: string;
+        };
         RemoteHost: {
             id: string;
             host: string;
@@ -3117,6 +3253,60 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        ScopeAssetAuthorizeResult: {
+            authorized: number;
+            /** @description IPs that are not in the vault and were skipped */
+            ignored: number;
+        };
+        ScopeAssetFacets: {
+            countries: {
+                code: string;
+                count: number;
+            }[];
+            ports: {
+                port: number;
+                service: string | null;
+                count: number;
+            }[];
+        };
+        ScopeAssetList: {
+            total: number;
+            items: {
+                ip: string;
+                country: string | null;
+                city: string | null;
+                region: string | null;
+                source: string;
+                ports: {
+                    port: number;
+                    service: string | null;
+                }[];
+                authorized: boolean;
+            }[];
+        };
+        ScopeAssetRevokeResult: {
+            revoked: number;
+        };
+        ScopeAssetSearchQuery: {
+            /** @description Free text: IP, city, region or country */
+            q?: string;
+            /** @description Country code, e.g. TH */
+            country?: string;
+            /** @description Only IPs with this open port */
+            port?: number;
+            /**
+             * @default all
+             * @enum {string}
+             */
+            state: "all" | "authorized" | "unauthorized";
+            /** @default 50 */
+            limit: number;
+            /** @default 0 */
+            offset: number;
+        };
+        ScopeAssetSelectRequest: {
+            ips: string[];
+        };
         ScopeCreateRequest: {
             name: string;
             /** @default  */
@@ -3280,7 +3470,7 @@ export interface components {
         Tool: {
             id: string;
             name: string;
-            categories: ("network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit")[];
+            categories: ("network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit" | "external-intelligence")[];
             vendor: string;
             description: string;
             /** @enum {string} */
@@ -3351,7 +3541,7 @@ export interface components {
             items: {
                 id: string;
                 name: string;
-                categories: ("network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit")[];
+                categories: ("network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit" | "external-intelligence")[];
                 vendor: string;
                 description: string;
                 /** @enum {string} */
@@ -3411,7 +3601,7 @@ export interface components {
                 /** Format: date-time */
                 lastDiscoveryAt: string | null;
             };
-            categories: ("network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit")[];
+            categories: ("network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit" | "external-intelligence")[];
         };
         User: {
             id: string;
@@ -3453,7 +3643,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "attack-graph:read" | "attack-graph:reason")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason")[];
             }[];
         };
         UserUpdateRequest: {
@@ -3873,6 +4063,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScopeSetAllResult"];
+                };
+            };
+        };
+    };
+    ScopesController_assetFacets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeAssetFacets"];
+                };
+            };
+        };
+    };
+    ScopesController_assets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeAssetList"];
+                };
+            };
+        };
+    };
+    ScopesController_authorizeAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopeAssetSelectRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeAssetAuthorizeResult"];
+                };
+            };
+        };
+    };
+    ScopesController_revokeAssets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopeAssetSelectRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeAssetRevokeResult"];
                 };
             };
         };
@@ -4672,6 +4946,69 @@ export interface operations {
             };
         };
     };
+    CredentialsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCredentialList"];
+                };
+            };
+        };
+    };
+    CredentialsController_set: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCredentialSetRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderCredential"];
+                };
+            };
+        };
+    };
+    CredentialsController_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     HealthController_health: {
         parameters: {
             query?: never;
@@ -5131,7 +5468,7 @@ export interface operations {
         parameters: {
             query?: {
                 installStatus?: "UNKNOWN" | "INSTALLED" | "NOT_FOUND" | "NOT_WINDOWS_NATIVE" | "EXTERNAL";
-                category?: "network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit";
+                category?: "network-intelligence" | "vulnerability-assessment" | "web-security" | "windows-security" | "digital-forensics" | "threat-intelligence" | "malware-analysis" | "cryptographic-audit" | "external-intelligence";
             };
             header?: never;
             path?: never;

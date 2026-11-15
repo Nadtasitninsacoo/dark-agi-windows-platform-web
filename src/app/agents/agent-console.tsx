@@ -416,6 +416,57 @@ function CollaborationPanel({ agents, names }: { agents: Agent[]; names: Record<
   );
 }
 
+/**
+ * Cross-agent "Self-Improvement" view (Phase 8 of the Intelligence Command Center directive). Model-level
+ * benchmark history (latency, TTFT, success/fail counts) already has a real, live table on the Model
+ * Registry page — this panel covers the one piece of agent-level quality evaluation that's real and wired
+ * into production but not aggregated anywhere: the Evidence-Bound Claim Ledger. `verifyClaims` is opt-in and
+ * off by default, so most historical runs have zero `claim` requests — shown as an honest "nothing to
+ * evaluate yet" rather than an empty chart that could read as "all claims passed."
+ */
+function ClaimQualityPanel({ agents }: { agents: readonly Agent[] }) {
+  const sample = useSWR<AgentRunPage>('/agents/runs?limit=100', { refreshInterval: 15_000 });
+
+  const { byAgent, total } = useMemo(() => {
+    const counts = new Map<string, Map<string, number>>();
+    let n = 0;
+    for (const run of sample.data?.items ?? []) {
+      for (const req of run.requests) {
+        if (req.type !== 'claim') continue;
+        n += 1;
+        const forAgent = counts.get(run.agentId) ?? new Map<string, number>();
+        forAgent.set(req.decision, (forAgent.get(req.decision) ?? 0) + 1);
+        counts.set(run.agentId, forAgent);
+      }
+    }
+    return { byAgent: counts, total: n };
+  }, [sample.data]);
+
+  const nameById = useMemo(() => new Map(agents.map((a) => [a.id, a.name])), [agents]);
+
+  return (
+    <Panel title="Claim Verification Quality" subtitle="Evidence-Bound Claim Ledger results across the last 100 runs — opt-in per run, off by default">
+      {sample.error ? <ErrorNotice error={sample.error} /> : null}
+      {!sample.data && !sample.error ? <Skeleton className="h-16 w-full" /> : null}
+      {sample.data && total === 0 ? (
+        <p className="text-[12px] text-ink-3">No runs in this sample had claim verification enabled — nothing to evaluate yet.</p>
+      ) : null}
+      {total > 0 ? (
+        <ul className="space-y-1.5">
+          {[...byAgent.entries()].map(([agentId, decisions]) => (
+            <li key={agentId} className="flex flex-wrap items-center gap-1.5 rounded border border-edge bg-canvas/40 p-2 text-[12px]">
+              <span className="font-semibold text-ink">{nameById.get(agentId) ?? agentId}</span>
+              {[...decisions.entries()].map(([decision, count]) => (
+                <StatusBadge key={decision} tone={DECISION_TONE[decision] ?? 'neutral'} label={`${count} ${decision.toLowerCase()}`} />
+              ))}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </Panel>
+  );
+}
+
 function AgentOverviewPanel({ agents, providerStatusById, onToggleAuto, onAutoAll, busyId, autoAllBusy, runningByAgent }: {
   agents: Agent[];
   providerStatusById: ReadonlyMap<string, string>;
@@ -651,6 +702,7 @@ function MemoryPanel({ agent, max, onChanged }: { agent: Agent; max: number; onC
 function RunPanel({ agent, names, onFinished }: { agent: Agent; names: Record<string, string>; onFinished: () => Promise<unknown> }) {
   const [task, setTask] = useState('');
   const [allowDelegation, setAllowDelegation] = useState(agent.delegatesTo.length > 0);
+  const [verifyClaims, setVerifyClaims] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [result, setResult] = useState<AgentRunDetail | null>(null);
@@ -663,7 +715,7 @@ function RunPanel({ agent, names, onFinished }: { agent: Agent; names: Record<st
     setError(null);
     setResult(null);
     try {
-      const body: AgentRunRequest = { task, allowDelegation };
+      const body: AgentRunRequest = { task, allowDelegation, verifyClaims };
       setResult(await apiRequest<AgentRunDetail>(`/agents/${agent.id}/runs`, { ...json('POST', body), signal: controller.signal }));
     } catch (e) {
       if (!controller.signal.aborted) setError(e);
@@ -703,6 +755,10 @@ function RunPanel({ agent, names, onFinished }: { agent: Agent; names: Record<st
           ) : (
             <span className="text-[11.5px] text-ink-3">This agent does not delegate.</span>
           )}
+          <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
+            <input type="checkbox" checked={verifyClaims} disabled={running} onChange={(e) => setVerifyClaims(e.target.checked)} />
+            Verify claims against evidence (Evidence-Bound Claim Ledger — informational only, never changes approval)
+          </label>
           {running ? <StatusBadge tone="pending" label="Running — delegated runs execute in sequence" /> : null}
         </div>
         {!agent.effectiveModel ? <p className="text-[11.5px] text-ink-3">Assign a model below (or set AI_DEFAULT_MODEL) before running this agent.</p> : null}
@@ -831,6 +887,7 @@ export function AgentConsole() {
         ) : null}
         {agents.data ? <MemoryOverviewPanel agents={items} /> : null}
         {agents.data ? <CollaborationPanel agents={items} names={names} /> : null}
+        {agents.data ? <ClaimQualityPanel agents={items} /> : null}
         {agent && agents.data ? (
           <div className="grid gap-3 lg:grid-cols-[15rem_1fr]">
             <div className="space-y-3">
