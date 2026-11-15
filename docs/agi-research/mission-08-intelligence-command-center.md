@@ -2,7 +2,7 @@
 
 Pasted verbatim from the user on 2026-11-15, alongside 3 reference screenshots (an "AI Research Hub" dashboard, an "Orchestra" multi-agent pipeline view, and a GPU-cluster/flywheel ops dashboard) as visual inspiration only — not existing DARK AGI UI. Explicitly structured by the user as 10 phases, one at a time, each reviewed before the next starts ("STOP and wait for my review. Do not automatically begin Phase 2.").
 
-Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phase 5 (Hypothesis & Research, honest placeholder) is DONE — see "Phase 5 output" below. Phase 6 (Experiment & Discovery, honest placeholder) is DONE — see "Phase 6 output" below. Phase 7 (Multi-Agent Intelligence, first slice) is DONE — see "Phase 7 output" below. Phase 8 (Self-Improvement, first slice) is DONE — see "Phase 8 output" below. Phase 9 (Intelligence Analytics, first slice) is DONE — see "Phase 9 output" below. Phase 10 and the rest of Phases 2/3 NOT STARTED.
+All 10 phases have a first slice DONE as of 2026-11-15 — see each phase's own output section below, and "Phase 10 output" for the closing integration/verification pass. "First slice" does not mean "finished": several deeper extensions remain explicitly NOT STARTED (see each phase's own notes and the closing summary) — this mission stays IN PROGRESS, not DONE.
 
 ---
 
@@ -149,3 +149,24 @@ A genuinely new cross-platform page (`/analytics`, phase 37, `status: 'live'` �
 - Deliberately no historical trend chart anywhere on this page: this platform has no time-series storage for job/engine counts (flagged in Phase 1's own "missing backend capabilities" list) — faking a trend line would be exactly the kind of fabricated intelligence metric the directive prohibits. Every number is a real, current snapshot, stated as such in the page's own subtitle.
 - Added `'chart'` as a new `IconName` (`BarChart3`) since nothing existing fit; registered in `modules.ts`.
 - tsc/eslint clean; `/analytics` verified live (200). Same pre-existing, unrelated vitest failures as Phase 8, unaffected.
+
+## Phase 10 output (2026-11-15, Claude) — Integration & Verification
+
+A holistic pass across everything built in Phases 1-9 together, not just each phase in isolation.
+
+**Full test/build sweep, both repos:**
+- Backend: 541/541 unit tests pass; `npm run build` (prisma generate + tsc) clean; `oxlint` clean across `src`.
+- Frontend: `tsc --noEmit` clean across the whole `src` tree; `eslint` clean across the whole `src` tree; a full `next build` (production, Turbopack) compiles and statically prerenders every route with no errors, including every page this mission added (`/analytics`, `/hypothesis-engine`, `/research-lab`, `/experiment-engine`, `/scientific-discovery`, plus the modified `/` and `/agents`).
+- Backend integration tests re-run together: `agents.int-spec.ts` (9/9), `remote-hosts.int-spec.ts` (9/9), `credentials.int-spec.ts` (3/3) all pass cleanly. `execution.int-spec.ts` shows the same 2 pre-existing, already-documented, unrelated failures as before this mission started (OS process-priority flakiness; the dropped auto-target-resolution feature flagged in the same-day approval-gating fix) — confirmed not a regression from anything built in Phases 2-9.
+
+**Live route sweep** (both dev servers running): backend `/api/v1/health` and every frontend route touched this mission (`/`, `/agents`, `/analytics`, `/tasks`, `/models`, `/hypothesis-engine`, `/research-lab`, `/experiment-engine`, `/scientific-discovery`, `/earth`, `/logs`, `/tools`) all return 200.
+
+**Cross-phase consistency checked:** Phase 7's `CollaborationPanel` and Phase 8's `ClaimQualityPanel` both poll the identical `/agents/runs?limit=100` SWR key on the same page — confirmed this is a single deduplicated request, not two, per SWR's own key-based caching (no new network behavior introduced by stacking phases on one page).
+
+**What's real and live today, end to end:** Command Center (Approvals Pending tile, audit chain badge), AI Agents (live task+request detail for running agents, cross-agent memory notes, the delegation graph with real activity counts, claim-verification quality), and the new Intelligence Analytics page — all built on data the backend already had, with zero new backend endpoints across Phases 2-9 (the one backend-adjacent fix was regenerating a stale `openapi.json`/`schema.d.ts`, not new functionality).
+
+**What's honestly still not real, by design:** Hypothesis Engine, Research Lab, Experiment Engine and Scientific Discovery remain `planned` placeholders — building live UI for them needs Mission 09's own backend work (persistence + controllers) first, which was deliberately not bundled into this mission.
+
+**Outstanding across Phases 2-9, not part of this closing pass:** Phase 2's delegation-tree *visual diagram* (Phase 7 covered the data as a list, not a node-link rendering); Phase 3's idle-agent view and any job-count *trend* (needs new backend time-series support — flagged, not built); a general risk carried forward: this app's generated API types can silently drift behind real backend contract changes with nothing currently catching it automatically (discovered the hard way in Phase 8) — worth a process fix (e.g. a CI check that fails if `schema.d.ts` is stale relative to the backend's current `openapi.json`), not attempted here since it's tooling/process work, not a dashboard phase.
+
+**Overall judgment for Mission 08:** the directive's own Step 4 rule — never show a capability that can't be measured — was followed throughout. Every live panel traces to a real backend field; every gap is either a `planned` placeholder naming exactly what's missing, or an explicit "not done" note in this file. Ten phases in, the console now surfaces real approval state, real agent activity, real delegation and claim-verification signals, and a real cross-platform analytics snapshot that did not exist this morning — without inventing a single number to make any of it look more capable than it is.
