@@ -304,7 +304,7 @@ function SubmitJob({ operations, initial, onSubmitted }: { operations: Operation
             <textarea
               className={`${inputClass} mt-1 h-16 font-mono`}
               value={values[f.name] ?? ''}
-              placeholder={f.type === 'targets' ? '127.0.0.1' : 'default,banner'}
+              placeholder={f.type === 'targets' ? 'e.g. 127.0.0.1 (empty)' : 'e.g. default,banner (empty)'}
               onChange={(e) => setValues({ ...values, [f.name]: e.target.value })}
             />
           ) : f.type === 'remoteHost' ? (
