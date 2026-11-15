@@ -2,7 +2,7 @@
 
 Pasted verbatim from the user on 2026-11-15, alongside 3 reference screenshots (an "AI Research Hub" dashboard, an "Orchestra" multi-agent pipeline view, and a GPU-cluster/flywheel ops dashboard) as visual inspiration only — not existing DARK AGI UI. Explicitly structured by the user as 10 phases, one at a time, each reviewed before the next starts ("STOP and wait for my review. Do not automatically begin Phase 2.").
 
-Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phase 5 (Hypothesis & Research, honest placeholder) is DONE — see "Phase 5 output" below. Phases 6-10 and the rest of Phases 2/3 NOT STARTED.
+Phase 1 (Architecture Discovery, read-only) is DONE — see "Phase 1 output" below. Phase 2 (Dashboard Foundation, first slice) is DONE — see "Phase 2 output" below. Phase 3 (AGI Core & Operations, first slice) is DONE — see "Phase 3 output" below. Phase 4 (Learning & Memory, first slice) is DONE — see "Phase 4 output" below. Phase 5 (Hypothesis & Research, honest placeholder) is DONE — see "Phase 5 output" below. Phase 6 (Experiment & Discovery, honest placeholder) is DONE — see "Phase 6 output" below. Phases 7-10 and the rest of Phases 2/3 NOT STARTED.
 
 ---
 
@@ -112,3 +112,13 @@ Hypothesis Engine and Research Lab were graded **B**/**B+D** in Phase 1: real, t
 - Each module's summary states plainly what's real today (a tested ranking engine / a 6-of-10-stage prototype) and the `planned` list names exactly what's missing (persistence, an API, the remaining 4 stages) rather than leaving the gap implicit.
 - Verified live: both new routes (`/hypothesis-engine`, `/research-lab`) return 200 and render the placeholder. tsc/eslint clean.
 - Not done, deliberately: anything resembling a live hypothesis/research tracker — that depends on Mission 09's own Milestone 1/5 work landing first.
+
+## Phase 6 output (2026-11-15, Claude) — Experiment & Discovery, honest placeholder
+
+Same reasoning and same mechanism as Phase 5, for the same reason: Experiment Engine (**B/D**) and Scientific Discovery (**D**) have no real, reachable data either.
+
+- `src/lib/modules.ts`: added `experiment-engine` (phase 35) and `scientific-discovery` (phase 36), both `status: 'planned'`.
+- Experiment Engine's summary is explicit that it currently overlaps entirely with Research Lab's own prototype (same file, `src/research/cycle.ts`) and that no experiment-queue/record/repeatability concept exists anywhere yet — named separately rather than silently folded into the Research Lab placeholder, since the master directive's own navigation treats them as distinct end-state capabilities.
+- Scientific Discovery's summary is more specific than "nothing exists": the four Mission 03 physics items (pendulum, Biot-Savart, heat diffusion, relativity — each independently cross-checked) are real work that happened, it's just developer documentation in this repository today, not data the running application can read. Worth stating plainly rather than letting the placeholder imply no research occurred at all.
+- Verified live: both new routes return 200 (first hit needed a longer timeout for Next's on-demand dev-mode compilation — not an error). tsc/eslint clean.
+- Not done: anything that would let this app actually read/display the existing physics reports or track real experiments — both still need Mission 09-scale backend work.
