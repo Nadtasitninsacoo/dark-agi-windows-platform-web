@@ -4,8 +4,9 @@ import { Languages, Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
+import { useAuth } from '@/components/shell/auth';
 import { ErrorNotice, Toggle } from '@/components/ui';
-import { apiRequest, type AgentSuggestNextResult, type Job } from '@/lib/api/client';
+import { apiRequest, type AgentSuggestNextResult, type Job, type OperationProposalCreateResult } from '@/lib/api/client';
 
 const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -45,9 +46,13 @@ const fetchSuggestions = ([, jobId, language]: Key): Promise<AgentSuggestNextRes
  */
 export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: (job: Job) => void }) {
   const router = useRouter();
+  const { can } = useAuth();
   const [language, setLanguage] = useState<'en' | 'th'>('en');
   const [submittedFor, setSubmittedFor] = useState<Set<number>>(new Set());
   const [autopilot, setAutopilot] = useState(() => readAutopilot());
+  const [proposing, setProposing] = useState(false);
+  const [proposeResult, setProposeResult] = useState<OperationProposalCreateResult | null>(null);
+  const [proposeError, setProposeError] = useState<unknown>(null);
   // This component is permanently tied to one (already-terminal) job, so "has autopilot already acted
   // for this job" is a single boolean, not a batch identity -- robust even if something upstream ever
   // hands this a re-created (but equivalent) suggestions object.
@@ -69,6 +74,23 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
     const submitted = await apiRequest<Job>('/jobs', post({ toolId: pick.toolId, operationId: pick.operationId, input: pick.input ?? {} }));
     setSubmittedFor((prev) => new Set(prev).add(index));
     onSubmitted?.(submitted);
+  };
+
+  /** Always an explicit human click, never something Autopilot fires on its own -- designing a brand-new
+   * operation is a far bigger action than picking among ones that already exist. */
+  const proposeNewOperation = async () => {
+    setProposing(true);
+    setProposeError(null);
+    try {
+      const goal = `${job.operationTitle} (${job.toolId}:${job.operationId}) finished with no sensible existing next step. Result: ${JSON.stringify(job.result ?? null).slice(0, 500)}`;
+      const result = await apiRequest<OperationProposalCreateResult>('/operation-proposals', post({ goal, sourceJobId: job.id }));
+      setProposeResult(result);
+      if (result.gapConfirmed) router.push(`/operation-proposals?id=${result.proposal.id}`);
+    } catch (e) {
+      setProposeError(e);
+    } finally {
+      setProposing(false);
+    }
   };
 
   // Autopilot: once suggestions arrive, submit the top pick automatically through the exact same path
@@ -136,7 +158,27 @@ export function NextSuggestions({ job, onSubmitted }: { job: Job; onSubmitted?: 
           <ErrorNotice error={error} />
         </div>
       ) : null}
-      {autopilot && !isLoading && !error && suggestions && suggestions.length === 0 ? <p className="mt-2 text-ink-3">No obvious next step.</p> : null}
+      {autopilot && !isLoading && !error && suggestions && suggestions.length === 0 ? (
+        <div className="mt-2">
+          <p className="text-ink-3">No obvious next step.</p>
+          {can('operations:propose') ? (
+            <button
+              type="button"
+              onClick={() => void proposeNewOperation()}
+              disabled={proposing}
+              className="mt-1.5 rounded border border-edge-strong bg-panel-2 px-2 py-1 text-[11px] font-medium text-ink hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {proposing ? 'Asking AI to design a new operation…' : 'Nothing fits — ask AI to design a new operation'}
+            </button>
+          ) : null}
+          {proposeError ? (
+            <div className="mt-1">
+              <ErrorNotice error={proposeError} />
+            </div>
+          ) : null}
+          {proposeResult && !proposeResult.gapConfirmed ? <p className="mt-1 text-[11px] text-ink-3">{proposeResult.reason}</p> : null}
+        </div>
+      ) : null}
       {autopilot && suggestions && suggestions.length > 0 ? (
         <ul className="mt-2 space-y-1.5">
           {suggestions.map((s, i) => (

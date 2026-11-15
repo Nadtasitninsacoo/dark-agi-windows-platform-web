@@ -24,7 +24,7 @@ export interface ConsoleModule {
 
 export type IconName =
   | 'gauge' | 'bot' | 'cpu' | 'wrench' | 'network' | 'shield-alert' | 'globe' | 'monitor'
-  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield' | 'satellite' | 'chart';
+  | 'search' | 'radar' | 'bug' | 'key' | 'list' | 'scroll' | 'file-text' | 'target' | 'lock' | 'settings' | 'book' | 'terminal' | 'flag' | 'fingerprint' | 'server' | 'git-branch' | 'shield' | 'satellite' | 'chart' | 'lightbulb';
 
 export const MODULES: readonly ConsoleModule[] = [
   { slug: '', href: '/', title: 'Command Center', group: 'Operations', icon: 'gauge', status: 'live', phase: 1,
@@ -89,6 +89,8 @@ export const MODULES: readonly ConsoleModule[] = [
     summary: 'Every executable operation and launcher command in one place, with inputs, risk and approval rules.' },
   { slug: 'tasks', href: '/tasks', title: 'Task Queue', group: 'Execution', icon: 'list', status: 'live', phase: 4,
     summary: 'Submit, approve, cancel and inspect jobs run by the Windows execution engine; emergency stop.' },
+  { slug: 'operation-proposals', href: '/operation-proposals', title: 'Operation Proposals', group: 'Execution', icon: 'lightbulb', status: 'live', phase: 38,
+    summary: 'AI-drafted operation specs for capability gaps no existing operation covers — multi-stage gap analysis, spec design and deterministic validation, always ending in human approve/reject. Nothing here ever executes on its own.' },
   { slug: 'logs', href: '/logs', title: 'Execution Logs', group: 'Execution', icon: 'scroll', status: 'live', phase: 1,
     summary: 'Immutable, hash-chained audit trail with integrity verification.' },
   { slug: 'findings', href: '/findings', title: 'Security Findings', group: 'Execution', icon: 'flag', status: 'live', phase: 6,
