@@ -1,6 +1,6 @@
 import {
   BarChart3, BookOpen, Bot, Bug, Cpu, FileText, Fingerprint, Flag, Gauge, GitBranch, Globe, Key, Lightbulb, List, Lock, Monitor, Network, Radar,
-  Satellite, ScrollText, Search, Server, Settings, Shield, ShieldAlert, SquareTerminal, Target, Wrench, type LucideIcon,
+  Satellite, ScrollText, Search, Server, Settings, Shield, ShieldAlert, ShieldCheck, SquareTerminal, Target, Wrench, type LucideIcon,
 } from 'lucide-react';
 import type { IconName } from '@/lib/modules';
 
@@ -33,4 +33,5 @@ export const MODULE_ICONS: Record<IconName, LucideIcon> = {
   satellite: Satellite,
   chart: BarChart3,
   lightbulb: Lightbulb,
+  'shield-check': ShieldCheck,
 };

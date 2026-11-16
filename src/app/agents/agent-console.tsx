@@ -819,7 +819,10 @@ function RunPanel({ agent, names, onFinished }: { agent: Agent; names: Record<st
     setError(null);
     setResult(null);
     try {
-      const body: AgentRunRequest = { task, allowDelegation, verifyClaims };
+      // maxIterations/reportConfidence have no UI control yet (Mission 09 Milestones 2 and 4 both
+      // deferred their own frontend work) -- these match the backend's own defaults exactly, so omitting
+      // a control today changes nothing about current behavior.
+      const body: AgentRunRequest = { task, allowDelegation, verifyClaims, maxIterations: 3, reportConfidence: false };
       setResult(await apiRequest<AgentRunDetail>(`/agents/${agent.id}/runs`, { ...json('POST', body), signal: controller.signal }));
     } catch (e) {
       if (!controller.signal.aborted) setError(e);

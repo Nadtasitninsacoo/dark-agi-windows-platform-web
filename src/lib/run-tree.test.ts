@@ -15,6 +15,7 @@ const run = (id: string, parentRunId: string | null): AgentRun => ({
   model: null,
   failedAttempts: [],
   requests: [],
+  iterations: [],
   usage: { inputTokens: null, outputTokens: null },
   firstTokenMs: null,
   totalMs: null,

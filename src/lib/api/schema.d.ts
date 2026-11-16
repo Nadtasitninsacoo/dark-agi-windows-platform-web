@@ -1240,6 +1240,58 @@ export interface paths {
         patch: operations["AgentsController_verifyMemoryRecord"];
         trace?: never;
     };
+    "/api/v1/agents/{id}/strategies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission 09 Milestone 3: this agent’s versioned strategies, plus real outcome counts per version — a human decides whether to activate/roll back */
+        get: operations["AgentsController_strategies"];
+        put?: never;
+        /** Create a new draft strategy version (not activated — see the activate endpoint; audited) */
+        post: operations["AgentsController_createStrategy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{id}/strategies/{strategyId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promote this version to ACTIVE, deactivating whichever was active before — also how a rollback to an older version works (audited) */
+        post: operations["AgentsController_activateStrategy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{id}/confidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission 09 Milestone 4: Brier Score, Expected Calibration Error, selective accuracy and abstention rate for this agent's self-reported confidence — informational only, never used to authorize anything */
+        get: operations["AgentsController_confidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/agents/{id}/runs": {
         parameters: {
             query?: never;
@@ -1251,6 +1303,23 @@ export interface paths {
         put?: never;
         /** Run the agent on a task; returns when the run (and any delegated runs) finish */
         post: operations["AgentsController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/runs/{runId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mission 09 Milestone 2: actively cancel a run in flight (not only implicit cancellation via client disconnect) */
+        post: operations["AgentsController_cancel"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1543,8 +1612,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Run one real Strategic Reasoner research cycle (Mission 05): AI proposes competing hypotheses and designs one real experiment per hypothesis, each runs through the normal scope/approval/audit path, DHL deterministically ranks the results. */
+        /** Run one real Strategic Reasoner research cycle (Mission 05): AI proposes competing hypotheses and designs one real experiment per hypothesis, each runs through the normal scope/approval/audit path, DHL deterministically ranks the results. Persisted and evaluated — see GET /research/runs. */
         post: operations["ResearchController_createCycle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/research/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission 09 Milestone 5: persisted research cycles, newest first — "reproducible reports" (a past cycle read back verbatim), optionally scoped to one domain */
+        get: operations["ResearchController_runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/research/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One persisted research cycle, success or failure, with its full nested result */
+        get: operations["ResearchController_run"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1717,6 +1820,18 @@ export interface components {
                 jobId: string | null;
                 excerpt: string | null;
             }[];
+            /** @description Mission 09 Milestone 2: one entry per reasoning iteration this run actually did. */
+            iterations: {
+                iteration: number;
+                /** @enum {string} */
+                phase: "initial" | "revise";
+                claimsChecked: number;
+                claimsFailed: number;
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string;
+            }[];
             usage: {
                 inputTokens: number | null;
                 outputTokens: number | null;
@@ -1763,6 +1878,18 @@ export interface components {
                     jobId: string | null;
                     excerpt: string | null;
                 }[];
+                /** @description Mission 09 Milestone 2: one entry per reasoning iteration this run actually did. */
+                iterations: {
+                    iteration: number;
+                    /** @enum {string} */
+                    phase: "initial" | "revise";
+                    claimsChecked: number;
+                    claimsFailed: number;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    finishedAt: string;
+                }[];
                 usage: {
                     inputTokens: number | null;
                     outputTokens: number | null;
@@ -1808,6 +1935,18 @@ export interface components {
                     childRunId: string | null;
                     jobId: string | null;
                     excerpt: string | null;
+                }[];
+                /** @description Mission 09 Milestone 2: one entry per reasoning iteration this run actually did. */
+                iterations: {
+                    iteration: number;
+                    /** @enum {string} */
+                    phase: "initial" | "revise";
+                    claimsChecked: number;
+                    claimsFailed: number;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    finishedAt: string;
                 }[];
                 usage: {
                     inputTokens: number | null;
@@ -1856,6 +1995,18 @@ export interface components {
                     jobId: string | null;
                     excerpt: string | null;
                 }[];
+                /** @description Mission 09 Milestone 2: one entry per reasoning iteration this run actually did. */
+                iterations: {
+                    iteration: number;
+                    /** @enum {string} */
+                    phase: "initial" | "revise";
+                    claimsChecked: number;
+                    claimsFailed: number;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    finishedAt: string;
+                }[];
                 usage: {
                     inputTokens: number | null;
                     outputTokens: number | null;
@@ -1882,6 +2033,16 @@ export interface components {
              * @default false
              */
             verifyClaims: boolean;
+            /**
+             * @description Mission 09 Milestone 2: only takes effect when verifyClaims is also true. A real, checked claim-verification failure triggers another turn (critique + revise), up to this many total iterations (default 3, operator-adjustable, hard ceiling 8).
+             * @default 3
+             */
+            maxIterations: number;
+            /**
+             * @description Mission 09 Milestone 4: opt-in (off by default — adds a protocol addendum to the system prompt). The model self-reports a confidence (0-1) and whether it abstained in a dark-agi-confidence block, recorded and compared against this run's own real Evidence-Bound Claim Ledger verdict (never the model grading itself) once enough runs have accumulated — see GET /agents/:id/confidence.
+             * @default false
+             */
+            reportConfidence: boolean;
         };
         AgentSuggestNextRequest: {
             /**
@@ -2353,13 +2514,33 @@ export interface components {
             currentPassword: string;
             newPassword: string;
         };
+        ConfidenceCalibration: {
+            taskCategory: string;
+            minSamples: number;
+            /** @description Rows with both a real self-reported confidence and a real EBCL-evaluated correctness — the only ones Brier/ECE can use. */
+            sampleSize: number;
+            /** @description Null below minSamples — an honest "not enough data yet," never a misleadingly precise score. */
+            brierScore: number | null;
+            expectedCalibrationError: number | null;
+            /** @description Accuracy among non-abstained, evaluated rows. */
+            selectiveAccuracy: number | null;
+            /** @description Fraction of ALL reportConfidence runs (not just evaluated ones) that abstained. */
+            abstentionRate: number | null;
+            bins: {
+                rangeLow: number;
+                rangeHigh: number;
+                avgConfidence: number;
+                observedAccuracy: number;
+                count: number;
+            }[];
+        };
         CurrentUser: {
             id: string;
             username: string;
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review" | "research:run")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review" | "research:run" | "research:read")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -3408,6 +3589,7 @@ export interface components {
                 /** Format: date-time */
                 lastUsedAt: string | null;
             }[];
+            knownProviderIds: string[];
         };
         ProviderCredentialSetRequest: {
             secret: string;
@@ -3676,6 +3858,54 @@ export interface components {
             };
             contradictions: string[];
         };
+        ResearchRunList: {
+            items: {
+                id: string;
+                problemId: string;
+                problemText: string;
+                domain: string;
+                /** @enum {string} */
+                language: "en" | "th";
+                requestedByType: string;
+                requestedById: string;
+                /** @enum {string} */
+                status: "SUCCEEDED" | "FAILED";
+                failureCategory: string;
+                error: string | null;
+                topHypothesisId: string | null;
+                hypothesisCount: number;
+                run: {
+                    [key: string]: unknown;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                finishedAt: string;
+            }[];
+        };
+        ResearchRunRecord: {
+            id: string;
+            problemId: string;
+            problemText: string;
+            domain: string;
+            /** @enum {string} */
+            language: "en" | "th";
+            requestedByType: string;
+            requestedById: string;
+            /** @enum {string} */
+            status: "SUCCEEDED" | "FAILED";
+            failureCategory: string;
+            error: string | null;
+            topHypothesisId: string | null;
+            hypothesisCount: number;
+            run: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string;
+        };
         RuntimeComponent: {
             id: string;
             name: string;
@@ -3929,6 +4159,39 @@ export interface components {
             /** @enum {string} */
             status: "PENDING" | "SUBMITTED" | "SUCCEEDED" | "FAILED" | "SKIPPED";
         };
+        Strategy: {
+            id: string;
+            category: string;
+            version: number;
+            content: string;
+            /** @enum {string} */
+            status: "ACTIVE" | "INACTIVE";
+            createdBy: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        StrategyCreateRequest: {
+            content: string;
+        };
+        StrategyList: {
+            versions: {
+                id: string;
+                category: string;
+                version: number;
+                content: string;
+                /** @enum {string} */
+                status: "ACTIVE" | "INACTIVE";
+                createdBy: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Real OutcomeRecord counts grouped by the strategy version active when each was written, and outcome — informational only; a human decides whether to activate/roll back. */
+            stats: {
+                strategyVersion: number | null;
+                outcome: string;
+                count: number;
+            }[];
+        };
         Tool: {
             id: string;
             name: string;
@@ -4105,7 +4368,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review" | "research:run")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review" | "research:run" | "research:read")[];
             }[];
         };
         UserUpdateRequest: {
@@ -5973,6 +6236,97 @@ export interface operations {
             };
         };
     };
+    AgentsController_strategies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyList"];
+                };
+            };
+        };
+    };
+    AgentsController_createStrategy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StrategyCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Strategy"];
+                };
+            };
+        };
+    };
+    AgentsController_activateStrategy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                strategyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Strategy"];
+                };
+            };
+        };
+    };
+    AgentsController_confidence: {
+        parameters: {
+            query?: {
+                minSamples?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfidenceCalibration"];
+                };
+            };
+        };
+    };
     AgentsController_start: {
         parameters: {
             query?: never;
@@ -5995,6 +6349,25 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AgentRunDetail"];
                 };
+            };
+        };
+    };
+    AgentsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6510,6 +6883,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchRun"];
+                };
+            };
+        };
+    };
+    ResearchController_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                domain?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchRunList"];
+                };
+            };
+        };
+    };
+    ResearchController_run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchRunRecord"];
                 };
             };
         };
