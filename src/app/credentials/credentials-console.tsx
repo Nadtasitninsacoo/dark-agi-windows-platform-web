@@ -25,6 +25,15 @@ interface Row {
   readonly item: ProviderCredential | null;
 }
 
+/** What to actually type into the secret field, per provider — not every provider takes a bare key
+ * (MISP needs a JSON object: baseUrl + apiKey, since it's a self-hosted server, not a single shared API).
+ * Providers with no entry here just take a plain key. */
+const SECRET_HINTS: Record<string, string> = {
+  nasa: 'A plain API key from a free api.nasa.gov account (raises the shared DEMO_KEY rate limit).',
+  virustotal: 'A plain API key from your VirusTotal account.',
+  misp: 'A JSON object naming your own MISP instance: {"baseUrl":"https://your-misp-instance","apiKey":"..."}',
+};
+
 function SetCredentialForm({ providerId, existingLabel, onDone }: { providerId: string; existingLabel: string | null; onDone: () => Promise<unknown> }) {
   const [label, setLabel] = useState(existingLabel ?? '');
   const [secret, setSecret] = useState('');
@@ -46,14 +55,19 @@ function SetCredentialForm({ providerId, existingLabel, onDone }: { providerId: 
     }
   };
 
+  const hint = SECRET_HINTS[providerId];
+
   return (
-    <form className="mt-1.5 flex flex-wrap items-center gap-1.5" onSubmit={(e) => void submit(e)}>
+    <form className="mt-1.5 space-y-1" onSubmit={(e) => void submit(e)}>
       {error ? <ErrorNotice error={error} /> : null}
-      <input className={`${inputClass} w-auto`} placeholder="Label (optional)" value={label} onChange={(e) => setLabel(e.target.value)} />
-      <input className={`${inputClass} w-auto`} type="password" placeholder="Secret / API key" value={secret} onChange={(e) => setSecret(e.target.value)} />
-      <Button type="submit" variant="primary" busy={busy} disabled={secret.trim().length === 0}>
-        {existingLabel !== null ? 'Rotate' : 'Set'} credential
-      </Button>
+      {hint ? <p className="text-[11px] text-ink-3">{hint}</p> : null}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <input className={`${inputClass} w-auto`} placeholder="Label (optional)" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <input className={`${inputClass} w-auto`} type="password" placeholder="Secret / API key" value={secret} onChange={(e) => setSecret(e.target.value)} />
+        <Button type="submit" variant="primary" busy={busy} disabled={secret.trim().length === 0}>
+          {existingLabel !== null ? 'Rotate' : 'Set'} credential
+        </Button>
+      </div>
     </form>
   );
 }
