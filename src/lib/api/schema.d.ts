@@ -1205,6 +1205,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agents/{id}/memory-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission 09 Milestone 1: this agent’s persistent memory records (EPISODIC auto-logged after each run, SEMANTIC/PROCEDURAL/WORKING operator-authored) — distinct from the operator notes above */
+        get: operations["AgentsController_memoryRecords"];
+        put?: never;
+        /** Add an operator-authored SEMANTIC/PROCEDURAL/WORKING memory (verified immediately, since a human wrote it; audited) */
+        post: operations["AgentsController_addMemoryRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agents/{id}/memory-records/{memoryId}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark a memory record VERIFIED or REJECTED (audited) — ready for agent-proposed memories once that path exists */
+        patch: operations["AgentsController_verifyMemoryRecord"];
+        trace?: never;
+    };
     "/api/v1/agents/{id}/runs": {
         parameters: {
             query?: never;
@@ -1493,6 +1528,23 @@ export interface paths {
         put?: never;
         /** Generate a real .ts file for an approved proposal into its own workspace, with a genuine tsc --noEmit compile check — never wired into the live operations registry */
         post: operations["OperationProposalsController_writeCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/research/cycles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run one real Strategic Reasoner research cycle (Mission 05): AI proposes competing hypotheses and designs one real experiment per hypothesis, each runs through the normal scope/approval/audit path, DHL deterministically ranks the results. */
+        post: operations["ResearchController_createCycle"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2307,7 +2359,7 @@ export interface components {
             displayName: string;
             /** @enum {string} */
             role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
-            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review")[];
+            permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review" | "research:run")[];
             /** Format: date-time */
             sessionExpiresAt: string;
         };
@@ -3001,6 +3053,51 @@ export interface components {
             username: string;
             password: string;
         };
+        MemoryRecord: {
+            id: string;
+            agentId: string;
+            /** @enum {string} */
+            category: "WORKING" | "EPISODIC" | "SEMANTIC" | "PROCEDURAL";
+            content: string;
+            sourceRunId: string | null;
+            sourceJobId: string | null;
+            confidence: number | null;
+            /** @enum {string} */
+            verificationStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        MemoryRecordCreateRequest: {
+            /** @enum {string} */
+            category: "WORKING" | "SEMANTIC" | "PROCEDURAL";
+            content: string;
+            /** @default null */
+            confidence: number | null;
+        };
+        MemoryRecordList: {
+            items: {
+                id: string;
+                agentId: string;
+                /** @enum {string} */
+                category: "WORKING" | "EPISODIC" | "SEMANTIC" | "PROCEDURAL";
+                content: string;
+                sourceRunId: string | null;
+                sourceJobId: string | null;
+                confidence: number | null;
+                /** @enum {string} */
+                verificationStatus: "UNVERIFIED" | "VERIFIED" | "REJECTED";
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+        };
+        MemoryRecordVerifyRequest: {
+            /** @enum {string} */
+            decision: "VERIFIED" | "REJECTED";
+        };
         Operation: {
             toolId: string;
             operationId: string;
@@ -3496,6 +3593,89 @@ export interface components {
             /** Format: date-time */
             nextBefore: string | null;
         };
+        ResearchCycleCreateRequest: {
+            problemText: string;
+            domain: string;
+            /**
+             * @default en
+             * @enum {string}
+             */
+            language: "en" | "th";
+            /** @description Override the default AI model for this call (same registry ids as /ai/chat) */
+            model?: string;
+        };
+        ResearchRun: {
+            problem: {
+                id: string;
+                text: string;
+                domain: string;
+            };
+            stages: {
+                /** @enum {string} */
+                stage: "hypothesis-generation" | "experiment-design" | "simulation" | "evidence-verification" | "result-analysis" | "hypothesis-evaluation";
+                producerId: string;
+                output: unknown;
+            }[];
+            hypotheses: {
+                id: string;
+                text: string;
+            }[];
+            plans: {
+                id: string;
+                hypothesisId: string;
+                steps: {
+                    toolId: string;
+                    operationId: string;
+                    input: unknown;
+                }[];
+            }[];
+            outcomes: {
+                planId: string;
+                hypothesisId: string;
+                stepOutcomes: {
+                    step: {
+                        toolId: string;
+                        operationId: string;
+                        input: unknown;
+                    };
+                    result: unknown;
+                    error: string | null;
+                }[];
+            }[];
+            evidence: {
+                id: string;
+                text: string;
+                cite?: {
+                    /** @enum {string} */
+                    type: "job" | "finding" | "evidence" | "ioc";
+                    id: string;
+                };
+            }[];
+            evidenceVerdicts: {
+                claimId: string;
+                /** @enum {string} */
+                status: "VERIFIED" | "CITED_UNCHECKED" | "UNSUPPORTED" | "MISSING_ARTIFACT" | "ARTIFACT_NOT_SUCCESSFUL" | "OUT_OF_SCOPE" | "UNCITED";
+                detail: string;
+            }[];
+            cells: {
+                hypothesisId: string;
+                evidenceId: string;
+                /** @enum {string} */
+                relation: "CONSISTENT" | "INCONSISTENT" | "NEUTRAL";
+                /** @enum {string} */
+                setBy: "human" | "agent";
+            }[];
+            rank: {
+                ranked: {
+                    hypothesisId: string;
+                    score: number;
+                    inconsistentCount: number;
+                }[];
+                topTied: boolean;
+                undetermined: boolean;
+            };
+            contradictions: string[];
+        };
         RuntimeComponent: {
             id: string;
             name: string;
@@ -3925,7 +4105,7 @@ export interface components {
                 /** @enum {string} */
                 role: "ADMIN" | "OPERATOR" | "ANALYST" | "VIEWER";
                 description: string;
-                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review")[];
+                permissions: ("system:read" | "system:manage" | "audit:read" | "ai:read" | "ai:use" | "ai:manage" | "agents:read" | "agents:run" | "agents:manage" | "tools:read" | "tools:discover" | "tools:configure" | "scopes:read" | "scopes:manage" | "findings:read" | "findings:manage" | "evidence:read" | "evidence:manage" | "iocs:read" | "iocs:manage" | "defense:read" | "defense:manage" | "reports:read" | "reports:manage" | "jobs:read" | "jobs:submit" | "jobs:approve" | "engine:control" | "users:manage" | "hosts:read" | "hosts:manage" | "credentials:read" | "credentials:manage" | "attack-graph:read" | "attack-graph:reason" | "operations:propose" | "operations:review" | "research:run")[];
             }[];
         };
         UserUpdateRequest: {
@@ -5721,6 +5901,78 @@ export interface operations {
             };
         };
     };
+    AgentsController_memoryRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryRecordList"];
+                };
+            };
+        };
+    };
+    AgentsController_addMemoryRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryRecordCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryRecord"];
+                };
+            };
+        };
+    };
+    AgentsController_verifyMemoryRecord: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                memoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryRecordVerifyRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryRecord"];
+                };
+            };
+        };
+    };
     AgentsController_start: {
         parameters: {
             query?: never;
@@ -6235,6 +6487,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationProposal"];
+                };
+            };
+        };
+    };
+    ResearchController_createCycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResearchCycleCreateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResearchRun"];
                 };
             };
         };

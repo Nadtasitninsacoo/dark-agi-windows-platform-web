@@ -37,6 +37,9 @@ import {
   type AiModel,
   type AiModelList,
   type AiProviderList,
+  type MemoryRecord,
+  type MemoryRecordCreateRequest,
+  type MemoryRecordList,
   apiRequest,
 } from '@/lib/api/client';
 import { formatRelativeTime } from '@/lib/format';
@@ -282,11 +285,12 @@ function AgentOverviewCard({
 
 /**
  * Cross-agent "Learning & Memory" view (Phase 4 of the Intelligence Command Center directive). Every note
- * here is written by a human operator through the Memory panel below (per-agent) — the backend has no
- * mechanism for an agent to write its own memory, and no knowledge graph linking notes together. Shown
- * honestly as "operator-curated", not "AI learned", per the directive's own rule against implying cognition
- * that doesn't exist. No bulk-memory endpoint exists, so this does one request per agent (there are few
- * agents) rather than adding backend work for a one-off aggregate view.
+ * here is written by a human operator through the Memory panel below (per-agent) — distinct from the
+ * separate "Memory records" panel (Mission 09 Milestone 1, per-agent, below RunPanel/HistoryPanel), where
+ * EPISODIC rows ARE written automatically by the system (not by a human, but also not an agent's own
+ * free-form claim — see MemoryRecordsPanel's own disclaimer). No bulk-memory endpoint exists for these
+ * operator notes, so this does one request per agent (there are few agents) rather than adding backend work
+ * for a one-off aggregate view.
  */
 type AgentMemoryWithAgent = AgentMemory & { agentName: string };
 
@@ -321,9 +325,10 @@ function MemoryOverviewPanel({ agents }: { agents: Agent[] }) {
       }
     >
       <p className="mb-2 rounded border border-edge bg-canvas/40 p-2 text-[11px] text-ink-3">
-        These notes are written by a human operator and attached to every run of that agent — no agent writes
-        its own memory, and there is no knowledge graph linking notes together yet. This is real, persisted
-        context, not something an agent learned or inferred on its own.
+        These notes are written by a human operator and attached to every run of that agent — there is no
+        knowledge graph linking notes together yet, and no agent writes its own free-form memory here. (A
+        separate, per-agent &ldquo;Memory records&rdquo; panel does let the system log a factual EPISODIC record of each
+        run automatically — see that panel for the distinction.)
       </p>
       {all.error ? <ErrorNotice error={all.error} /> : null}
       {!all.data && !all.error ? <Skeleton className="h-24 w-full" /> : null}
@@ -699,6 +704,105 @@ function MemoryPanel({ agent, max, onChanged }: { agent: Agent; max: number; onC
   );
 }
 
+const VERIFICATION_TONE: Record<string, StatusTone> = { UNVERIFIED: 'warning', VERIFIED: 'good', REJECTED: 'critical' };
+
+/**
+ * Mission 09 Milestone 1 (Persistent Memory) — distinct from the operator-notes MemoryPanel above. EPISODIC
+ * rows are logged automatically by the system after every run of this agent: a factual record of what
+ * happened (task, outcome, a short result excerpt), verified by construction since it is extracted from the
+ * run's own real data, not a claim the agent made up — shown here, not hidden, but never editable. SEMANTIC/
+ * PROCEDURAL/WORKING rows are operator-authored only in this milestone (forced VERIFIED on write, same trust
+ * level as the notes above) — the agent does not yet propose its own semantic/procedural memories; that is
+ * a deliberately deferred follow-up, not something this panel should imply already exists.
+ */
+function MemoryRecordsPanel({ agent }: { agent: Agent }) {
+  const records = useSWR<MemoryRecordList>(`/agents/${agent.id}/memory-records`);
+  const [category, setCategory] = useState<'SEMANTIC' | 'PROCEDURAL' | 'WORKING'>('SEMANTIC');
+  const [draft, setDraft] = useState('');
+  const [confidence, setConfidence] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const act = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await records.mutate();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verify = (memoryId: string, decision: 'VERIFIED' | 'REJECTED') => act(() => apiRequest(`/agents/${agent.id}/memory-records/${memoryId}/verify`, json('PATCH', { decision })));
+
+  const items: MemoryRecord[] = records.data?.items ?? [];
+  return (
+    <Panel title="Memory records" subtitle={`Working / episodic / semantic / procedural (Mission 09 Milestone 1) · ${items.length}`}>
+      <div className="space-y-2">
+        <p className="rounded border border-edge bg-canvas/40 p-2 text-[11px] text-ink-3">
+          EPISODIC rows below are logged automatically after each run of this agent — a factual record of what
+          happened, not a free-form agent claim. SEMANTIC/PROCEDURAL/WORKING rows are operator-authored only
+          for now; the agent does not yet propose its own memories here.
+        </p>
+        {error ? <ErrorNotice error={error} /> : null}
+        {records.error ? <ErrorNotice error={records.error} /> : null}
+        {items.length === 0 && records.data ? <p className="text-[12px] text-ink-3">No memory records yet.</p> : null}
+        <ul className="max-h-72 space-y-1.5 overflow-y-auto">
+          {items.map((m) => (
+            <li key={m.id} className="rounded border border-edge bg-panel p-2 text-[12px]">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-1.5 text-[10.5px] text-ink-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="rounded border border-edge-strong px-1.5 py-0.5 font-mono text-[10px] text-ink-2">{m.category}</span>
+                  <StatusBadge tone={VERIFICATION_TONE[m.verificationStatus] ?? 'neutral'} label={m.verificationStatus.toLowerCase()} />
+                  {m.confidence !== null ? <span>confidence {m.confidence}</span> : null}
+                </span>
+                <span>{formatRelativeTime(m.createdAt)}</span>
+              </div>
+              <p className="whitespace-pre-wrap break-words text-ink-2">{m.content}</p>
+              {m.verificationStatus === 'UNVERIFIED' ? (
+                <div className="mt-1.5 flex gap-2">
+                  <button type="button" disabled={busy} onClick={() => void verify(m.id, 'VERIFIED')} className="text-[11px] text-accent hover:underline disabled:opacity-50">
+                    Verify
+                  </button>
+                  <button type="button" disabled={busy} onClick={() => void verify(m.id, 'REJECTED')} className="text-[11px] text-critical hover:underline disabled:opacity-50">
+                    Reject
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void act(async () => {
+              const body: MemoryRecordCreateRequest = { category, content: draft, confidence: confidence.trim() === '' ? null : Number(confidence) };
+              await apiRequest(`/agents/${agent.id}/memory-records`, json('POST', body));
+              setDraft('');
+              setConfidence('');
+            });
+          }}
+        >
+          <select value={category} onChange={(e) => setCategory(e.target.value as 'SEMANTIC' | 'PROCEDURAL' | 'WORKING')} className="rounded border border-edge-strong bg-canvas px-2 py-1 text-[12px] text-ink">
+            <option value="SEMANTIC">Semantic</option>
+            <option value="PROCEDURAL">Procedural</option>
+            <option value="WORKING">Working</option>
+          </select>
+          <input className={`${inputClass} flex-1`} value={draft} maxLength={2000} placeholder="e.g. The lab gateway is always 192.0.2.1" onChange={(e) => setDraft(e.target.value)} />
+          <input className={`${inputClass} w-20`} value={confidence} placeholder="0-1" onChange={(e) => setConfidence(e.target.value)} />
+          <Button type="submit" busy={busy} disabled={draft.trim() === ''}>
+            Add
+          </Button>
+        </form>
+      </div>
+    </Panel>
+  );
+}
+
 function RunPanel({ agent, names, onFinished }: { agent: Agent; names: Record<string, string>; onFinished: () => Promise<unknown> }) {
   const [task, setTask] = useState('');
   const [allowDelegation, setAllowDelegation] = useState(agent.delegatesTo.length > 0);
@@ -945,6 +1049,7 @@ export function AgentConsole() {
                 <ConfigPanel agent={agent} models={models.data?.items ?? []} onSaved={refresh} />
                 <MemoryPanel agent={agent} max={agents.data.limits.maxMemoriesPerAgent} onChanged={refresh} />
               </div>
+              <MemoryRecordsPanel agent={agent} />
             </div>
           </div>
         ) : null}
