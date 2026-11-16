@@ -7,7 +7,7 @@ import Compare from '@maplibre/maplibre-gl-compare';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { apiRequest, type Job } from '@/lib/api/client';
-import { buildSatrecs, computePositions, fetchStarlinkElements, fetchStarshipLaunches, type StarlinkSatEntry, type StarshipLaunch } from './starlink';
+import { buildSatrecs, computePositions, fetchStarlinkElements, fetchStarshipLaunches, SHELL_COLORS, SHELL_LABELS, type ShellKey, type StarlinkSatEntry, type StarshipLaunch } from './starlink';
 
 /**
  * Milestone 1 of the "Global Earth Observation Engine" (docs/agi-research/mission-07): a real, pannable,
@@ -232,6 +232,7 @@ const STARLINK_CACHE_MS = 2 * 60 * 60 * 1000;
 interface StarlinkPositionLike {
   name: string;
   noradCatId: number;
+  shell: ShellKey;
   lat: number;
   lon: number;
   altKm: number;
@@ -242,18 +243,37 @@ function starlinkGeoJson(positions: readonly StarlinkPositionLike[]): GeoJSON.Fe
     type: 'FeatureCollection',
     features: positions.map((p) => ({
       type: 'Feature',
-      properties: { name: p.name, noradCatId: p.noradCatId, lat: p.lat, lon: p.lon, altKm: p.altKm },
+      properties: { name: p.name, noradCatId: p.noradCatId, shell: p.shell, lat: p.lat, lon: p.lon, altKm: p.altKm },
       geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
     })),
   };
 }
 
-/** Adds the Starlink circle layer (and its click/hover popup) once per map instance — a no-op on later calls. A `circle` layer, not one Marker per satellite, since ~11,000 real-time-updated DOM nodes would be a real performance problem a handful of threat/launch markers never hits. */
+/** MapLibre `match` expression pairs, built from SHELL_COLORS so the map layer and the legend (rendered below) can never drift apart. */
+const STARLINK_COLOR_MATCH: (string | number)[] = Object.entries(SHELL_COLORS).flatMap(([shell, color]) => [shell === 'other' ? 'other' : Number(shell), color]);
+
+/** Adds the Starlink circle layer (and its click/hover popup) once per map instance — a no-op on later calls. A `circle` layer, not one Marker per satellite, since ~11,000 real-time-updated DOM nodes would be a real performance problem a handful of threat/launch markers never hits. Colored by real orbital shell (see starlink.ts's SHELL_COLORS doc comment for why only 3 hues + "Other") with a dark stroke ring so dots stay visible over bright satellite imagery, not just the app's own dark chrome. */
 function ensureStarlinkLayer(map: MapLibreMap): void {
   const run = () => {
     if (map.getSource(STARLINK_SOURCE_ID)) return;
     map.addSource(STARLINK_SOURCE_ID, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({ id: STARLINK_LAYER_ID, type: 'circle', source: STARLINK_SOURCE_ID, paint: { 'circle-radius': 2, 'circle-color': '#5ad1ff', 'circle-opacity': 0.85 } });
+    map.addLayer({
+      id: STARLINK_LAYER_ID,
+      type: 'circle',
+      source: STARLINK_SOURCE_ID,
+      paint: {
+        'circle-radius': 2,
+        // MapLibre's own type for a `match` expression is a long fixed-arity tuple that TS can't verify
+        // against a value spread from an array built at runtime (the branch count depends on SHELL_COLORS);
+        // the cast is purely a type-level workaround -- the expression shape itself is real MapLibre syntax.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'circle-color': ['match', ['get', 'shell'], ...STARLINK_COLOR_MATCH, SHELL_COLORS.other] as any,
+        'circle-opacity': 0.9,
+        'circle-stroke-width': 0.5,
+        'circle-stroke-color': '#090b0c',
+        'circle-stroke-opacity': 0.6,
+      },
+    });
     map.on('mouseenter', STARLINK_LAYER_ID, () => {
       map.getCanvas().style.cursor = 'pointer';
     });
@@ -263,12 +283,13 @@ function ensureStarlinkLayer(map: MapLibreMap): void {
     map.on('click', STARLINK_LAYER_ID, (e) => {
       const f = e.features?.[0];
       if (!f?.properties) return;
-      const p = f.properties as { name: string; noradCatId: number; lat: number; lon: number; altKm: number };
+      const p = f.properties as { name: string; noradCatId: number; shell: ShellKey; lat: number; lon: number; altKm: number };
       new Popup({ offset: 6, closeButton: true })
         .setLngLat([p.lon, p.lat])
         .setHTML(
           `<div style="font-family: var(--font-mono, monospace); font-size: 11px; line-height: 1.5;">
              <strong>${p.name}</strong> (NORAD ${p.noradCatId})<br/>
+             ${SHELL_LABELS[p.shell]}<br/>
              ${p.lat.toFixed(2)}, ${p.lon.toFixed(2)} · alt ${p.altKm.toFixed(0)} km<br/>
              <span style="opacity:0.7">Source: CelesTrak orbital elements, position computed in your browser via real SGP4 — refreshed from CelesTrak at most once every 2 hours, per their own usage policy.</span>
            </div>`,
@@ -877,10 +898,24 @@ export function EarthMap() {
         ) : null}
         {starlinkError ? <p className="mb-2 text-[11px] text-critical">{starlinkError}</p> : null}
         {starlinkOn && starlinkEntries ? (
-          <p className="mb-2 text-[11px] text-ink-3">
-            {starlinkEntries.length} real Starlink satellites, positions live via SGP4 (CelesTrak) — drifting every 5s
-            {starlinkSkipped > 0 ? `, ${starlinkSkipped} skipped (invalid element set)` : ''}.
-          </p>
+          <div className="mb-2">
+            <p className="text-[11px] text-ink-3">
+              {starlinkEntries.length} real Starlink satellites, positions live via SGP4 (CelesTrak) — drifting every 5s
+              {starlinkSkipped > 0 ? `, ${starlinkSkipped} skipped (invalid element set)` : ''}.
+            </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-ink-3">
+              {(Object.keys(SHELL_COLORS) as (ShellKey | `${number}`)[]).map((k) => {
+                const key = (k === 'other' ? 'other' : Number(k)) as ShellKey;
+                const count = starlinkEntries.filter((e) => e.shell === key).length;
+                return (
+                  <span key={key} className="flex items-center gap-1">
+                    <span className="inline-block size-2 rounded-full" style={{ backgroundColor: SHELL_COLORS[key] }} aria-hidden />
+                    {SHELL_LABELS[key]} ({count})
+                  </span>
+                );
+              })}
+            </p>
+          </div>
         ) : null}
         {starshipError ? <p className="mb-2 text-[11px] text-critical">{starshipError}</p> : null}
         {starshipOn && starshipLaunches ? (

@@ -42,15 +42,41 @@ export interface StarshipLaunch {
   webcastLive: boolean;
 }
 
+export type ShellKey = 53 | 43 | 97 | 'other';
+
+/**
+ * Real Starlink satellites cluster tightly into a handful of distinct design inclinations (launch
+ * shells) — confirmed from the actual, full fetched constellation (2026-11-16, 11,188 satellites, each
+ * satellite's own real `inclination` rounded to the nearest whole degree): ~53° (5,061 sats), ~43° (3,603),
+ * ~97° (1,512, the polar shell), ~70° (978), plus a handful of smaller groups (~31°, ~98°, ~30°). Colors
+ * are assigned to the three largest by real population — the `dataviz` skill's categorical palette caps at
+ * 3 hues under an "any two marks can be neighbours" (`--pairs all`) context like a map, which this is; every
+ * other real shell (including the real ~70° one) folds into "Other" rather than inventing a 4th hue that
+ * wouldn't clear the CVD/normal-vision floors. Validated: `node validate_palette.js
+ * "#3987e5,#d95926,#199e70" --mode dark --surface "#090b0c" --pairs all` → all pass.
+ */
+const SHELL_INCLINATIONS: readonly ShellKey[] = [53, 43, 97];
+
+function shellFor(inclinationDeg: number): ShellKey {
+  const rounded = Math.round(inclinationDeg);
+  return (SHELL_INCLINATIONS.find((s) => s === rounded) as ShellKey | undefined) ?? 'other';
+}
+
+/** Dark-mode-only app (see globals.css) — these are the dark steps of the dataviz skill's validated default categorical palette, slots 1/2/3. "Other" uses this app's own existing muted-ink token, not a 4th categorical hue. */
+export const SHELL_COLORS: Record<ShellKey, string> = { 53: '#3987e5', 43: '#d95926', 97: '#199e70', other: '#6b7577' };
+export const SHELL_LABELS: Record<ShellKey, string> = { 53: '≈53° shell', 43: '≈43° shell', 97: '≈97° shell (polar)', other: 'Other shells' };
+
 export interface StarlinkSatEntry {
   name: string;
   noradCatId: number;
+  shell: ShellKey;
   satrec: satellite.SatRec;
 }
 
 export interface StarlinkPosition {
   name: string;
   noradCatId: number;
+  shell: ShellKey;
   lat: number;
   lon: number;
   altKm: number;
@@ -113,7 +139,7 @@ export function buildSatrecs(items: StarlinkOmmRecord[]): { entries: StarlinkSat
       skipped++;
       continue;
     }
-    entries.push({ name: r.name, noradCatId: r.noradCatId, satrec });
+    entries.push({ name: r.name, noradCatId: r.noradCatId, shell: shellFor(r.inclination), satrec });
   }
   return { entries, skipped };
 }
@@ -134,6 +160,7 @@ export function computePositions(entries: StarlinkSatEntry[], at: Date): { posit
     positions.push({
       name: e.name,
       noradCatId: e.noradCatId,
+      shell: e.shell,
       lat: satellite.degreesLat(geo.latitude),
       lon: satellite.degreesLong(geo.longitude),
       altKm: geo.height,
