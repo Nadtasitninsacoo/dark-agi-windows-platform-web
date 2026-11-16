@@ -2,18 +2,19 @@
 
 import Link from 'next/link';
 import useSWR from 'swr';
+import { JobTrendChart } from '@/components/job-trend-chart';
 import { PageHeader } from '@/components/page-header';
 import { ErrorNotice, Panel, Skeleton, StatusBadge } from '@/components/ui';
-import type { AgentList, AiModelList, AuditVerification, EngineStatus, Job } from '@/lib/api/client';
+import type { AgentList, AiModelList, AuditVerification, EngineStatus, Job, JobTrend } from '@/lib/api/client';
 
 type JobStatus = Job['status'];
 
 /**
- * Phase 9 of the Intelligence Command Center directive — cross-platform analytics, built entirely from
+ * Phase 9 of the Intelligence Command Center directive — cross-platform analytics, built mostly from
  * real data already exposed elsewhere (engine job counts, per-agent stats, per-model stats, the audit
- * chain). No new backend endpoints. Every number here is a real, current snapshot, never a historical
- * trend — this platform has no time-series storage for job/engine counts yet (see Mission 08 Phase 1's
- * "missing backend capabilities" list), so nothing here pretends to show change over time.
+ * chain), plus one real Mission 08 addition: a day-bucketed job-count trend (`GET /engine/job-trend`,
+ * the first real time-series this platform has ever had for jobs — see its own backend doc comment for
+ * why it needed a raw query). Every other number here is still a real, current snapshot.
  */
 
 const JOB_STATUS: Record<JobStatus, { label: string; barClass: string; tone: 'good' | 'warning' | 'critical' | 'neutral' | 'pending' }> = {
@@ -95,6 +96,7 @@ function JobStatusFigure({ counts: raw }: { counts: Record<string, number> }) {
 
 export function AnalyticsConsole() {
   const engine = useSWR<EngineStatus>('/engine', { refreshInterval: 15_000 });
+  const jobTrend = useSWR<JobTrend>('/engine/job-trend?days=14', { refreshInterval: 60_000 });
   const agents = useSWR<AgentList>('/agents', { refreshInterval: 15_000 });
   const models = useSWR<AiModelList>('/ai/models', { refreshInterval: 15_000 });
   const auditVerify = useSWR<AuditVerification>('/audit/verify', { refreshInterval: 60_000 });
@@ -113,7 +115,7 @@ export function AnalyticsConsole() {
     <div>
       <PageHeader
         title="Intelligence Analytics"
-        summary="Real, current snapshots aggregated from the execution engine, the agent roster, the model registry and the audit chain — no historical trends (this platform has no time-series storage for them yet) and no synthetic scores."
+        summary="Real, current snapshots aggregated from the execution engine, the agent roster, the model registry and the audit chain, plus a real day-by-day job-count trend — no synthetic scores."
       />
       <div className="space-y-3 p-4">
         {engine.error ? <ErrorNotice error={engine.error} /> : null}
@@ -142,6 +144,12 @@ export function AnalyticsConsole() {
         <Panel title="Job status breakdown" subtitle="Every job in the system right now, by status">
           {!engine.data && !engine.error ? <Skeleton className="h-10 w-full" /> : null}
           {engine.data ? <JobStatusFigure counts={engine.data.counts} /> : null}
+        </Panel>
+
+        <Panel title="Job count trend" subtitle="Real day-by-day job counts, last 14 days">
+          {jobTrend.error ? <ErrorNotice error={jobTrend.error} /> : null}
+          {!jobTrend.data && !jobTrend.error ? <Skeleton className="h-40 w-full" /> : null}
+          {jobTrend.data ? <JobTrendChart days={jobTrend.data.days} /> : null}
         </Panel>
 
         <Panel

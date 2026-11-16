@@ -1,9 +1,11 @@
-import { CornerDownRight } from 'lucide-react';
+import { CornerDownRight, GitBranch, LayoutList } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { StatusBadge, type StatusTone } from '@/components/ui';
 import type { AgentRun, AgentRunDetail } from '@/lib/api/client';
 import { formatDateTime } from '@/lib/format';
 import { buildRunTree, type RunNode } from '@/lib/run-tree';
+import { DelegationTreeView } from './delegation-tree-view';
 
 export const RUN_STATUS: Record<AgentRun['status'], { tone: StatusTone; label: string }> = {
   RUNNING: { tone: 'pending', label: 'Running' },
@@ -105,7 +107,35 @@ function RunCard({ node, names }: { node: RunNode; names: Record<string, string>
   );
 }
 
-/** A run and every delegated run beneath it. */
+/** A run and every delegated run beneath it. "Tree" gives a real structural at-a-glance view (only
+ * worth offering once there's at least one delegation to show); "Cards" (the default) shows full detail
+ * inline — output, structured requests, iterations — which the tree view deliberately doesn't repeat. */
 export function RunView({ detail, names }: { detail: AgentRunDetail; names: Record<string, string> }) {
-  return <RunCard node={buildRunTree(detail.run, detail.descendants)} names={names} />;
+  const [view, setView] = useState<'cards' | 'tree'>('cards');
+  const root = buildRunTree(detail.run, detail.descendants);
+  const hasDelegations = detail.descendants.length > 0;
+
+  return (
+    <div className="space-y-2">
+      {hasDelegations ? (
+        <div className="flex justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setView('cards')}
+            className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] ${view === 'cards' ? 'border-accent-strong/60 bg-accent-strong/10 text-ink' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+          >
+            <LayoutList className="size-3" aria-hidden /> Cards
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('tree')}
+            className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] ${view === 'tree' ? 'border-accent-strong/60 bg-accent-strong/10 text-ink' : 'border-edge-strong text-ink-2 hover:bg-canvas'}`}
+          >
+            <GitBranch className="size-3" aria-hidden /> Tree
+          </button>
+        </div>
+      ) : null}
+      {view === 'tree' && hasDelegations ? <DelegationTreeView root={root} names={names} /> : <RunCard node={root} names={names} />}
+    </div>
+  );
 }

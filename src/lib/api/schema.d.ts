@@ -393,6 +393,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/engine/job-trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission 08: real, day-bucketed job counts over the last N days (zero-filled) */
+        get: operations["ExecutionController_jobTrend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/engine/emergency-stop": {
         parameters: {
             query?: never;
@@ -1654,6 +1671,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cosmic/dsn-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mission 06 (Cosmic Intelligence Engine), Phase 1 first increment: submits a real nasa-dsn:live-status job and reports real, objectively-true state changes (contact acquired/lost, uplink/downlink flipped) against the most recent prior snapshot of the same operation. */
+        post: operations["CosmicController_dsnEvents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp": {
         parameters: {
             query?: never;
@@ -2638,6 +2672,34 @@ export interface components {
                 count: number;
             }[];
         };
+        DsnEventsResult: {
+            events: {
+                /** @enum {string} */
+                type: "contact_acquired" | "contact_lost" | "link_state_changed";
+                spacecraftCode: string;
+                spacecraftName: string | null;
+                reason: string;
+            }[];
+            current: {
+                jobId: string;
+                /** Format: date-time */
+                observedAt: string;
+                tracks: {
+                    dish: string;
+                    spacecraftCode: string;
+                    spacecraftName: string | null;
+                    roundTripLightTimeSec: number;
+                    distanceKm: number;
+                    uplinkActive: boolean;
+                    downlinkActive: boolean;
+                }[];
+            };
+            prior: {
+                jobId: string;
+                /** Format: date-time */
+                observedAt: string;
+            } | null;
+        };
         EngineStatus: {
             /** @description Emergency stop is active: nothing runs and new jobs are refused */
             paused: boolean;
@@ -3229,6 +3291,15 @@ export interface components {
             input: {
                 [key: string]: unknown;
             };
+        };
+        JobTrend: {
+            days: {
+                /** @description YYYY-MM-DD, UTC */
+                date: string;
+                counts: {
+                    [key: string]: number;
+                };
+            }[];
         };
         LoginRequest: {
             username: string;
@@ -4933,6 +5004,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EngineStatus"];
+                };
+            };
+        };
+    };
+    ExecutionController_jobTrend: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobTrend"];
                 };
             };
         };
@@ -6926,6 +7018,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResearchRunRecord"];
+                };
+            };
+        };
+    };
+    CosmicController_dsnEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DsnEventsResult"];
                 };
             };
         };

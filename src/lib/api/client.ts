@@ -62,6 +62,7 @@ export type OperationProposalCreateResult = Schemas['OperationProposalCreateResu
 export type Job = Schemas['Job'];
 export type JobPage = Schemas['JobPage'];
 export type EngineStatus = Schemas['EngineStatus'];
+export type JobTrend = Schemas['JobTrend'];
 export type Sequence = Schemas['Sequence'];
 export type SequenceStep = Schemas['SequenceStep'];
 export type SequenceList = Schemas['SequenceList'];
