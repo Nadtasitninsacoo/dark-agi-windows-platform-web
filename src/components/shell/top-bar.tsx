@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, OctagonX, SquareTerminal, Target, UserRound } from 'lucide-react';
+import { LogOut, OctagonX, Play, SquareTerminal, Target, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
@@ -10,15 +10,50 @@ import { API_BASE_URL, apiRequest, type EngineStatus, type HealthReport, type Sc
 import { useAuth } from './auth';
 import { OPEN_TERMINAL_EVENT } from './floating-terminal';
 
-/** Shows a prominent badge while the execution engine is emergency-stopped. */
+/**
+ * Shows a prominent badge while the execution engine is emergency-stopped, plus a one-click Resume button
+ * for anyone who holds `engine:control` — symmetric with EmergencyStopButton's own one-click STOP, no
+ * confirmation dialog. Originally resume was Task-Queue-only on purpose (see EmergencyStopButton's old
+ * comment) so a stop was never casually undone without first seeing who stopped it, when, and why — but an
+ * operator reported that friction was indistinguishable from the button simply not existing at all (the
+ * badge is only a link, easy to miss as "go find the real control elsewhere"), so by explicit request this
+ * is now a direct, one-click action here too. The Task Queue page keeps its own Resume button as well —
+ * same "both the navbar and Task Queue have a working control" pattern Emergency Stop itself already uses.
+ */
 function EngineBadge() {
   const { can } = useAuth();
-  const { data } = useSWR<EngineStatus>(can('jobs:read') ? '/engine' : null, { refreshInterval: 10_000 });
+  const { data, mutate } = useSWR<EngineStatus>(can('jobs:read') ? '/engine' : null, { refreshInterval: 10_000 });
+  const [busy, setBusy] = useState(false);
   if (!data?.paused) return null;
+
+  const resume = async () => {
+    setBusy(true);
+    try {
+      await apiRequest('/engine/resume', { method: 'POST' });
+      await mutate();
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <Link href="/tasks">
-      <StatusBadge tone="critical" label="ENGINE STOPPED" />
-    </Link>
+    <div className="flex items-center gap-1.5">
+      <Link href="/tasks">
+        <StatusBadge tone="critical" label="ENGINE STOPPED" />
+      </Link>
+      {can('engine:control') ? (
+        <button
+          type="button"
+          onClick={() => void resume()}
+          disabled={busy}
+          title="Resume the engine — accept new job submissions again. No confirmation, matching Emergency Stop's own one-click convenience."
+          className="flex items-center gap-1.5 rounded border border-accent-strong/70 bg-accent-strong/20 px-2 py-1 text-[12px] font-bold text-accent hover:bg-accent-strong/30 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Play className="size-3.5" aria-hidden />
+          <span className="hidden sm:inline">{busy ? 'Resuming…' : 'RESUME'}</span>
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -30,8 +65,8 @@ function EngineBadge() {
  * AI Agents or any future autonomous layer become, this stays a plain human-operated kill switch they have
  * no path to call themselves — no agent-facing route exists for it, only this UI and Task Queue's own
  * form, both gated on `engine:control`, a permission no agent actor holds.
- * Hidden once already stopped — EngineBadge (above) already shows that state; this button has nothing
- * further to do until someone resumes from Task Queue. While any job is actually RUNNING (an agent, a
+ * Hidden once already stopped — EngineBadge (above) takes over at that point, showing the stopped state
+ * and its own one-click Resume control right next to it. While any job is actually RUNNING (an agent, a
  * scan, anything), it turns solid red and pulses — a quiet idle state the rest of the time, impossible to
  * miss the moment something is actually executing.
  */
