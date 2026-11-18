@@ -93,7 +93,8 @@ export function CommandCenter() {
         summary="Real-time platform health: host telemetry, agents, AI providers, the tool registry, the execution queue and the latest activity."
         actions={telemetryBadge}
       />
-      <div className="grid gap-3 p-4 lg:grid-cols-4">
+      <div className="space-y-3 p-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile
           icon={<Activity className="size-3.5" aria-hidden />}
           label="CPU"
@@ -136,7 +137,9 @@ export function CommandCenter() {
               : '—'}
           </p>
         </div>
+      </section>
 
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <StatusTile
           icon={<Bot className="size-3.5" aria-hidden />}
           label="AI Agents"
@@ -177,31 +180,46 @@ export function CommandCenter() {
           value={engine.data ? String(engine.data.counts.AWAITING_APPROVAL) : '—'}
           sub={engine.error ? 'Unreachable' : engine.data ? (engine.data.counts.AWAITING_APPROVAL > 0 ? 'waiting for a human' : 'none waiting') : 'Checking'}
         />
+      </section>
 
-        <Panel title="CPU utilisation" subtitle="Last ~5 minutes, measured from OS tick deltas" className="lg:col-span-2">
+      <section className="grid items-start gap-3 lg:grid-cols-2">
+        <Panel title="CPU utilisation" subtitle="Last ~5 minutes, measured from OS tick deltas">
           <Sparkline points={cpuPoints} label="CPU utilisation" />
         </Panel>
-        <Panel title="Memory utilisation" subtitle="Physical memory in use" className="lg:col-span-2">
+        <Panel title="Memory utilisation" subtitle="Physical memory in use">
           <Sparkline points={memPoints} label="Memory utilisation" />
         </Panel>
+      </section>
 
-        <Panel
-          title="Environment readiness"
-          subtitle={inventory.data ? `${inventory.data.os.version} · build ${inventory.data.os.build ?? '?'} · ${inventory.data.os.arch}` : 'Probing runtimes…'}
-          actions={<Link href="/settings" className="text-[11px] text-accent hover:underline">Details</Link>}
-          className="lg:col-span-2"
-        >
-          {inventory.error ? <ErrorNotice error={inventory.error} /> : null}
-          {inventory.data ? (
-            <InventoryTable components={inventory.data.components} compact />
-          ) : inventory.error ? null : (
-            <div className="space-y-2">
-              {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} />)}
-            </div>
-          )}
-        </Panel>
+      <section className="grid items-start gap-3 xl:grid-cols-12">
+        <div className="flex flex-col gap-3 xl:col-span-7">
+          <Panel
+            title="Environment readiness"
+            subtitle={inventory.data ? `${inventory.data.os.version} · build ${inventory.data.os.build ?? '?'} · ${inventory.data.os.arch}` : 'Probing runtimes…'}
+            actions={<Link href="/settings" className="text-[11px] text-accent hover:underline">Details</Link>}
+          >
+            {inventory.error ? <ErrorNotice error={inventory.error} /> : null}
+            {inventory.data ? (
+              <InventoryTable components={inventory.data.components} compact />
+            ) : inventory.error ? null : (
+              <div className="space-y-2">
+                {Array.from({ length: 6 }, (_, i) => <Skeleton key={i} />)}
+              </div>
+            )}
+          </Panel>
+          <Panel title="Platform delivery" subtitle="Modules backed by implemented APIs">
+            <dl>
+              <KeyValue label="Live modules">
+                {liveCount} / {MODULES.length}
+              </KeyValue>
+              <KeyValue label="Host">{m ? `${m.host.hostname} · up ${formatDuration(m.host.uptimeSeconds)}` : '—'}</KeyValue>
+              <KeyValue label="API process">{m ? `PID ${m.process.pid} · RSS ${formatBytes(m.process.rssBytes)}` : '—'}</KeyValue>
+              <KeyValue label="Findings summary">Not implemented yet (Phase 5)</KeyValue>
+            </dl>
+          </Panel>
+        </div>
 
-        <div className="flex flex-col gap-3 lg:col-span-2">
+        <div className="flex flex-col gap-3 xl:col-span-5">
           <Panel
             title="Recent audit activity"
             actions={
@@ -247,17 +265,8 @@ export function CommandCenter() {
               <Skeleton className="h-16 w-full" />
             )}
           </Panel>
-          <Panel title="Platform delivery" subtitle="Modules backed by implemented APIs">
-            <dl>
-              <KeyValue label="Live modules">
-                {liveCount} / {MODULES.length}
-              </KeyValue>
-              <KeyValue label="Host">{m ? `${m.host.hostname} · up ${formatDuration(m.host.uptimeSeconds)}` : '—'}</KeyValue>
-              <KeyValue label="API process">{m ? `PID ${m.process.pid} · RSS ${formatBytes(m.process.rssBytes)}` : '—'}</KeyValue>
-              <KeyValue label="Findings summary">Not implemented yet (Phase 5)</KeyValue>
-            </dl>
-          </Panel>
         </div>
+      </section>
       </div>
     </div>
   );
