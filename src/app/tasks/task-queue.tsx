@@ -1,9 +1,9 @@
 'use client';
 
-import { ChevronDown, ChevronLeft, ChevronRight, OctagonX, Play, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, OctagonX, Play, RotateCcw, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { type FormEvent, Fragment, type MouseEvent, useMemo, useState } from 'react';
+import { type FormEvent, Fragment, type MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { PageHeader } from '@/components/page-header';
 import { useAuth } from '@/components/shell/auth';
@@ -680,11 +680,137 @@ function JobDetail({ job, onChanged }: { job: Job; onChanged: () => Promise<unkn
   );
 }
 
+const AUTO_APPROVE_KEY = 'dagi.taskqueue.autoApprove';
+
+/** Read the remembered auto-approve choice for this browser. Used as a lazy initial state (not an effect),
+ * so there is no synchronous setState on mount; defaults to OFF whenever storage is missing or unreadable. */
+function readAutoApprove(): { enabled: boolean; scope: 'external' | 'all' } {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(AUTO_APPROVE_KEY) : null;
+    if (raw) {
+      const saved = JSON.parse(raw) as { enabled?: unknown; scope?: unknown };
+      return { enabled: saved.enabled === true, scope: saved.scope === 'all' ? 'all' : 'external' };
+    }
+  } catch {
+    /* ignore unreadable storage */
+  }
+  return { enabled: false, scope: 'external' };
+}
+
+/** Operator convenience, client-side only: while this is on, the console approves pending jobs for you so
+ * an unattended client (the AI agent, or an external API key such as "AGI Research") does not stall at the
+ * approval gate. It is OFF by default, gated on `jobs:approve`, and never bypasses the server: every
+ * auto-approval still goes through the audited `POST /jobs/{id}/approve` with a note, so the audit trail
+ * shows exactly what ran and that it was auto-approved. `scope: 'external'` (the default) auto-approves only
+ * AI-agent and API-key jobs and leaves anything you submit by hand at the console for manual review;
+ * `'all'` clears every pending job. It only runs while this page is open, and pauses when the engine is
+ * stopped. An `inFlight` set guards against approving the same job twice across the 2 s poll. */
+function useAutoApprove({
+  enabled,
+  scope,
+  canApprove,
+  paused,
+  onApproved,
+}: {
+  enabled: boolean;
+  scope: 'external' | 'all';
+  canApprove: boolean;
+  paused: boolean;
+  onApproved: () => Promise<unknown>;
+}) {
+  const active = enabled && canApprove && !paused;
+  const pending = useSWR<JobPage>(active ? '/jobs?status=AWAITING_APPROVAL&limit=25' : null, { refreshInterval: 2000 });
+  const inFlight = useRef<Set<string>>(new Set());
+  const onApprovedRef = useRef(onApproved);
+  useEffect(() => {
+    onApprovedRef.current = onApproved;
+  });
+  const [approved, setApproved] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const isExternal = (j: Job) => j.requestedBy.type === 'AGENT' || Boolean(j.apiKeyLabel);
+    const targets = (pending.data?.items ?? []).filter(
+      (j) => j.status === 'AWAITING_APPROVAL' && !inFlight.current.has(j.id) && (scope === 'all' || isExternal(j)),
+    );
+    if (targets.length === 0) return;
+    for (const j of targets) {
+      inFlight.current.add(j.id);
+      void apiRequest<Job>(`/jobs/${j.id}/approve`, post({ note: 'Auto-approved from Task Queue' }))
+        .then(() => setApproved((n) => n + 1))
+        .catch(() => {})
+        .finally(() => {
+          inFlight.current.delete(j.id);
+          void pending.mutate();
+          void onApprovedRef.current();
+        });
+    }
+  }, [pending, active, scope]);
+
+  return { approved, pendingCount: pending.data?.items.length ?? 0 };
+}
+
+function AutoApprovePanel({
+  enabled,
+  scope,
+  approved,
+  paused,
+  onToggle,
+  onScope,
+}: {
+  enabled: boolean;
+  scope: 'external' | 'all';
+  approved: number;
+  paused: boolean;
+  onToggle: (next: boolean) => void;
+  onScope: (next: 'external' | 'all') => void;
+}) {
+  return (
+    <Panel title="Auto-approve" subtitle="Clear the approval gate automatically so an unattended client does not stall">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={() => onToggle(!enabled)}
+          className={`inline-flex items-center gap-2 rounded border px-2.5 py-1 text-[12px] font-semibold ${enabled ? 'border-cyan/60 bg-cyan/15 text-cyan' : 'border-edge-strong text-ink-2 hover:text-ink'}`}
+        >
+          <ShieldCheck className="size-3.5" aria-hidden /> {enabled ? 'Auto-approve ON' : 'Auto-approve OFF'}
+        </button>
+        <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
+          Approve
+          <select
+            className={`${inputClass} w-auto`}
+            value={scope}
+            onChange={(e) => onScope(e.target.value === 'all' ? 'all' : 'external')}
+            disabled={!enabled}
+          >
+            <option value="external">AI-agent &amp; API-key jobs only</option>
+            <option value="all">all pending jobs</option>
+          </select>
+        </label>
+        {enabled ? <StatusBadge tone="good" label={`${approved} auto-approved this session`} /> : null}
+      </div>
+      {enabled ? (
+        <p className="mt-2 text-[11.5px] text-warning">
+          Manual review is bypassed{scope === 'external' ? ' for AI-agent and API-key jobs' : ' for every pending job'} while this page stays open. Each run is still checked against its scope, executed by the engine, and recorded in the audit trail as auto-approved.
+          {paused ? ' Paused while the engine is stopped.' : ''}
+        </p>
+      ) : (
+        <p className="mt-2 text-[11.5px] text-ink-3">Off — risky and AI-agent jobs wait for a manual Approve below. Turn on to clear them automatically from this browser.</p>
+      )}
+    </Panel>
+  );
+}
+
 export function TaskQueue() {
   const { user, can } = useAuth();
   const params = useSearchParams();
   const [status, setStatus] = useState<Job['status'] | ''>('');
   const [open, setOpen] = useState<string | null>(params.get('job'));
+  const canApprove = can('jobs:approve');
+  const [autoApprove, setAutoApprove] = useState(() => readAutoApprove().enabled);
+  const [autoScope, setAutoScope] = useState<'external' | 'all'>(() => readAutoApprove().scope);
   // Cursor-based pagination (the backend is cursor/`before`-paged, not offset-paged): cursors[i] is the
   // `before` value that fetches page i, discovered from the previous page's `nextBefore` as you go
   // forward — so "Next" is only ever enabled once that next page's cursor is actually known, and "Back"
@@ -722,6 +848,24 @@ export function TaskQueue() {
 
   const refresh = () => Promise.all([jobs.mutate(), liveJobs.mutate(), engine.mutate()]);
 
+  // Remember the auto-approve choice per browser (a convenience toggle, not shared state); the initial
+  // value is read lazily above, so this only persists later changes. It never carries authority — each
+  // approval is still made server-side.
+  useEffect(() => {
+    try {
+      localStorage.setItem(AUTO_APPROVE_KEY, JSON.stringify({ enabled: autoApprove, scope: autoScope }));
+    } catch {
+      /* ignore unwritable storage */
+    }
+  }, [autoApprove, autoScope]);
+  const auto = useAutoApprove({
+    enabled: autoApprove,
+    scope: autoScope,
+    canApprove,
+    paused: Boolean(engine.data?.paused),
+    onApproved: refresh,
+  });
+
   return (
     <div>
       <PageHeader
@@ -731,6 +875,17 @@ export function TaskQueue() {
       <div className="space-y-3 p-4">
         {engine.error ? <ErrorNotice error={engine.error} /> : null}
         {engine.data ? <EnginePanel engine={engine.data} onChanged={refresh} /> : <Skeleton className="h-28 w-full" />}
+
+        {canApprove ? (
+          <AutoApprovePanel
+            enabled={autoApprove}
+            scope={autoScope}
+            approved={auto.approved}
+            paused={Boolean(engine.data?.paused)}
+            onToggle={setAutoApprove}
+            onScope={setAutoScope}
+          />
+        ) : null}
 
         <LiveActivityPanel
           jobs={liveJobs.data?.items ?? []}
