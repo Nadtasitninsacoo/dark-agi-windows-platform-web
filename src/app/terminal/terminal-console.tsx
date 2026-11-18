@@ -142,6 +142,65 @@ const SKULL_BANNER = `%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
        =[ DARK AGI WINDOWS :: Windows Cyber Intelligence Platform
 + -- --=[ 10 AI agents :: cloud + local models :: audited, authorized execution`;
 
+/**
+ * Decorative background watermark ("DARK AGI" / "WINDOWS") in the 4-row slanted line font of figlet's "smslant".
+ * Every character is placed on a fixed grid (SVG <text> with an exact textLength), so rows line up the same in any
+ * font and at any size, and the whole thing scales with the window. Purely visual: aria-hidden, unselectable,
+ * never intercepts clicks.
+ */
+const WATERMARK_GLYPHS: Record<string, readonly string[]> = {
+  A: [String.raw`   ___ `, String.raw`  / _ |`, String.raw` / __ |`, String.raw`/_/ |_|`],
+  D: [String.raw`   ___ `, String.raw`  / _ \ `, String.raw` / // /`, String.raw`/____/ `],
+  G: [String.raw`  _____`, String.raw` / ___/`, String.raw`/ (_ / `, String.raw`\___/  `],
+  I: [String.raw`   ____`, String.raw`  /  _/`, String.raw` _/ /  `, String.raw`/___/  `],
+  K: [String.raw`   __ __`, String.raw`  / //_/`, String.raw` /   <  `, String.raw`/_/|_|  `],
+  N: [String.raw`   _  __`, String.raw`  / |/ /`, String.raw` /    / `, String.raw`/_/|_/  `],
+  O: [String.raw`  ____ `, String.raw` / __ \ `, String.raw`/ /_/ /`, String.raw`\____/ `],
+  R: [String.raw`   ___ `, String.raw`  / _ \ `, String.raw` / , _/`, String.raw`/_/|_| `],
+  S: [String.raw`  _____`, String.raw` / ___/`, String.raw` \__ \ `, String.raw`/____/ `],
+  W: [String.raw` _      __`, String.raw`| | /| / /`, String.raw`| |/ |/ / `, String.raw`|__/|__/  `],
+  ' ': ['   ', '   ', '   ', '   '],
+};
+
+function renderWatermarkLine(text: string): string[] {
+  const rows = ['', '', '', ''];
+  for (const ch of text) {
+    const glyph = WATERMARK_GLYPHS[ch] ?? WATERMARK_GLYPHS[' ']!;
+    const width = Math.max(...glyph.map((row) => row.length));
+    glyph.forEach((row, i) => {
+      rows[i] += row.padEnd(width + 1);
+    });
+  }
+  return rows;
+}
+
+const WATERMARK_ROWS = [...renderWatermarkLine('DARK AGI'), '', ...renderWatermarkLine('WINDOWS')];
+const WATERMARK_COLS = Math.max(...WATERMARK_ROWS.map((r) => r.length));
+const FONT_SIZE = 12;
+const CELL_W = 6.6; // Consolas advance is 0.55em
+const CELL_H = 13;
+
+function Watermark() {
+  return (
+    <svg
+      aria-hidden
+      viewBox={`0 0 ${WATERMARK_COLS * CELL_W} ${WATERMARK_ROWS.length * CELL_H}`}
+      className="pointer-events-none absolute bottom-16 left-1/2 -z-10 w-[min(70%,520px)] -translate-x-1/2 select-none fill-accent opacity-[0.3]"
+      fontFamily='Consolas, "Cascadia Mono", "Courier New", monospace'
+      fontSize={FONT_SIZE}
+      style={{ whiteSpace: 'pre', overflow: 'visible' }}
+    >
+      {WATERMARK_ROWS.map((row, i) =>
+        row.trim() === '' ? null : (
+          <text key={i} x={0} y={i * CELL_H + CELL_H - 3} xmlSpace="preserve" textLength={row.length * CELL_W} lengthAdjust="spacing">
+            {row}
+          </text>
+        ),
+      )}
+    </svg>
+  );
+}
+
 const AI_BANNER_NOTE = `AI mode: type what you want in plain language (Thai or English), e.g. "ดูโปรเซสที่รันอยู่"
 The AI picks one reviewed operation and fills its input; the same scope and approval rules still apply before anything runs.`;
 
@@ -509,10 +568,11 @@ export function TerminalConsole({ embedded = false, codeColor, sessionId }: { em
         if ((window.getSelection()?.toString().length ?? 0) > 0) return;
         inputRef.current?.focus();
       }}
-      className={`flex w-full cursor-text flex-col border-edge-strong bg-canvas p-3 text-left font-mono text-[12px] leading-relaxed text-ink ${
+      className={`relative isolate flex w-full cursor-text flex-col overflow-hidden border-edge-strong bg-canvas p-3 text-left font-mono text-[12px] leading-relaxed text-ink ${
         embedded ? 'h-full' : 'rounded-lg border shadow-inner'
       }`}
     >
+      <Watermark />
       <div className="mb-2 flex items-center justify-between gap-2 border-b border-edge pb-2" onClick={(e) => e.stopPropagation()}>
         <span className="text-[11px] text-ink-3">{aiMode ? 'AI command mode — describe what you want' : 'Command mode — type a dagi command'}</span>
         <button
